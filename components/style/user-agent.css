@@ -1,0 +1,112 @@
+/*
+ * Sirius' user agent stylesheet.
+ * This is the first stylesheet loaded into the layout engine.
+ * 
+ * Author(s):
+ * Trayambak Rai (xtrayambak@disroot.org)
+*/
+
+/* FIXME: empty selectors are discarded entirely! */
+html { --sirius-noop: quirky(); }
+body { --sirius-noop: quirky(); }
+
+* {
+  font-family: "JetBrainsMono Nerd Font", sans-serif;
+}
+
+/* Paragraphs */
+p {
+  font-size: 24px;
+  color: rgb(0, 0, 0);
+  display: block;
+  margin-bottom: 24px;
+}
+
+strong {
+  font-size: 24px;
+  color: rgb(0, 0, 0);
+}
+a {
+  font-size: 24px;
+  color: rgb(0, 0, 255); /* Make anchors appear blue. */
+  text-decoration: underline;
+}
+
+/* Headings
+* They progressively get smaller with each level. */
+h1 {
+  font-size: 32px;
+  color: rgb(0, 0, 0);
+  display: block;
+  margin-bottom: 32px;
+}
+h2 {
+  font-size: 30px;
+  color: rgb(0, 0, 0);
+  display: block;
+  margin-bottom: 28px;
+}
+h3 {
+  font-size: 28px;
+  color: rgb(0, 0, 0);
+  display: block;
+  margin-bottom: 24px;
+}
+h4 {
+  font-size: 24px;
+  color: rgb(0, 0, 0);
+  display: block;
+  margin-bottom: 24px;
+}
+h5 {
+  font-size: 22px;
+  color: rgb(0, 0, 0);
+  display: block;
+  margin-bottom: 22px;
+}
+h6 {
+  font-size: 20px;
+  color: rgb(0, 0, 0);
+  display: block;
+  margin-bottom: 20px;
+}
+
+header {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 32px;
+}
+
+aside {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+ul {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+li {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+blockquote {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+br {
+  display: inline;
+  font-size: 16px;
+}
+
+span {
+  font-size: 16px;
+  display: inline;
+}

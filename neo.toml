@@ -1,0 +1,27 @@
+[package]
+name = "sirius"
+description = "A tiny, experimental web engine"
+version = "0.1.0"
+license = "BSD-3-Clause"
+kind = "Binary"
+backend = "C"
+binaries = ["sirius"]
+
+[toolchain]
+version = "2.2.0"
+
+[dependencies]
+url = ">= 0.1.7"
+chame = ">= 1.0.5"
+shakar = ">= 0.1.3"
+surfer = ">= 0.2.2"
+curly = ">= 1.1.1"
+pretty = ">= 0.2.0"
+chronicles = ">= 0.12.3"
+vmath = ">= 3.0.0"
+stylus = ">= 0.1.4"
+nanovg = ">= 0.3.4"
+
+[platforms.native]
+include = ["wayland-egl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl"]
+link = ["wayland-egl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl"]
