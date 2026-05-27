@@ -25,7 +25,7 @@ The base was written in a day, so don't expect anything grandeur.
 - [X] `color`
 - [X] `display`
 - [X] `margin-bottom`
-- [ ] Remaining `margin-*` properties (`left`, `right`, `top`)
+- [X] Remaining `margin-*` properties (`left`, `right`, `top`)
 - [ ] `margin` property
 
 # why not work on ferus?

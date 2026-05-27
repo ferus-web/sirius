@@ -142,7 +142,7 @@ proc handleIdent(parser: Parser, token: Token): Stylesheet =
   if !parser.expectCurlyBracketBlock():
     return
 
-  echo token.ident & " {"
+  # echo token.ident & " {"
 
   var rules: Stylesheet
   let name = token.ident

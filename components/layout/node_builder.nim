@@ -19,6 +19,9 @@ const
   FontFamilyAttr = "font-family"
 
   MarginBottomAttr = "margin-bottom"
+  MarginTopAttr = "margin-top"
+  MarginLeftAttr = "margin-left"
+  MarginRightAttr = "margin-right"
 
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
@@ -56,6 +59,12 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == FontFamilyAttr:
       layoutNode.fontFamily = &fontProvider.getFontByFamily(cleanFontFamily(prop))
         # TODO: Handle fallbacks
+    elif attr == MarginTopAttr:
+      layoutNode.margins.top = some(prop)
+    elif attr == MarginLeftAttr:
+      layoutNode.margins.left = some(prop)
+    elif attr == MarginRightAttr:
+      layoutNode.margins.right = some(prop)
 
 proc createLayoutNode*(
     node: dom.Node, style: StyleMap, fontProvider: FontProvider

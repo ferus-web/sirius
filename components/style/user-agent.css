@@ -11,7 +11,7 @@ html { --sirius-noop: quirky(); }
 body { --sirius-noop: quirky(); }
 
 * {
-  font-family: "JetBrainsMono Nerd Font", sans-serif;
+  font-family: serif;
 }
 
 /* Paragraphs */
@@ -93,6 +93,7 @@ li {
   display: block;
   font-size: 16px;
   margin-bottom: 8px;
+  margin-left: 16px; /* HACK: Since we don't support bullets yet, this just makes the list items more prominent. */
 }
 
 blockquote {
