@@ -19,23 +19,23 @@ const
   DefaultConnectTimeoutMs = 10_000
 
 type
-  HttpVerb* = enum
-    hvGet = "GET"
-    hvPost = "POST"
-    hvPut = "PUT"
-    hvPatch = "PATCH"
-    hvDelete = "DELETE"
-    hvHead = "HEAD"
+  HttpVerb* {.pure, size: sizeof(uint8).} = enum
+    Get = "GET"
+    Post = "POST"
+    Put = "PUT"
+    Patch = "PATCH"
+    Delete = "DELETE"
+    Head = "HEAD"
 
-  TransportErrorKind* = enum
-    teNone
-    teTimeout
-    teNetwork
-    teDns
-    teTls
-    teCanceled
-    teProtocol
-    teInternal
+  TransportErrorKind* {.pure, size: sizeof(uint8).} = enum
+    None
+    Timeout
+    Network
+    DNS
+    TLS
+    Canceled
+    Protocol
+    Internal
 
   TransportError* = object
     kind*: TransportErrorKind
@@ -113,7 +113,7 @@ type
   NetworkClient* = ref NetworkClientObj
 
 proc noTransportError(): TransportError {.inline.} =
-  TransportError(kind: teNone, message: "", curlCode: 0)
+  TransportError(kind: TransportErrorKind.None, message: "", curlCode: 0)
 
 proc newTransportError(
     kind: TransportErrorKind, message: sink string, curlCode = 0
@@ -122,11 +122,11 @@ proc newTransportError(
 
 proc classifyTransportError(curlCode: CURLcode): TransportErrorKind {.inline.} =
   case curlCode
-  of CURLE_OPERATION_TIMEDOUT: teTimeout
-  of CURLE_COULDNT_RESOLVE_PROXY, CURLE_COULDNT_RESOLVE_HOST: teDns
-  of CURLE_SSL_CONNECT_ERROR, CURLE_PEER_FAILED_VERIFICATION: teTls
-  of CURLE_ABORTED_BY_CALLBACK: teCanceled
-  else: teNetwork
+  of CURLE_OPERATION_TIMEDOUT: TransportErrorKind.Timeout
+  of CURLE_COULDNT_RESOLVE_PROXY, CURLE_COULDNT_RESOLVE_HOST: TransportErrorKind.DNS
+  of CURLE_SSL_CONNECT_ERROR, CURLE_PEER_FAILED_VERIFICATION: TransportErrorKind.TLS
+  of CURLE_ABORTED_BY_CALLBACK: TransportErrorKind.Canceled
+  else: TransportErrorKind.Network
 
 proc bodyWriteCb(
     buffer: ptr char, size, nitems: csize_t, userdata: pointer
@@ -189,7 +189,7 @@ proc configureEasy(client: NetworkClient, request: RequestWrap, easy: var Easy) 
   easy.setHttpVersion2Tls()
 
   easy.setMethod($request.verb)
-  easy.setNoBody(request.verb == hvHead)
+  easy.setNoBody(request.verb == HttpVerb.Head)
   if request.body.len > 0:
     easy.setRequestBody(request.body)
 
@@ -214,12 +214,10 @@ proc completionFromCurl(
 ): RequestResult =
   result.response = newResponse(request)
   if removeError.len > 0:
-    result.error = newTransportError(teInternal, removeError)
+    result.error = newTransportError(TransportErrorKind.Internal, removeError)
   elif curlCode != CURLE_OK:
     result.error = newTransportError(
-      classifyTransportError(curlCode),
-      "curl transfer failed code=" & $int(curlCode),
-      int(curlCode),
+      classifyTransportError(curlCode), $curl_easy_strerror(curlCode), int(curlCode)
     )
   else:
     try:
@@ -231,13 +229,14 @@ proc completionFromCurl(
       result.response.body = move request.responseBody
       result.error = noTransportError()
     except CatchableError:
-      result.error = newTransportError(teInternal, getCurrentExceptionMsg())
+      result.error =
+        newTransportError(TransportErrorKind.Internal, getCurrentExceptionMsg())
 
 proc flushCanceledLocked(client: NetworkClient, message: string) =
   while client.queue.len > 0:
     let queued = client.queue.popFirst()
     client.storeCompletionLocked(
-      (newResponse(queued), newTransportError(teCanceled, message))
+      (newResponse(queued), newTransportError(Canceled, message))
     )
 
   for req in values(client.inFlight):
@@ -247,7 +246,7 @@ proc flushCanceledLocked(client: NetworkClient, message: string) =
       discard
     client.availableEasy.add(move req.easy)
     client.storeCompletionLocked(
-      (newResponse(req), newTransportError(teCanceled, message))
+      (newResponse(req), newTransportError(Canceled, message))
     )
   client.inFlight.clear()
 
@@ -262,11 +261,11 @@ proc runEasyLoop(client: NetworkClient): bool =
     while client.queue.len > 0:
       let queued = client.queue.popFirst()
       client.storeCompletionLocked(
-        (newResponse(queued), newTransportError(teInternal, loopError))
+        (newResponse(queued), newTransportError(Internal, loopError))
       )
     for req in values(client.inFlight):
       client.storeCompletionLocked(
-        (newResponse(req), newTransportError(teInternal, loopError))
+        (newResponse(req), newTransportError(Internal, loopError))
       )
     client.inFlight.clear()
     client.abortRequested = true
@@ -328,7 +327,7 @@ proc dispatchQueuedRequests(client: NetworkClient) =
       else:
         client.availableEasy.add(move request.easy)
         client.storeCompletionLocked(
-          (newResponse(request), newTransportError(teInternal, dispatchError))
+          (newResponse(request), newTransportError(Internal, dispatchError))
         )
       release(client.lock)
 
@@ -476,7 +475,7 @@ proc clearQueue*(client: NetworkClient) =
   while client.queue.len > 0:
     let queued = client.queue.popFirst()
     client.storeCompletionLocked(
-      (newResponse(queued), newTransportError(teCanceled, "Canceled in clearQueue"))
+      (newResponse(queued), newTransportError(Canceled, "Canceled in clearQueue"))
     )
   release(client.lock)
 
@@ -598,7 +597,7 @@ proc get*(
     requestId = 0'i64,
     timeoutMs = 0,
 ): RequestResult =
-  client.makeVerbRequest(hvGet, url, headers, "", requestId, timeoutMs)
+  client.makeVerbRequest(HttpVerb.Get, url, headers, "", requestId, timeoutMs)
 
 proc getStream*(
     client: NetworkClient,
@@ -608,7 +607,7 @@ proc getStream*(
     timeoutMs = 0,
 ): RequestResult =
   client.makeVerbRequest(
-    hvGet,
+    HttpVerb.Get,
     url,
     headers,
     "",
@@ -625,7 +624,7 @@ proc post*(
     requestId = 0'i64,
     timeoutMs = 0,
 ): RequestResult =
-  client.makeVerbRequest(hvPost, url, headers, body, requestId, timeoutMs)
+  client.makeVerbRequest(HttpVerb.Post, url, headers, body, requestId, timeoutMs)
 
 proc put*(
     client: NetworkClient,
@@ -635,7 +634,7 @@ proc put*(
     requestId = 0'i64,
     timeoutMs = 0,
 ): RequestResult =
-  client.makeVerbRequest(hvPut, url, headers, body, requestId, timeoutMs)
+  client.makeVerbRequest(HttpVerb.Put, url, headers, body, requestId, timeoutMs)
 
 proc patch*(
     client: NetworkClient,
@@ -645,16 +644,16 @@ proc patch*(
     requestId = 0'i64,
     timeoutMs = 0,
 ): RequestResult =
-  client.makeVerbRequest(hvPatch, url, headers, body, requestId, timeoutMs)
+  client.makeVerbRequest(HttpVerb.Patch, url, headers, body, requestId, timeoutMs)
 
-proc delete*(
+proc dele*(
     client: NetworkClient,
     url: sink string,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
 ): RequestResult =
-  client.makeVerbRequest(hvDelete, url, headers, "", requestId, timeoutMs)
+  client.makeVerbRequest(HttpVerb.Delete, url, headers, "", requestId, timeoutMs)
 
 proc head*(
     client: NetworkClient,
@@ -663,7 +662,7 @@ proc head*(
     requestId = 0'i64,
     timeoutMs = 0,
 ): RequestResult =
-  client.makeVerbRequest(hvHead, url, headers, "", requestId, timeoutMs)
+  client.makeVerbRequest(HttpVerb.Head, url, headers, "", requestId, timeoutMs)
 
 proc len*(batch: RequestBatch): int {.inline.} =
   batch.requests.len
@@ -698,7 +697,7 @@ proc get*(
     requestId = 0'i64,
     timeoutMs = 0,
 ) =
-  batch.addRequest(hvGet, url, headers, "", requestId, timeoutMs)
+  batch.addRequest(Get, url, headers, "", requestId, timeoutMs)
 
 proc post*(
     batch: var RequestBatch,
@@ -708,7 +707,7 @@ proc post*(
     requestId = 0'i64,
     timeoutMs = 0,
 ) =
-  batch.addRequest(hvPost, url, headers, body, requestId, timeoutMs)
+  batch.addRequest(Post, url, headers, body, requestId, timeoutMs)
 
 proc put*(
     batch: var RequestBatch,
@@ -718,7 +717,7 @@ proc put*(
     requestId = 0'i64,
     timeoutMs = 0,
 ) =
-  batch.addRequest(hvPut, url, headers, body, requestId, timeoutMs)
+  batch.addRequest(Put, url, headers, body, requestId, timeoutMs)
 
 proc patch*(
     batch: var RequestBatch,
@@ -728,16 +727,16 @@ proc patch*(
     requestId = 0'i64,
     timeoutMs = 0,
 ) =
-  batch.addRequest(hvPatch, url, headers, body, requestId, timeoutMs)
+  batch.addRequest(Patch, url, headers, body, requestId, timeoutMs)
 
-proc delete*(
+proc dele*(
     batch: var RequestBatch,
     url: sink string,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
 ) =
-  batch.addRequest(hvDelete, url, headers, "", requestId, timeoutMs)
+  batch.addRequest(Delete, url, headers, "", requestId, timeoutMs)
 
 proc head*(
     batch: var RequestBatch,
@@ -746,4 +745,4 @@ proc head*(
     requestId = 0'i64,
     timeoutMs = 0,
 ) =
-  batch.addRequest(hvHead, url, headers, "", requestId, timeoutMs)
+  batch.addRequest(Head, url, headers, "", requestId, timeoutMs)
