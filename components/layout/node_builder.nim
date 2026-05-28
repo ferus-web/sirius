@@ -1,13 +1,13 @@
 ## Routines for turning the DOM and computed styles into a layout tree
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, sequtils, strutils, tables]
+import std/[options, sequtils, strformat, strutils, tables]
 import
   components/html/[dom, dom_utils],
   components/style/types,
   components/layout/types,
   components/os/fonts
-import pkg/[chronicles, shakar]
+import pkg/[chronicles, results, shakar]
 import pretty
 
 logScope:
@@ -22,6 +22,7 @@ const
   MarginTopAttr = "margin-top"
   MarginLeftAttr = "margin-left"
   MarginRightAttr = "margin-right"
+  MarginAttr = "margin"
 
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
@@ -34,6 +35,44 @@ func cleanFontFamily(family: CSSValue): string =
     return family.list.mapIt(it.str).join(",")
   else:
     discard
+
+proc applyMarginAttr(layoutNode: LayoutNode, prop: CSSValue): Result[void, string] =
+  if prop.kind == CSSValueKind.Dimension:
+    let value = some(prop)
+    layoutNode.margins =
+      LayoutMargins(top: value, bottom: value, left: value, right: value)
+  elif prop.kind == CSSValueKind.List:
+    case prop.list.len
+    of 1:
+      unreachable
+    of 2:
+      let
+        horiz = some(prop.list[0])
+        vert = some(prop.list[1])
+      layoutNode.margins =
+        LayoutMargins(top: vert, bottom: vert, left: horiz, right: horiz)
+    of 3:
+      layoutNode.margins = LayoutMargins(
+        top: some(prop.list[0]),
+        left: some(prop.list[1]),
+        right: some(prop.list[1]),
+        bottom: some(prop.list[2]),
+      )
+    of 4:
+      layoutNode.margins = LayoutMargins(
+        top: some(prop.list[0]),
+        right: some(prop.list[1]),
+        bottom: some(prop.list[2]),
+        left: some(prop.list[3]),
+      )
+    else:
+      return err(
+        &"Property 'margin' expects four values at most, got {prop.list.len} values instead."
+      )
+  else:
+    return err(
+      &"Property 'margin' expects dimension or list of dimensions, got {prop.kind} instead."
+    )
 
 proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
   for attr, prop in layoutNode.style:
@@ -65,6 +104,9 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       layoutNode.margins.left = some(prop)
     elif attr == MarginRightAttr:
       layoutNode.margins.right = some(prop)
+    elif attr == MarginAttr:
+      if (let warning = applyMarginAttr(layoutNode, prop); *warning):
+        warn "Styling warning", msg = warning.error()
 
 proc createLayoutNode*(
     node: dom.Node, style: StyleMap, fontProvider: FontProvider

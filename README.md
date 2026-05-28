@@ -19,15 +19,6 @@ The base was written in a day, so don't expect anything grandeur.
 - [ ] Network content fetching
 - [ ] CSS Grid Layout
 
-## supported CSS properties
-- [X] `font-family` (uses fontconfig for resolution)
-- [X] `font-size`
-- [X] `color`
-- [X] `display`
-- [X] `margin-bottom`
-- [X] Remaining `margin-*` properties (`left`, `right`, `top`)
-- [ ] `margin` property
-
 # why not work on ferus?
 Ferus was mostly written back when I was still learning Nim. As such, it has some pretty nasty code that I'd much rather not spend energy refactoring.
 
