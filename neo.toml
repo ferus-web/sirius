@@ -23,5 +23,13 @@ stylus = ">= 0.1.4"
 nanovg = ">= 0.3.4"
 
 [platforms.native]
-include = ["wayland-egl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl"]
-link = ["wayland-egl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl"]
+include = [
+  "wayland-egl", "libcurl", "fontconfig",
+  "wayland-client", "wayland-egl-backend", "glesv2",
+  "egl"
+]
+link = [
+  "wayland-egl", "libcurl", "fontconfig",
+  "wayland-client", "wayland-egl-backend", "glesv2",
+  "egl"
+]

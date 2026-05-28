@@ -3,7 +3,7 @@ Sirius is a tiny HTML5/CSS3 renderer written in Nim. It isn't anything serious r
 
 No build instructions are given since it's an experimental project with zero promises. Expect more tomfooleries occurring here. :^)
 
-The base was written in a day, so don't expect anything grandeur.
+The base was written in a day, so don't expect anything grandiose.
 
 # close roadmap
 ![An image of Sirius rendering the first test page](screenshots/test001.jpg)
