@@ -1,7 +1,7 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, streams, strformat]
+import std/[options, streams, strformat, strutils]
 import ./types
 import pkg/[chronicles, nanovg, shakar, url, vmath], pkg/surfer/app
 import
@@ -52,7 +52,7 @@ proc initWebView*(): WebView =
 proc loadHTMLStream(view: WebView, stream: Stream) =
   stream.setPosition(0)
 
-  let userAgent = view.assetProvider.openAssetStream("user-agent.css").get()
+  let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
   view.dom = parseHTML(stream)
   view.stylesheet = parseStylesheet(newParser(newParserInput(userAgent.readAll())))
@@ -73,10 +73,28 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
 proc loadFile(view: WebView, path: string) =
   loadHTMLStream(view, openFileStream(path))
 
+proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
+  let errorTemplateFile = &view.assetProvider.openAssetStream(
+    case err.kind
+    of TransportErrorKind.DNS: "resources/dns-error.html"
+    else: "resources/network-error.html"
+  )
+  var errorTemplate =
+    errorTemplateFile.readAll() %
+    [err.message, &"TransportErrorKind::{err.kind}", &url.hostname()]
+  errorTemplateFile.close()
+
+  loadHTMLStream(view, newStringStream(ensureMove(errorTemplate)))
+
 proc loadUrl(view: WebView, url: URL) =
   let (resp, err) = view.net.getStream($url)
-  echo err
-  loadHTMLStream(view, resp.body.stream)
+
+  if err.kind == TransportErrorKind.None:
+    loadHTMLStream(view, resp.body.stream)
+  else:
+    error "An error occurred while fetching the requested content",
+      message = err.message
+    showTransportErrorPage(view, url, err)
 
 proc loadPage*(view: WebView, target: string) =
   let target = parseURL(target)
