@@ -9,13 +9,15 @@ import
   components/html/dom,
   components/style/[user_agent, parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
-  components/os/fonts
+  components/os/[fonts, threads]
 
 logScope:
   topics = "webview/core"
 
 proc initWebView*(): WebView =
   debug "Initialize WebView"
+  setThreadName("WebView")
+
   let webview = WebView(
     app: newApp(title = "Sirius", appId = "xyz.xtrayambak.sirius"),
     outputManager: OutputManager(),

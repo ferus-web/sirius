@@ -1,9 +1,5 @@
 import std/[os, streams, tables]
-import
-  components/style/[user_agent, parser, matching],
-  components/html/dom,
-  components/layout/[flow, node_builder],
-  webview/core
+import webview/core
 import pkg/[vmath, pretty]
 
 proc main() {.inline.} =
