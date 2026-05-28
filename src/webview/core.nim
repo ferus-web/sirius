@@ -47,7 +47,7 @@ proc initWebView*(): WebView =
 
   webview.net = newNetworkClient(
     userAgent =
-      "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:151.0.2) Gecko/20100101 Firefox/151.0"
+      "Sirius/0.1.0 (+https://github.com/ferus-web/sirius; Wayland; Linux x86_64; rv: 0.1.0)"
   )
 
   webview
