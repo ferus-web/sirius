@@ -27,7 +27,11 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
     ctx.vg.fillColor(rgb(0, 0, 0))
     ctx.vg.textAlign(haLeft, vaTop)
     # echo $node.absolutePos & " @ " & $fontsize & "px"
-    discard ctx.vg.text(node.absolutePos.x, node.absolutePos.y, node.content)
+    discard ctx.vg.text(
+      node.absolutePos.x + ctx.viewerPosition.x,
+      node.absolutePos.y + ctx.viewerPosition.y,
+      node.content,
+    )
 
   for child in node.children:
     draw(ctx, child)

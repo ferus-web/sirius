@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, streams, strformat, strutils, sequtils]
 import ./types
-import pkg/[chronicles, shakar, url, vmath], pkg/surfer/app
+import pkg/[chronicles, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
   components/html/dom,
@@ -135,6 +135,16 @@ proc loop*(view: WebView): int =
         vec2(0, 0), float32(event.windowSize.x), view.outputManager
       )
       # print view.renderCtx.tree
+    of EventKind.KeyPressed, EventKind.KeyRepeated:
+      let keysym = view.app.xkbState.getOneSym(event.key.code + 8)
+      if keysym == XKB_Key_Down:
+        view.renderCtx.viewerPosition.y -= 5
+      elif keysym == XKB_Key_Up:
+        view.renderCtx.viewerPosition.y += 5
+      elif keysym == XKB_Key_Left:
+        view.renderCtx.viewerPosition.x += 5
+      elif keysym == XKB_Key_Right:
+        view.renderCtx.viewerPosition.x -= 5
     else:
       discard # debug "Unhandled surfer event", kind = event.kind
 

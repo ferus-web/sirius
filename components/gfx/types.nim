@@ -8,3 +8,5 @@ type RenderingContext* = ref object
 
   outputManager*: OutputManager
   fontProvider*: FontProvider
+
+  viewerPosition*: vmath.Vec2
