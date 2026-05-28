@@ -7,7 +7,7 @@ proc main() {.inline.} =
     quit "Usage: sirius [path/to/file.html]"
 
   let view = initWebView()
-  view.loadPage("file://" & paramStr(1))
+  view.loadPage(paramStr(1))
   quit(view.loop())
 
 when isMainModule:
