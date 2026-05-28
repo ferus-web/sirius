@@ -10,7 +10,7 @@ proc prctl*(
   a3: uint64 = 0'u64,
   a4: uint64 = 0'u64,
   a5: uint64 = 0'u64,
-): int32 {.importc, header: "<sys/prctl.h>".}
+): int32 {.importc, header: "<sys/prctl.h>", sideEffect.}
 
 when SupportsLinuxPrctls:
   # We barely use any of these, but it's nice to have them here nonetheless.
