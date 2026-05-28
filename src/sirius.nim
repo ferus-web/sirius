@@ -1,6 +1,5 @@
-import std/[os, streams, tables]
+import std/os
 import webview/core
-import pkg/[vmath, pretty]
 
 proc main() {.inline.} =
   if paramCount() < 1:

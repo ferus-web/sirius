@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, streams, strformat, strutils, sequtils]
 import ./types
-import pkg/[chronicles, nanovg, shakar, url, vmath], pkg/surfer/app
+import pkg/[chronicles, shakar, url, vmath], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
   components/html/dom,
@@ -114,7 +114,6 @@ proc loadPage*(view: WebView, target: string) =
   of SchemeType.File:
     loadFile(view, target.host & target.pathname)
 
-import pretty, tables
 proc loop*(view: WebView): int =
   info "Entering main loop"
 
