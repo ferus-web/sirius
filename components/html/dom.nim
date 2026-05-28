@@ -90,7 +90,9 @@ type
 
 type
   MiniDOMBuilderCallbacks* = object
+    ## These are called to help the overarching code (generally `WebView`) prepare a list of stylesheets.
     insertStyle*: proc(text: string)
+    finishStyle*: proc()
 
   MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
     document*: Document
@@ -194,6 +196,12 @@ proc createElement(
   element.namespace = namespace
   element.document = document
   return element
+
+proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
+  if handle of Element:
+    let tagType = Element(handle).tagType
+    if tagType == TAG_STYLE:
+      builder.callbacks.finishStyle()
 
 proc createHTMLElementImpl(builder: MiniDOMBuilder): Node =
   let localName = builder.factory.tagTypeToAtom(TAG_HTML)
