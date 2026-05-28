@@ -1,7 +1,7 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, streams, strformat, strutils]
+import std/[options, streams, strformat, strutils, sequtils]
 import ./types
 import pkg/[chronicles, nanovg, shakar, url, vmath], pkg/surfer/app
 import
@@ -61,9 +61,12 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
   view.stylesheet = parseStylesheet(newParser(newParserInput(userAgent.readAll())))
   userAgent.close()
 
-  view.styleMap =
-    resolveStyling(view.dom.childList[1], view.dom.factory, view.stylesheet)
-  view.tree = buildLayoutTree(view.dom.childList[1], view.styleMap, view.fontProvider)
+  let htmlElem = view.dom.childList.filterIt(
+    it of dom.Element and tagType(Element(it)) == TAG_HTML
+  )[0] # HACK: This is stupid. Do it properly.
+
+  view.styleMap = resolveStyling(htmlElem, view.dom.factory, view.stylesheet)
+  view.tree = buildLayoutTree(htmlElem, view.styleMap, view.fontProvider)
   propagateStyles(view.tree, view.styleMap, view.fontProvider)
 
   view.renderCtx.tree = view.tree.clone()
