@@ -83,6 +83,7 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
   let errorTemplateFile = &view.assetProvider.openAssetStream(
     case err.kind
     of TransportErrorKind.DNS: "resources/dns-error.html"
+    of TransportErrorKind.TLS: "resources/tls-error.html"
     else: "resources/network-error.html"
   )
   var errorTemplate =

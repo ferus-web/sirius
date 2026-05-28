@@ -8,7 +8,10 @@
 
 /* FIXME: empty selectors are discarded entirely! */
 html { --sirius-noop: quirky(); }
-body { --sirius-noop: quirky(); }
+body {
+  margin-left: 8px;
+  margin-top: 16px;
+}
 
 * {
   font-family: serif;

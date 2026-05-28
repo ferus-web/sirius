@@ -12,13 +12,12 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
 
   case node.display
   of DisplayMode.Block, DisplayMode.Inline:
-    # echo "pos: " & $node.absolutePos & "; dims: " & $node.dimensions
-    #[ vg.beginPath()
-    vg.rect(
+    #[ ctx.vg.beginPath()
+    ctx.vg.rect(
       node.absolutePos.x, node.absolutePos.y, node.dimensions.x, node.dimensions.y
     )
-    vg.strokeColor(rgb(255, 0, 0))
-    vg.stroke() ]#
+    ctx.vg.strokeColor(rgb(255, 0, 0))
+    ctx.vg.stroke() ]#
     discard
   of DisplayMode.Anonymous:
     ctx.vg.beginPath()
