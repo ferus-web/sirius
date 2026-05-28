@@ -8,7 +8,7 @@ import
   components/html/dom,
   components/style/types,
   components/layout/[output_manager, types],
-  components/os/fonts,
+  components/os/[assets, fonts],
   components/net/core
 
 logScope:
@@ -18,7 +18,9 @@ type
   WebViewObj = object
     app*: App
     renderCtx*: RenderingContext
+
     fontProvider*: FontProvider
+    assetProvider*: AssetProvider
 
     dom*: Document
 

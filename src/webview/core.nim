@@ -1,15 +1,15 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[streams, strformat]
+import std/[options, streams, strformat]
 import ./types
 import pkg/[chronicles, nanovg, shakar, url, vmath], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
   components/html/dom,
-  components/style/[user_agent, parser, matching],
+  components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
-  components/os/[fonts, threads],
+  components/os/[assets, fonts, threads],
   components/net/core
 
 logScope:
@@ -26,7 +26,21 @@ proc initWebView*(): WebView =
   webview.app.initialize()
   webview.app.createWindow(ivec2(1024, 768), Renderer.GLES)
   webview.renderCtx = newRenderingContext()
+
   webview.fontProvider = initFontProvider(getLoaderImplementation(webview.renderCtx.vg))
+  webview.assetProvider = initAssetProvider(
+    AssetProviderImplementation(
+      openAssetStream: proc(name: string): Option[FileStream] =
+        # TODO: Proper asset providers (debug/release)
+        let stream = newFileStream(&"assets/{name}")
+        if stream == nil:
+          warn "Cannot open asset stream", name = name
+          return none(FileStream)
+
+        debug "Opened asset stream", name = name
+        some(stream)
+    )
+  )
 
   webview.renderCtx.outputManager = webview.outputManager
   webview.renderCtx.fontProvider = webview.fontProvider
@@ -38,8 +52,12 @@ proc initWebView*(): WebView =
 proc loadHTMLStream(view: WebView, stream: Stream) =
   stream.setPosition(0)
 
+  let userAgent = view.assetProvider.openAssetStream("user-agent.css").get()
+
   view.dom = parseHTML(stream)
-  view.stylesheet = parseStylesheet(newParser(newParserInput(DefaultUserAgent)))
+  view.stylesheet = parseStylesheet(newParser(newParserInput(userAgent.readAll())))
+  userAgent.close()
+
   view.styleMap =
     resolveStyling(view.dom.childList[1], view.dom.factory, view.stylesheet)
   view.tree = buildLayoutTree(view.dom.childList[1], view.styleMap, view.fontProvider)
@@ -57,6 +75,7 @@ proc loadFile(view: WebView, path: string) =
 
 proc loadUrl(view: WebView, url: URL) =
   let (resp, err) = view.net.getStream($url)
+  echo err
   loadHTMLStream(view, resp.body.stream)
 
 proc loadPage*(view: WebView, target: string) =
