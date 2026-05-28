@@ -16,7 +16,7 @@ The base was written in a day, so don't expect anything grandiose.
 - [X] Flow Layout (mostly)
 - [X] Initial user agent
 - [ ] Inline styles
-- [ ] Network content fetching
+- [X] Network content fetching*
 - [ ] CSS Grid Layout
 
 # why not work on ferus?

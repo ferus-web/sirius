@@ -1,0 +1,258 @@
+import components/impure/libcurl
+
+export CurlMsgType, CURLMsg
+
+type
+  Easy* = object
+    raw: CURL
+    errorBuf: string
+
+  Multi* = object
+    raw: CURLM
+
+  Slist* = object
+    raw: ptr curl_slist
+
+proc `=destroy`(easy: Easy) =
+  if easy.raw != nil:
+    curl_easy_cleanup(easy.raw)
+  `=destroy`(easy.errorBuf)
+
+proc `=destroy`*(multi: Multi) =
+  if multi.raw != nil:
+    discard curl_multi_cleanup(multi.raw)
+
+proc `=destroy`*(list: Slist) =
+  if list.raw != nil:
+    curl_slist_free_all(list.raw)
+
+proc `=wasMoved`*(easy: var Easy) =
+  easy.raw = nil
+  `=wasMoved`(easy.errorBuf)
+
+proc `=wasMoved`*(multi: var Multi) =
+  multi.raw = nil
+
+proc `=wasMoved`*(list: var Slist) =
+  list.raw = nil
+
+proc `=dup`*(src: Easy): Easy {.error.}
+proc `=dup`*(src: Multi): Multi {.error.}
+proc `=dup`*(src: Slist): Slist {.error.}
+
+proc `=copy`*(dest: var Easy, src: Easy) {.error.}
+proc `=copy`*(dest: var Multi, src: Multi) {.error.}
+proc `=copy`*(dest: var Slist, src: Slist) {.error.}
+
+proc `=sink`*(dest: var Easy, src: Easy) =
+  `=destroy`(dest)
+  dest.raw = src.raw
+  `=sink`(dest.errorBuf, src.errorBuf)
+
+proc `=sink`*(dest: var Multi, src: Multi) =
+  `=destroy`(dest)
+  dest.raw = src.raw
+
+proc `=sink`*(dest: var Slist, src: Slist) =
+  `=destroy`(dest)
+  dest.raw = src.raw
+
+proc checkCurl(code: CURLcode, context: string) {.noinline.} =
+  if code != CURLE_OK:
+    raise newException(IOError, context & ": " & $curl_easy_strerror(code))
+
+proc checkMulti(code: CURLMcode, context: string) {.noinline.} =
+  if code != CURLM_OK:
+    raise newException(IOError, context & ": " & $curl_multi_strerror(code))
+
+proc initEasy*(): Easy =
+  result = Easy(raw: curl_easy_init(), errorBuf: newString(256))
+  if result.raw == nil:
+    raise newException(IOError, "curl_easy_init failed")
+  discard curl_easy_setopt(result.raw, CURLOPT_ERRORBUFFER, result.errorBuf.cstring)
+  discard curl_easy_setopt(result.raw, CURLOPT_NOSIGNAL, clong(1))
+
+proc initMulti*(): Multi =
+  result = Multi(raw: curl_multi_init())
+  if result.raw == nil:
+    raise newException(IOError, "curl_multi_init failed")
+  checkMulti(
+    curl_multi_setopt(result.raw, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX),
+    "CURLMOPT_PIPELINING failed",
+  )
+
+proc initGlobal*() =
+  checkCurl(curl_global_init(culong(3)), "curl_global_init failed")
+
+proc cleanupGlobal*() =
+  curl_global_cleanup()
+
+proc addHandle*(multi: var Multi, easy: Easy) =
+  checkMulti(curl_multi_add_handle(multi.raw, easy.raw), "curl_multi_add_handle failed")
+
+proc removeHandle*(multi: var Multi, easy: Easy) =
+  checkMulti(
+    curl_multi_remove_handle(multi.raw, easy.raw), "curl_multi_remove_handle failed"
+  )
+
+proc removeHandle*(multi: var Multi, msg: CURLMsg) =
+  checkMulti(
+    curl_multi_remove_handle(multi.raw, msg.easy_handle),
+    "curl_multi_remove_handle failed",
+  )
+
+proc perform*(multi: var Multi): int =
+  var running: cint
+  checkMulti(curl_multi_perform(multi.raw, addr running), "curl_multi_perform failed")
+  result = int(running)
+
+proc poll*(multi: var Multi, timeoutMs: int): int =
+  var numfds: cint
+  checkMulti(
+    curl_multi_poll(multi.raw, nil, 0.cuint, timeoutMs.cint, addr numfds),
+    "curl_multi_poll failed",
+  )
+  result = int(numfds)
+
+proc tryInfoRead*(multi: var Multi, msg: var CURLMsg, msgsInQueue: var int): bool =
+  var queue: cint
+  let msgPtr = curl_multi_info_read(multi.raw, addr queue)
+  msgsInQueue = int(queue)
+  if msgPtr.isNil:
+    result = false
+  else:
+    msg = msgPtr[]
+    result = true
+
+proc setUrl*(easy: var Easy, url: string) =
+  checkCurl(curl_easy_setopt(easy.raw, CURLOPT_URL, url.cstring), "CURLOPT_URL failed")
+
+proc setWriteCallback*(easy: var Easy, cb: curl_write_callback, userdata: pointer) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_WRITEFUNCTION, cb),
+    "CURLOPT_WRITEFUNCTION failed",
+  )
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_WRITEDATA, userdata), "CURLOPT_WRITEDATA failed"
+  )
+
+proc setHeaderCallback*(easy: var Easy, cb: curl_write_callback, userdata: pointer) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_HEADERFUNCTION, cb),
+    "CURLOPT_HEADERFUNCTION failed",
+  )
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_HEADERDATA, userdata),
+    "CURLOPT_HEADERDATA failed",
+  )
+
+proc setRequestBody*(easy: var Easy, data: string) =
+  # WARNING: CURLOPT_POSTFIELDS does not copy this buffer; caller must keep data
+  # alive and unchanged until the transfer is finished or the handle is removed.
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_POSTFIELDS, data.cstring),
+    "CURLOPT_POSTFIELDS failed",
+  )
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_POSTFIELDSIZE, clong(data.len)),
+    "CURLOPT_POSTFIELDSIZE failed",
+  )
+
+proc setMethod*(easy: var Easy, verb: string) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_CUSTOMREQUEST, verb.cstring),
+    "CURLOPT_CUSTOMREQUEST failed",
+  )
+
+proc setNoBody*(easy: var Easy, enabled: bool) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_NOBODY, clong(if enabled: 1 else: 0)),
+    "CURLOPT_NOBODY failed",
+  )
+
+proc setHeaders*(easy: var Easy, headers: Slist) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_HTTPHEADER, headers.raw),
+    "CURLOPT_HTTPHEADER failed",
+  )
+
+proc setFollowRedirects*(easy: var Easy, follow: bool, maxRedirects: int) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_FOLLOWLOCATION, clong(if follow: 1 else: 0)),
+    "CURLOPT_FOLLOWLOCATION failed",
+  )
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_MAXREDIRS, clong(maxRedirects)),
+    "CURLOPT_MAXREDIRS failed",
+  )
+
+proc setTimeoutMs*(easy: var Easy, timeoutMs: int) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_TIMEOUT_MS, clong(timeoutMs)),
+    "CURLOPT_TIMEOUT_MS failed",
+  )
+
+proc setConnectTimeoutMs*(easy: var Easy, timeoutMs: int) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_CONNECTTIMEOUT_MS, clong(timeoutMs)),
+    "CURLOPT_CONNECTTIMEOUT_MS failed",
+  )
+
+proc setSslVerify*(easy: var Easy, verifyPeer: bool, verifyHost: bool) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_SSL_VERIFYPEER, clong(if verifyPeer: 1 else: 0)),
+    "CURLOPT_SSL_VERIFYPEER failed",
+  )
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_SSL_VERIFYHOST, clong(if verifyHost: 2 else: 0)),
+    "CURLOPT_SSL_VERIFYHOST failed",
+  )
+
+proc setAcceptEncoding*(easy: var Easy, encoding: string) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_ACCEPT_ENCODING, encoding.cstring),
+    "CURLOPT_ACCEPT_ENCODING failed",
+  )
+
+proc setHttpVersion2Tls*(easy: var Easy) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS),
+    "CURLOPT_HTTP_VERSION failed",
+  )
+
+proc reset*(easy: var Easy) =
+  curl_easy_reset(easy.raw)
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_ERRORBUFFER, easy.errorBuf.cstring),
+    "CURLOPT_ERRORBUFFER failed",
+  )
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_NOSIGNAL, clong(1)), "CURLOPT_NOSIGNAL failed"
+  )
+
+proc responseCode*(easy: Easy): int =
+  var code: clong
+  checkCurl(
+    curl_easy_getinfo(easy.raw, CURLINFO_RESPONSE_CODE, addr code),
+    "CURLINFO_RESPONSE_CODE failed",
+  )
+  result = int(code)
+
+proc effectiveUrl*(easy: Easy): string =
+  var urlPtr: cstring
+  checkCurl(
+    curl_easy_getinfo(easy.raw, CURLINFO_EFFECTIVE_URL, addr urlPtr),
+    "CURLINFO_EFFECTIVE_URL failed",
+  )
+  result = $urlPtr
+
+proc addHeader*(list: var Slist, headerLine: string) =
+  list.raw = curl_slist_append(list.raw, headerLine.cstring)
+  if list.raw.isNil:
+    raise newException(IOError, "curl_slist_append failed")
+
+proc handleKey*(easy: Easy): pointer =
+  easy.raw
+
+proc handleKey*(msg: CURLMsg): pointer =
+  msg.easy_handle

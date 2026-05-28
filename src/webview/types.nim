@@ -8,7 +8,8 @@ import
   components/html/dom,
   components/style/types,
   components/layout/[output_manager, types],
-  components/os/fonts
+  components/os/fonts,
+  components/net/core
 
 logScope:
   topics = "webview/types"
@@ -26,6 +27,8 @@ type
     tree*: LayoutNode
 
     outputManager*: OutputManager
+
+    net*: NetworkClient
 
   WebView* = ref WebViewObj
 

@@ -1,7 +1,7 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[streams]
+import std/[streams, strformat]
 import ./types
 import pkg/[chronicles, nanovg, shakar, url, vmath], pkg/surfer/app
 import
@@ -9,7 +9,8 @@ import
   components/html/dom,
   components/style/[user_agent, parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
-  components/os/[fonts, threads]
+  components/os/[fonts, threads],
+  components/net/core
 
 logScope:
   topics = "webview/core"
@@ -30,11 +31,14 @@ proc initWebView*(): WebView =
   webview.renderCtx.outputManager = webview.outputManager
   webview.renderCtx.fontProvider = webview.fontProvider
 
+  webview.net = newNetworkClient()
+
   webview
 
-proc loadFile(view: WebView, path: string) =
-  let data = readFile(path)
-  view.dom = parseHTML(newStringStream(data))
+proc loadHTMLStream(view: WebView, stream: Stream) =
+  stream.setPosition(0)
+
+  view.dom = parseHTML(stream)
   view.stylesheet = parseStylesheet(newParser(newParserInput(DefaultUserAgent)))
   view.styleMap =
     resolveStyling(view.dom.childList[1], view.dom.factory, view.stylesheet)
@@ -46,14 +50,24 @@ proc loadFile(view: WebView, path: string) =
     vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
   )
 
+  stream.close()
+
+proc loadFile(view: WebView, path: string) =
+  loadHTMLStream(view, openFileStream(path))
+
+proc loadUrl(view: WebView, url: URL) =
+  let (resp, err) = view.net.getStream($url)
+  loadHTMLStream(view, resp.body.stream)
+
 proc loadPage*(view: WebView, target: string) =
   let target = parseURL(target)
   debug "Load page", target = target, scheme = target.scheme
 
   case getSchemeType(target)
-  of SchemeType.Http, SchemeType.Https, SchemeType.Ws, SchemeType.Ftp, SchemeType.Wss,
-      SchemeType.NotSpecial:
+  of SchemeType.Ws, SchemeType.Ftp, SchemeType.Wss, SchemeType.NotSpecial:
     assert off, "Not supported"
+  of SchemeType.Http, SchemeType.Https:
+    loadUrl(view, target)
   of SchemeType.File:
     loadFile(view, target.host & target.pathname)
 
