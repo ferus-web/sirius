@@ -88,9 +88,15 @@ type
   HTMLTemplateElement* = ref object of Element
     content*: DocumentFragment
 
-type MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
-  document*: Document
-  factory*: MAtomFactory
+type
+  MiniDOMBuilderCallbacks* = object
+    insertStyle*: proc(text: string)
+
+  MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
+    document*: Document
+    factory*: MAtomFactory
+
+    callbacks*: MiniDOMBuilderCallbacks
 
 type
   DOMBuilderImpl = MiniDOMBuilder
@@ -346,6 +352,11 @@ proc insertBeforeImpl(
 proc insertTextImpl(
     builder: MiniDOMBuilder, parent: Node, text: string, before: Option[Node]
 ) =
+  if parent of Element:
+    let tagType = Element(parent).tagType
+    if tagType == TAG_STYLE:
+      builder.callbacks.insertStyle(text)
+
   let text = text.toValidUTF8()
   let before = before.get(nil)
   let prevSibling =
@@ -399,9 +410,12 @@ method setEncodingImpl(
   # Provided as a method for minidom_cs to override.
   return SET_ENCODING_CONTINUE
 
-proc newMiniDOMBuilder*(factory: MAtomFactory): MiniDOMBuilder =
+proc newMiniDOMBuilder*(
+    factory: MAtomFactory, callbacks: MiniDOMBuilderCallbacks
+): MiniDOMBuilder =
   let document = Document(factory: factory)
-  let builder = MiniDOMBuilder(document: document, factory: factory)
+  let builder =
+    MiniDOMBuilder(document: document, factory: factory, callbacks: callbacks)
   return builder
 
 proc parseFromStream(parser: var HTML5Parser[Node, MAtom], inputStream: Stream) =
@@ -427,6 +441,7 @@ proc parseHTML*(
     inputStream: Stream,
     opts = HTML5ParserOpts[Node, MAtom](),
     factory = newMAtomFactory(),
+    callbacks: MiniDOMBuilderCallbacks,
 ): Document =
   ## Read, parse and return an HTML document from `inputStream`, using
   ## parser options `opts` and MAtom factory `factory`.
@@ -435,7 +450,7 @@ proc parseHTML*(
   ##
   ## For a description of `HTML5ParserOpts`, see the `htmlparser` module's
   ## documentation.
-  let builder = newMiniDOMBuilder(factory)
+  let builder = newMiniDOMBuilder(factory, callbacks)
   var parser = initHTML5Parser(builder, opts)
   parser.parseFromStream(inputStream)
   return builder.document
@@ -445,6 +460,7 @@ proc parseHTMLFragment*(
     element: Element,
     opts: HTML5ParserOpts[Node, MAtom],
     factory = newMAtomFactory(),
+    callbacks: MiniDOMBuilderCallbacks,
 ): seq[Node] =
   ## Read, parse and return the children of an HTML fragment from `inputStream`,
   ## using context element `element` and parser options `opts`.
@@ -457,7 +473,7 @@ proc parseHTMLFragment*(
   ##
   ## Note: the members `ctx`, `initialTokenizerState`, `openElementsInit` and
   ## `pushInTemplate` of `opts` are overridden (in accordance with the standard).
-  let builder = newMiniDOMBuilder(factory)
+  let builder = newMiniDOMBuilder(factory, callbacks)
   let document = builder.document
   let state =
     if element.namespace != Namespace.HTML:
@@ -489,7 +505,9 @@ proc parseHTMLFragment*(
   parser.parseFromStream(inputStream)
   return root.childList
 
-proc parseHTMLFragment*(s: string, element: Element): seq[Node] =
+proc parseHTMLFragment*(
+    s: string, element: Element, callbacks: MiniDOMBuilderCallbacks
+): seq[Node] =
   ## Convenience wrapper around parseHTMLFragment with opts.
   ##
   ## Read, parse and return the children of an HTML fragment from the string `s`,
@@ -503,4 +521,4 @@ proc parseHTMLFragment*(s: string, element: Element): seq[Node] =
     scripting: false,
     pushInTemplate: element.tagType == TAG_TEMPLATE,
   )
-  return parseHTMLFragment(inputStream, element, opts)
+  return parseHTMLFragment(inputStream, element, opts, callbacks = callbacks)

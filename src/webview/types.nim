@@ -32,6 +32,8 @@ type
 
     net*: NetworkClient
 
+    style*: string # HACK: This will inevitably crap itself.
+
   WebView* = ref WebViewObj
 
 proc `=destroy`*(view: WebViewObj) =

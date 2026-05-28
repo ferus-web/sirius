@@ -57,8 +57,17 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
 
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
-  view.dom = parseHTML(stream)
-  view.stylesheet = parseStylesheet(newParser(newParserInput(userAgent.readAll())))
+  view.dom = parseHTML(
+    stream,
+    callbacks = MiniDOMBuilderCallbacks(
+      insertStyle: proc(text: string) =
+        # HACK: yeah... we don't do stuff like this.
+        view.style &= text
+    ),
+  )
+  view.stylesheet =
+    parseStylesheet(newParser(newParserInput(userAgent.readAll()))) &
+    parseStylesheet(newParser(newParserInput(view.style)))
   userAgent.close()
 
   let htmlElem = view.dom.childList.filterIt(
