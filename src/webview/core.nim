@@ -45,7 +45,10 @@ proc initWebView*(): WebView =
   webview.renderCtx.outputManager = webview.outputManager
   webview.renderCtx.fontProvider = webview.fontProvider
 
-  webview.net = newNetworkClient()
+  webview.net = newNetworkClient(
+    userAgent =
+      "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:151.0.2) Gecko/20100101 Firefox/151.0"
+  )
 
   webview
 

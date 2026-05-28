@@ -377,7 +377,7 @@ proc workerMain(clientPtr: ptr NetworkClientObj) {.thread, raises: [].} =
   release(client.lock)
 
 proc newNetworkClient*(
-    maxInFlight = 16, defaultTimeoutMs = 60_000, maxRedirects = 10
+    maxInFlight = 16, defaultTimeoutMs = 60_000, maxRedirects = 10, userAgent: string
 ): NetworkClient =
   initGlobal()
 
