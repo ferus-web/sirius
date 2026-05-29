@@ -26,6 +26,17 @@ func matches*(element: Element, factory: MAtomFactory, selector: Selector): bool
     # TODO: Implement the rest, but it's fine for now.
     return false
 
+func getSpecificity*(selector: Selector): uint =
+  case selector.kind
+  of skId:
+    return 1000000
+  of skClass, skAttr:
+    return 1000
+  of skType:
+    return 1
+  of skUniversal:
+    return 0
+
 proc resolveStyling*(
     root: Node, factory: MAtomFactory, stylesheet: Stylesheet
 ): StyleMap =
@@ -37,10 +48,17 @@ proc resolveStyling*(
       let elem = Element(node)
       var computed: ComputedStyle
 
+      var specifsTracker: Table[string, uint]
+
       for rule in stylesheet:
         if elem.matches(factory, rule.selector):
-          # echo "match " & $elem.tagtype & ' ' & $rule
-          computed[rule.key] = rule.value
+          let
+            ruleSpec = getSpecificity(rule.selector)
+            currentSpec = specifsTracker.getOrDefault(rule.key, 0'u)
+
+          if ruleSpec >= currentSpec:
+            computed[rule.key] = rule.value
+            specifsTracker[rule.key] = ruleSpec
 
       if computed.len > 0:
         map[node] = ensureMove(computed)

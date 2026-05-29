@@ -77,7 +77,7 @@ proc parseRule*(parser: Parser): Option[Rule] =
     of tkDimension, tkIdent, tkPercentage, tkQuotedString:
       values.list &= parser.parseValueFromToken(value)
     else:
-      unreachable
+      discard
 
     if *parser.expectSemicolon():
       break

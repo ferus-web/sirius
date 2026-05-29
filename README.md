@@ -11,7 +11,7 @@ The base was written in a day, so don't expect anything grandiose.
 
 - [X] HTML5 parsing infra/DOM types (mostly taken from Chame's minidom for now)
 - [X] CSS3 parsing infra
-- [X] Style map building and matching (*specificity is missing)
+- [X] Style map building and matching
 - [X] Basic rendering infra (NanoVG + Surfer)
 - [X] Flow Layout (mostly)
 - [X] Initial user agent
