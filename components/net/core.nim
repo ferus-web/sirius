@@ -98,6 +98,7 @@ type
     queue: Deque[RequestWrap]
     inFlight: Table[pointer, RequestWrap]
     readyResults: Deque[RequestResult]
+    userAgent: string
 
   BodyWriterKind* {.pure, size: sizeof(uint8).} = enum
     SyncString
@@ -208,6 +209,7 @@ proc configureEasy(client: NetworkClient, request: RequestWrap, easy: var Easy) 
   easy.setSslVerify(true, true)
   easy.setAcceptEncoding("gzip, deflate")
   easy.setFollowRedirects(true, client.maxRedirects)
+  easy.setUserAgent(client.userAgent)
 
 proc completionFromCurl(
     request: RequestWrap, curlCode: CURLcode, removeError: sink string
@@ -391,6 +393,7 @@ proc newNetworkClient*(
     readyResults: initDeque[RequestResult](),
     inFlight: initTable[pointer, RequestWrap](),
     availableEasy: @[],
+    userAgent: userAgent,
   )
 
   initLock(result.lock)

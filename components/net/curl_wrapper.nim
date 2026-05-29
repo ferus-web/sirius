@@ -176,7 +176,7 @@ proc setHeaders*(easy: var Easy, headers: Slist) =
     "CURLOPT_HTTPHEADER failed",
   )
 
-proc setUserAgent(easy: var Easy, agent: string) =
+proc setUserAgent*(easy: var Easy, agent: string) =
   checkCurl(
     curl_easy_setopt(easy.raw, CURLOPT_USERAGENT, cstring(agent)),
     "CURLOPT_USERAGENT failed",

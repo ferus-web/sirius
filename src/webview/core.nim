@@ -47,7 +47,7 @@ proc initWebView*(): WebView =
 
   webview.net = newNetworkClient(
     userAgent =
-      "Sirius/0.1.0 (+https://github.com/ferus-web/sirius; Wayland; Linux x86_64; rv: 0.1.0)"
+      "Mozilla/5.0 Sirius (+https://github.com/ferus-web/sirius; Wayland; Linux x86_64; rv: 0.1.0)"
   )
 
   webview
@@ -65,6 +65,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         # HACK: yeah... we don't do stuff like this.
         view.style &= text,
       finishStyle: proc() =
+        echo view.style
         view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style)))),
     ),
   )
