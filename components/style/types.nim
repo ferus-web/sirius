@@ -12,6 +12,8 @@ type
     skClass
     skUniversal # skPseudoClass, skPseudoElem
 
+  SelectorList* = seq[Selector]
+
   Selector* = object
     case kind*: SelectorKind
     of skType:
@@ -84,7 +86,7 @@ type
 
   Stylesheet* = seq[Rule]
   Rule* = object
-    selector*: Selector
+    selectors*: seq[Selector]
     key*: string
     value*: CSSValue
 
@@ -101,6 +103,9 @@ func number*(num: int32): CSSValue {.inline.} =
 
 func decimal*(dec: float32): CSSValue {.inline.} =
   CSSValue(kind: CSSValueKind.Float, flt: dec)
+
+func hex*(value: string): CSSValue {.inline.} =
+  CSSValue(kind: CSSValueKind.Hex, hex: value)
 
 func dimension*(value: float32, unit: CSSUnit): CSSValue {.inline.} =
   CSSValue(kind: CSSValueKind.Dimension, dim: CSSDimension(value: value, unit: unit))
@@ -124,5 +129,11 @@ func str*(str: string): CSSValue {.inline.} =
 func universalSelector*(): Selector {.inline.} =
   Selector(kind: skUniversal)
 
-func tagSelector*(tag: string): Selector {.inline.} =
+func typeSelector*(tag: string): Selector {.inline.} =
   Selector(kind: skType, tag: tag)
+
+func idSelector*(id: string): Selector {.inline.} =
+  Selector(kind: skId, id: id)
+
+func classSelector*(class: string): Selector {.inline.} =
+  Selector(kind: skClass, class: class)

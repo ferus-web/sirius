@@ -1,14 +1,16 @@
 ## Basic matching routines
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[tables]
+import std/[options, tables]
 import components/html/[dom, dom_utils], components/style/types
 import pkg/[chronicles, shakar]
 
 logScope:
   topics = "style/matching"
 
-func matches*(element: Element, factory: MAtomFactory, selector: Selector): bool =
+func matches*(
+    element: dom.Element, factory: dom.MAtomFactory, selector: Selector
+): bool =
   case selector.kind
   of skType:
     # debugEcho "element.tagType: " & $element.tagType & "; selector.tag: " & selector.tag
@@ -26,6 +28,15 @@ func matches*(element: Element, factory: MAtomFactory, selector: Selector): bool
     # TODO: Implement the rest, but it's fine for now.
     return false
 
+func matches*(
+    element: dom.Element, factory: dom.MAtomFactory, selectors: seq[Selector]
+): Option[int] =
+  for i, selector in selectors:
+    if matches(element, factory, selector):
+      return some(i)
+
+  none(int)
+
 func getSpecificity*(selector: Selector): uint =
   case selector.kind
   of skId:
@@ -38,22 +49,24 @@ func getSpecificity*(selector: Selector): uint =
     return 0
 
 proc resolveStyling*(
-    root: Node, factory: MAtomFactory, stylesheet: Stylesheet
+    root: dom.Node, factory: dom.MAtomFactory, stylesheet: Stylesheet
 ): StyleMap =
   debug "Resolve styling map", numRules = stylesheet.len
   var map: StyleMap
 
-  proc visit(node: Node) =
-    if node of Element:
+  proc visit(node: dom.Node) =
+    if node of dom.Element:
       let elem = Element(node)
       var computed: ComputedStyle
 
       var specifsTracker: Table[string, uint]
 
       for rule in stylesheet:
-        if elem.matches(factory, rule.selector):
+        let winner = elem.matches(factory, rule.selectors)
+        if *winner:
+          # If there's a match:
           let
-            ruleSpec = getSpecificity(rule.selector)
+            ruleSpec = getSpecificity(rule.selectors[&winner])
             currentSpec = specifsTracker.getOrDefault(rule.key, 0'u)
 
           if ruleSpec >= currentSpec:
@@ -67,4 +80,4 @@ proc resolveStyling*(
       visit(child)
 
   visit(root)
-  map # FIXME: Can't move this directly, welp
+  move(map)
