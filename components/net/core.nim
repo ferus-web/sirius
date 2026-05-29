@@ -649,7 +649,7 @@ proc patch*(
 ): RequestResult =
   client.makeVerbRequest(HttpVerb.Patch, url, headers, body, requestId, timeoutMs)
 
-proc dele*(
+proc delete*(
     client: NetworkClient,
     url: sink string,
     headers: sink HttpHeaders = emptyHttpHeaders(),
@@ -732,7 +732,7 @@ proc patch*(
 ) =
   batch.addRequest(Patch, url, headers, body, requestId, timeoutMs)
 
-proc dele*(
+proc delete*(
     batch: var RequestBatch,
     url: sink string,
     headers: sink HttpHeaders = emptyHttpHeaders(),
