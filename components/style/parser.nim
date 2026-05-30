@@ -182,6 +182,12 @@ proc parseSelector(parser: Parser, initial: Token): Option[Selector] =
   case initial.kind
   of tkIdent:
     return some(typeSelector(initial.ident))
+  of tkIDHash:
+    # let next = parser.next()
+    # if !next:
+    #  return # `#` must be followed by identifier
+
+    return some(idSelector(initial.idHash))
   of tkDelim:
     case initial.delim
     of '*':
@@ -192,12 +198,6 @@ proc parseSelector(parser: Parser, initial: Token): Option[Selector] =
         return # `.` must be followed by identifier
 
       return some(classSelector((&next).ident))
-    of '#':
-      let next = parser.next()
-      if !next:
-        return # `#` must be followed by identifier
-
-      return some(idSelector((&next).ident))
     else:
       return # Unknown delimiter '{initial.delim}'
   of tkAtKeyword:

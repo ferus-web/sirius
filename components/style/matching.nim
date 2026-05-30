@@ -4,6 +4,7 @@
 import std/[options, tables]
 import components/html/[dom, dom_utils], components/style/types
 import pkg/[chronicles, shakar]
+import pretty
 
 logScope:
   topics = "style/matching"
@@ -53,6 +54,7 @@ proc resolveStyling*(
 ): StyleMap =
   debug "Resolve styling map", numRules = stylesheet.len
   var map: StyleMap
+  print stylesheet
 
   proc visit(node: dom.Node) =
     if node of dom.Element:
@@ -70,6 +72,7 @@ proc resolveStyling*(
             currentSpec = specifsTracker.getOrDefault(rule.key, 0'u)
 
           if ruleSpec >= currentSpec:
+            # echo $rule.selectors[&winner] & ": " & rule.key & ": " & $rule.value
             computed[rule.key] = rule.value
             specifsTracker[rule.key] = ruleSpec
 
