@@ -22,6 +22,7 @@ chronicles = ">= 0.12.3"
 vmath = ">= 3.0.0"
 stylus = ">= 0.1.4"
 nanovg = ">= 0.3.4"
+chroma = ">= 1.0.0"
 
 [platforms.native]
 include = ["wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl"]
