@@ -2,9 +2,15 @@
 <html>
   <head>
     <title>SSL Error</title>
+
+    <style>
+#tls-warn {
+  color: rgb(255, 0, 0);
+}
+    </style>
   </head>
   <body>
-    <h1>A secure connection to the site could not be established.</h1>
+    <h1 id="tls-warn">A secure connection to the site could not be established.</h1>
     <h3>It likely means that the site is using a certificate which cannot be verified to be safe, either maliciously or on accident.</h3>
     <h6>$2</h4>
 
