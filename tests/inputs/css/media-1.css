@@ -1,0 +1,13 @@
+.ek {
+    color: red;
+}
+
+@media (min-width: 768px) {
+    .do {
+        display: block;
+    }
+}
+
+.tin {
+    position: relative;
+}

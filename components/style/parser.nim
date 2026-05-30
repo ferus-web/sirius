@@ -4,6 +4,7 @@
 import std/[options, importutils, strformat, strutils, sugar]
 import pkg/stylus/[parser, shared, tokenizer], pkg/[results, shakar]
 import components/style/types
+import pretty
 
 privateAccess(tokenizer.Tokenizer)
 
@@ -163,6 +164,20 @@ proc eatRules(parser: Parser, selectors: seq[Selector], rules: var Stylesheet) =
 
     checkEnd()
 
+proc parseMediaSelector(parser: Parser): Option[Selector] =
+  # TODO: Maybe we should do real parsing.
+  # But for now, this'll do. I just want to make sure the parser doesn't
+  # deadlock or crash or just act badly here right now.
+
+  while not parser.eof:
+    let nextTok = parser.next()
+    if !nextTok:
+      break
+
+    if (&nextTok).kind == tkCurlyBracketBlock:
+      return some(idSelector("this-is-super-professional-engineering"))
+        # HACK: yeah. I don't think I need to explain myself.
+
 proc parseSelector(parser: Parser, initial: Token): Option[Selector] =
   case initial.kind
   of tkIdent:
@@ -184,10 +199,13 @@ proc parseSelector(parser: Parser, initial: Token): Option[Selector] =
         return # `#` must be followed by identifier
 
       return some(idSelector((&next).ident))
-    of '@':
-      assert not true
     else:
       return # Unknown delimiter '{initial.delim}'
+  of tkAtKeyword:
+    if initial.at == "media":
+      return parseMediaSelector(parser)
+    else:
+      return # Unknown at-rule '{initial.at}'
   else:
     return
 
@@ -227,10 +245,12 @@ proc handleRuleset(parser: Parser, token: Token): Stylesheet =
   if !parser.expectCurlyBracketBlock():
     return
 
+  echo "parse block"
+  print selectors
   eatRules(parser, selectors, rules)
+  echo "done"
   ensureMove(rules)
 
-import pretty
 proc parseStylesheet*(parser: Parser): Stylesheet =
   var rules: Stylesheet
 
