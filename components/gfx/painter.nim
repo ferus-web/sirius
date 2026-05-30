@@ -12,19 +12,24 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
 
   case node.display
   of DisplayMode.Block, DisplayMode.Inline:
-    #[ ctx.vg.beginPath()
-    ctx.vg.rect(
-      node.absolutePos.x, node.absolutePos.y, node.dimensions.x, node.dimensions.y
-    )
-    ctx.vg.strokeColor(rgb(255, 0, 0))
-    ctx.vg.stroke() ]#
-    discard
+    when defined(gfxPaintBounds):
+      ctx.vg.beginPath()
+      ctx.vg.rect(
+        node.absolutePos.x + ctx.viewerPosition.x,
+        node.absolutePos.y + ctx.viewerPosition.y,
+        node.dimensions.x,
+        node.dimensions.y,
+      )
+      ctx.vg.strokeColor(rgb(255, 0, 0))
+      ctx.vg.stroke()
+    else:
+      discard
   of DisplayMode.Anonymous:
     ctx.vg.beginPath()
 
     ctx.vg.fontSize(ctx.outputManager.computePixels(&node.fontSize))
-    ctx.vg.fontFace(cast[nanovg.Font](node.fontFamily.impl)) # TODO: Fallback fonts
-    ctx.vg.fillColor(rgb(0, 0, 0))
+    ctx.vg.fontFace(cast[nanovg.Font](node.fontFamily.impl))
+    ctx.vg.fillColor(rgba(node.color.r, node.color.g, node.color.b, node.color.a))
     ctx.vg.textAlign(haLeft, vaTop)
     # echo $node.absolutePos & " @ " & $fontsize & "px"
     discard ctx.vg.text(

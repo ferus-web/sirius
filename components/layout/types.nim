@@ -2,7 +2,7 @@
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
-import pkg/vmath
+import pkg/[chroma, vmath]
 import components/html/dom, components/style/types, components/os/fonts
 
 type
@@ -23,6 +23,7 @@ type
     margins*: LayoutMargins
     fontFamily*: Font
     fontSize*: Option[CSSValue]
+    color*: chroma.ColorRGBA
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -42,6 +43,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.margins = node.margins
   result.fontFamily = node.fontFamily
   result.fontSize = node.fontSize
+  result.color = node.color
   result.style = node.style
   result.content = node.content
 

@@ -37,42 +37,35 @@ a {
   text-decoration: underline;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  color: rgb(0, 0, 0);
+  display: block;
+}
+
 /* Headings
 * They progressively get smaller with each level. */
 h1 {
   font-size: 32px;
-  color: rgb(0, 0, 0);
-  display: block;
   margin-bottom: 32px;
 }
 h2 {
   font-size: 30px;
-  color: rgb(0, 0, 0);
-  display: block;
   margin-bottom: 28px;
 }
 h3 {
   font-size: 28px;
-  color: rgb(0, 0, 0);
-  display: block;
   margin-bottom: 24px;
 }
 h4 {
   font-size: 24px;
-  color: rgb(0, 0, 0);
-  display: block;
   margin-bottom: 24px;
 }
 h5 {
   font-size: 22px;
-  color: rgb(0, 0, 0);
-  display: block;
   margin-bottom: 22px;
 }
 h6 {
   font-size: 20px;
-  color: rgb(0, 0, 0);
-  display: block;
   margin-bottom: 20px;
 }
 
@@ -119,4 +112,8 @@ span {
 
 footer {
   font-size: 12px;
+}
+
+b {
+  display: inline;
 }

@@ -7,7 +7,7 @@ import
   components/style/types,
   components/layout/types,
   components/os/fonts
-import pkg/[chronicles, results, shakar]
+import pkg/[chronicles, chroma, results, shakar]
 import pretty
 
 logScope:
@@ -23,6 +23,8 @@ const
   MarginLeftAttr = "margin-left"
   MarginRightAttr = "margin-right"
   MarginAttr = "margin"
+
+  ColorAttr = "color"
 
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
@@ -74,6 +76,33 @@ proc applyMarginAttr(layoutNode: LayoutNode, prop: CSSValue): Result[void, strin
       &"Property 'margin' expects dimension or list of dimensions, got {prop.kind} instead."
     )
 
+proc execFunction*(node: LayoutNode, fn: CSSFunction) =
+  if fn.name == "rgb":
+    # FIXME: this assumes ~perfectly valid inputs
+    let
+      r = fn.arguments[0]
+      g = fn.arguments[1]
+      b = fn.arguments[2]
+
+    if r.kind == CSSValueKind.Float:
+      node.color.r = uint8(255'f32 * r.flt)
+    elif r.kind == CSSValueKind.Integer:
+      node.color.r = uint8(r.num)
+
+    if g.kind == CSSValueKind.Float:
+      node.color.g = uint8(255'f32 * g.flt)
+    elif b.kind == CSSValueKind.Integer:
+      node.color.g = uint8(g.num)
+
+    if b.kind == CSSValueKind.Float:
+      node.color.b = uint8(255'f32 * b.flt)
+    elif b.kind == CSSValueKind.Integer:
+      node.color.b = uint8(b.num)
+
+    node.color.a = 255'u8
+  else:
+    warn "Unhandled function", name = fn.name
+
 proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
   for attr, prop in layoutNode.style:
     if attr == DisplayAttr and layoutNode.display != DisplayMode.Anonymous:
@@ -107,6 +136,17 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == MarginAttr:
       if (let warning = applyMarginAttr(layoutNode, prop); *warning):
         warn "Styling warning", msg = warning.error()
+    elif attr == ColorAttr:
+      if prop.kind == CSSValueKind.Function:
+        layoutNode.execFunction(prop.fn)
+      elif prop.kind == CSSValueKind.Hex:
+        case prop.hex.len
+        of 8:
+          layoutNode.color = rgba(parseHexAlpha(prop.hex))
+        of 6:
+          layoutNode.color = rgba(parseHex(prop.hex))
+        else:
+          discard
 
 proc createLayoutNode*(
     node: dom.Node, style: StyleMap, fontProvider: FontProvider
