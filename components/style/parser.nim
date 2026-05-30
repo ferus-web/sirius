@@ -181,7 +181,6 @@ proc parseMediaSelector(parser: Parser): Option[Selector] =
 proc parseSelector(parser: Parser, initial: Token): Option[Selector] =
   case initial.kind
   of tkIdent:
-    # TODO: pseudoclasses
     return some(typeSelector(initial.ident))
   of tkDelim:
     case initial.delim
@@ -228,6 +227,7 @@ proc parseSelectors(parser: Parser, initial: Token): seq[Selector] =
     token = &tok
     case token.kind
     of tkComma:
+      token = &parser.next()
       continue
     of tkCurlyBracketBlock:
       parser.input = preNextInput
@@ -245,10 +245,7 @@ proc handleRuleset(parser: Parser, token: Token): Stylesheet =
   if !parser.expectCurlyBracketBlock():
     return
 
-  echo "parse block"
-  print selectors
   eatRules(parser, selectors, rules)
-  echo "done"
   ensureMove(rules)
 
 proc parseStylesheet*(parser: Parser): Stylesheet =
@@ -260,8 +257,6 @@ proc parseStylesheet*(parser: Parser): Stylesheet =
       break
 
     rules &= handleRuleset(parser, &token)
-
-  print rules
 
   ensureMove(rules)
 
