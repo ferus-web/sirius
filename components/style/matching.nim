@@ -54,7 +54,6 @@ proc resolveStyling*(
 ): StyleMap =
   debug "Resolve styling map", numRules = stylesheet.len
   var map: StyleMap
-  print stylesheet
 
   proc visit(node: dom.Node) =
     if node of dom.Element:
