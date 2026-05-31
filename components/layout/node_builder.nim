@@ -25,6 +25,7 @@ const
   MarginAttr = "margin"
 
   ColorAttr = "color"
+  BackgroundColorAttr = "background-color"
 
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
@@ -76,7 +77,9 @@ proc applyMarginAttr(layoutNode: LayoutNode, prop: CSSValue): Result[void, strin
       &"Property 'margin' expects dimension or list of dimensions, got {prop.kind} instead."
     )
 
-proc execFunction*(node: LayoutNode, fn: CSSFunction) =
+proc execColoringFunction*(node: LayoutNode, fn: CSSFunction): ColorRGBA =
+  var col = rgba(0, 0, 0, 255)
+
   if fn.name == "rgb":
     # FIXME: this assumes ~perfectly valid inputs
     let
@@ -85,23 +88,25 @@ proc execFunction*(node: LayoutNode, fn: CSSFunction) =
       b = fn.arguments[2]
 
     if r.kind == CSSValueKind.Float:
-      node.color.r = uint8(255'f32 * r.flt)
+      col.r = uint8(255'f32 * r.flt)
     elif r.kind == CSSValueKind.Integer:
-      node.color.r = uint8(r.num)
+      col.r = uint8(r.num)
 
     if g.kind == CSSValueKind.Float:
-      node.color.g = uint8(255'f32 * g.flt)
+      col.g = uint8(255'f32 * g.flt)
     elif b.kind == CSSValueKind.Integer:
-      node.color.g = uint8(g.num)
+      col.g = uint8(g.num)
 
     if b.kind == CSSValueKind.Float:
-      node.color.b = uint8(255'f32 * b.flt)
+      col.b = uint8(255'f32 * b.flt)
     elif b.kind == CSSValueKind.Integer:
-      node.color.b = uint8(b.num)
+      col.b = uint8(b.num)
 
-    node.color.a = 255'u8
+    col.a = 255'u8
   else:
     warn "Unhandled function", name = fn.name
+
+  ensureMove(col)
 
 proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
   for attr, prop in layoutNode.style:
@@ -138,7 +143,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
         warn "Styling warning", msg = warning.error()
     elif attr == ColorAttr:
       if prop.kind == CSSValueKind.Function:
-        layoutNode.execFunction(prop.fn)
+        layoutNode.color = layoutNode.execColoringFunction(prop.fn)
       elif prop.kind == CSSValueKind.Hex:
         case prop.hex.len
         of 8:
@@ -147,6 +152,9 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
           layoutNode.color = rgba(parseHex(prop.hex))
         else:
           discard
+    elif attr == BackgroundColorAttr:
+      if prop.kind == CSSValueKind.Function:
+        layoutNode.backgroundColor = layoutNode.execColoringFunction(prop.fn)
 
 proc createLayoutNode*(
     node: dom.Node, style: StyleMap, fontProvider: FontProvider

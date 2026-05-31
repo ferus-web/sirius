@@ -23,7 +23,7 @@ type
     margins*: LayoutMargins
     fontFamily*: Font
     fontSize*: Option[CSSValue]
-    color*: chroma.ColorRGBA
+    color*, backgroundColor*: chroma.ColorRGBA
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -44,6 +44,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.fontFamily = node.fontFamily
   result.fontSize = node.fontSize
   result.color = node.color
+  result.backgroundColor = node.backgroundColor
   result.style = node.style
   result.content = node.content
 

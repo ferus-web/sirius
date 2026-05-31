@@ -10,6 +10,21 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
   if node == nil:
     return
 
+  ctx.vg.beginPath()
+  ctx.vg.rect(
+    node.absolutePos.x + ctx.viewerPosition.x,
+    node.absolutePos.y + ctx.viewerPosition.y,
+    node.dimensions.x,
+    node.dimensions.y,
+  )
+  ctx.vg.fillColor(
+    rgba(
+      node.backgroundColor.r, node.backgroundColor.g, node.backgroundColor.b,
+      node.backgroundColor.a,
+    )
+  )
+  ctx.vg.fill()
+
   case node.display
   of DisplayMode.Block, DisplayMode.Inline:
     when defined(gfxPaintBounds):
