@@ -2,8 +2,8 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, streams, strformat, strutils, sequtils]
-import ./types
-import pkg/[chronicles, shakar, url, vmath, xkb], pkg/surfer/app
+import ./[hit_testing, types]
+import pkg/[chronicles, chroma, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
   components/html/dom,
@@ -180,6 +180,11 @@ proc loop*(view: WebView): int =
         view.renderCtx.viewerPosition.x += 5
       elif keysym == XKB_Key_Right:
         view.renderCtx.viewerPosition.x -= 5
+    of EventKind.CursorMove:
+      view.cursor = event.cursor.pos
+      view.focusedElement = hitTest(view, view.tree, view.cursor)
+    of EventKind.CursorClick:
+      discard # assert off, $view.cursor
     else:
       discard # debug "Unhandled surfer event", kind = event.kind
 

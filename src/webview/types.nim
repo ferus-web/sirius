@@ -1,8 +1,9 @@
 ## Types for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+import std/options
 import pkg/surfer/app
-import pkg/[chronicles, nanovg]
+import pkg/[chronicles, nanovg, vmath]
 import
   components/gfx/types,
   components/html/dom,
@@ -32,7 +33,10 @@ type
 
     net*: NetworkClient
 
-    style*: string # HACK: This will inevitably crap itself.
+    style*: string
+
+    cursor*: vmath.Vec2
+    focusedElement*: Option[LayoutNode]
 
   WebView* = ref WebViewObj
 
