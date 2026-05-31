@@ -148,9 +148,9 @@ proc loop*(view: WebView): int =
       # print view.renderCtx.tree
     of EventKind.KeyPressed, EventKind.KeyRepeated:
       let keysym = view.app.xkbState.getOneSym(event.key.code + 8)
-      if keysym == XKB_Key_Down:
+      if keysym == XKB_Key_Down or keysym == XKB_KEY_Page_Down:
         view.renderCtx.viewerPosition.y -= 5
-      elif keysym == XKB_Key_Up:
+      elif keysym == XKB_Key_Up or keysym == XKB_KEY_Page_Up:
         view.renderCtx.viewerPosition.y += 5
       elif keysym == XKB_Key_Left:
         view.renderCtx.viewerPosition.x += 5
