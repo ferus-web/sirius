@@ -57,4 +57,17 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
     draw(ctx, child)
 
 proc drawTree*(ctx: RenderingContext) =
+  # HACK: We don't have something like the Initial Containing Block right now,
+  # so we can just paint the initial background as whatever <html> has. That
+  # element should inherit <body>'s color if not specified for itself.
+  ctx.vg.beginPath()
+  ctx.vg.rect(0, 0, ctx.renderSize.x, ctx.renderSize.y)
+  ctx.vg.fillColor(
+    rgba(
+      ctx.tree.backgroundColor.r, ctx.tree.backgroundColor.g,
+      ctx.tree.backgroundColor.b, ctx.tree.backgroundColor.a,
+    )
+  )
+  ctx.vg.fill()
+
   draw(ctx, ctx.tree)

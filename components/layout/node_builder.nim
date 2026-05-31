@@ -187,12 +187,29 @@ proc propagateStyles*(node: LayoutNode, style: StyleMap, fontProvider: FontProvi
 
   setStyleProperties(node, fontProvider)
 
+  var inheritedBodyProperties = false
+
   for child in node.children:
     if child.display == DisplayMode.Anonymous:
       # Make anonymous nodes inherit their parent's style
       child.style = node.style
 
     propagateStyles(child, style, fontProvider)
+
+    # just a quirk in CSS
+    # For documents whose root element is an HTML HTML element or an XHTML html element [HTML]:
+    # if the computed value of background-image on the root element is none and its background-color is transparent, user agents must instead propagate the computed values of the background properties from that element’s first HTML BODY or XHTML body child element.
+    #
+    # https://www.w3.org/TR/css-backgrounds-3/#body-background
+    if BackgroundColorAttr notin node.style and not inheritedBodyProperties and (
+      node.domNode != nil and node.domNode of dom.Element and
+      Element(node.domNode).tagType() == TAG_HTML
+    ) and (
+      child.domNode != nil and child.domNode of dom.Element and
+      Element(child.domNode).tagType() == TAG_BODY
+    ):
+      inheritedBodyProperties = true
+      node.backgroundColor = child.backgroundColor
 
 proc buildLayoutTree*(
     node: dom.Node, style: StyleMap, fontProvider: FontProvider
