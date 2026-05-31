@@ -52,6 +52,26 @@ proc initWebView*(): WebView =
 
   webview
 
+proc getDocumentTitle(doc: dom.Document): Option[string] =
+  proc walk(node: dom.Node): tuple[canContinue: bool, title: Option[string]] =
+    if node of dom.Element and Element(node).tagType == TAG_TITLE:
+      for child in node.childList:
+        if child of dom.Text:
+          return (canContinue: false, title: some(Text(child).data))
+
+      return (canContinue: false, title: none(string)) # We must end the search anyways.
+
+    for child in node.childList:
+      let res = walk(child)
+      if *res.title:
+        return res
+      elif not res.canContinue:
+        return res
+
+    (canContinue: true, title: none(string))
+
+  walk(doc).title
+
 proc loadHTMLStream(view: WebView, stream: Stream) =
   stream.setPosition(0)
 
@@ -70,6 +90,10 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
     ),
   )
   userAgent.close()
+
+  let title = getDocumentTitle(view.dom)
+  if *title:
+    view.app.setTitle(&"Sirius — {&title}")
 
   let htmlElem = view.dom.childList.filterIt(
     it of dom.Element and tagType(Element(it)) == TAG_HTML
