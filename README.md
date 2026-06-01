@@ -6,6 +6,7 @@ No build instructions are given since it's an experimental project with zero pro
 The base was written in a day, so don't expect anything grandiose.
 
 # close roadmap
+![An image of Sirius on the Wiby search engine](screenshots/wiby1.jpg)
 ![An image of Sirius rendering the first test page](screenshots/test001.jpg)
 ![An image of Sirius rendering the second test page](screenshots/test002.jpg)
 
