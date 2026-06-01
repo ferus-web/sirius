@@ -6,7 +6,7 @@ import ./[hit_testing, types]
 import pkg/[chronicles, chroma, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
-  components/html/dom,
+  components/html/[dom, dom_utils],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
@@ -139,16 +139,50 @@ proc loadUrl(view: WebView, url: URL) =
     showTransportErrorPage(view, url, err)
 
 proc loadPage*(view: WebView, target: string) =
-  let target = parseURL(target)
-  debug "Load page", target = target, scheme = target.scheme
+  view.target = parseURL(target)
+  debug "Load page", target = view.target, scheme = view.target.scheme
 
-  case getSchemeType(target)
+  case getSchemeType(view.target)
   of SchemeType.Ws, SchemeType.Ftp, SchemeType.Wss, SchemeType.NotSpecial:
     assert off, "Not supported"
   of SchemeType.Http, SchemeType.Https:
-    loadUrl(view, target)
+    loadUrl(view, view.target)
   of SchemeType.File:
-    loadFile(view, target.host & target.pathname)
+    loadFile(view, view.target.host & view.target.pathname)
+
+proc handleFocusedDomElement(
+    view: WebView, element: dom.Element, clicked: bool = false
+): bool {.discardable.} =
+  if element.childList.len > 0 and
+      (let href = getAttr(element, view.dom.factory, "href"); *href):
+    view.app.setCursorShape(Shape.Pointer)
+    if clicked:
+      if (let standalone = tryParseURL(&href); *standalone):
+        view.target = &standalone
+        loadURL(view, view.target)
+        return true
+
+      echo view.target.scheme & view.target.host & &href
+      view.target = parseURL(view.target.scheme & "://" & view.target.host & &href)
+        # HACK: This is bad.
+      loadURL(view, view.target)
+
+    return true
+
+  for child in element.childList:
+    if not (child of dom.Element):
+      continue
+
+    if handleFocusedDomElement(view, Element(child), clicked = clicked):
+      break
+
+proc handleFocusedElement(view: WebView, clicked: bool = false) =
+  if !view.focusedElement:
+    return
+
+  let elem = &view.focusedElement
+  if elem.domNode of dom.Element:
+    handleFocusedDomElement(view, Element(elem.domNode), clicked = clicked)
 
 proc loop*(view: WebView): int =
   info "Entering main loop"
@@ -182,9 +216,14 @@ proc loop*(view: WebView): int =
         view.renderCtx.viewerPosition.x -= 5
     of EventKind.CursorMove:
       view.cursor = event.cursor.pos
-      view.focusedElement = hitTest(view, view.tree, view.cursor)
+      let lastFocused = view.focusedElement
+      view.focusedElement = hitTest(view, view.renderCtx.tree, view.cursor)
+
+      handleFocusedElement(view, clicked = false)
+    of EventKind.CursorFocusObtained:
+      view.app.setCursorShape(Shape.Default)
     of EventKind.CursorClick:
-      discard # assert off, $view.cursor
+      handleFocusedElement(view, clicked = true)
     else:
       discard # debug "Unhandled surfer event", kind = event.kind
 

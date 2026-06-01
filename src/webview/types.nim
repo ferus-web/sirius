@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
 import pkg/surfer/app
-import pkg/[chronicles, nanovg, vmath]
+import pkg/[chronicles, nanovg, url, vmath]
 import
   components/gfx/types,
   components/html/dom,
@@ -24,6 +24,7 @@ type
     assetProvider*: AssetProvider
 
     dom*: Document
+    target*: URL
 
     stylesheet*: Stylesheet
     styleMap*: StyleMap

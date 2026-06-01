@@ -8,21 +8,21 @@ import ./types
 import pkg/[shakar, vmath]
 
 proc hitTest*(view: WebView, node: LayoutNode, pos: vmath.Vec2): Option[LayoutNode] =
-  let
-    nodePos = view.renderCtx.viewerPosition + pos
-    hasToBeIgnored =
-      node.domNode != nil and node.domNode of dom.Element and
-      Element(node.domNode).tagType() in {TAG_HTML, TAG_BODY}
+  let nodePos = view.renderCtx.viewerPosition + node.absolutePos
 
-  if hasToBeIgnored or (
-    pos.x < nodePos.x or pos.x > (nodePos.x + node.dimensions.x) or pos.y < nodePos.y or
-    pos.y > (nodePos.y + node.dimensions.y)
+  if pos.x < nodePos.x or pos.x > (nodePos.x + node.dimensions.x) or pos.y < nodePos.y or
+      pos.y > (nodePos.y + node.dimensions.y):
+    return none(LayoutNode)
+
+  for child in reversed(node.children):
+    let res = hitTest(view, child, pos)
+    if *res:
+      return res
+
+  if (
+    node.domNode != nil and node.domNode of dom.Element and
+    Element(node.domNode).tagType() in {TAG_HTML, TAG_BODY}
   ):
-    for child in reversed(node.children):
-      let res = hitTest(view, child, pos)
-      if *res:
-        return res
-
     return none(LayoutNode)
 
   some(node)
