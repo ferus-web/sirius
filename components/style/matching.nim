@@ -1,10 +1,9 @@
 ## Basic matching routines
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, tables]
+import std/[options, strutils, tables]
 import components/html/[dom, dom_utils], components/style/types
 import pkg/[chronicles, shakar]
-import pretty
 
 logScope:
   topics = "style/matching"
@@ -72,7 +71,7 @@ proc resolveStyling*(
 
           if ruleSpec >= currentSpec:
             # echo $rule.selectors[&winner] & ": " & rule.key & ": " & $rule.value
-            computed[rule.key] = rule.value
+            computed[toLowerAscii(rule.key)] = rule.value
             specifsTracker[rule.key] = ruleSpec
 
       if computed.len > 0:
