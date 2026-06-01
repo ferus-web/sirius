@@ -147,7 +147,7 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
 
 proc loadUrl(view: WebView, url: URL) =
   let (resp, err) =
-    view.net.getStream($url, timeoutMs = 5000) # TODO: Timeout should be customizable
+    view.net.getStream($url, timeoutMs = 60000) # TODO: Timeout should be customizable
 
   if err.kind == TransportErrorKind.None:
     loadHTMLStream(view, resp.body.stream)
