@@ -609,6 +609,7 @@ proc getStream*(
     requestId = 0'i64,
     timeoutMs = 0,
 ): RequestResult =
+  debug "Streamed GET request", url = url, id = requestId, timeoutMs = timeoutMs
   client.makeVerbRequest(
     HttpVerb.Get,
     url,

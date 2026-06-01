@@ -94,6 +94,8 @@ type
     insertStyle*: proc(text: string)
     finishStyle*: proc()
 
+    handleLinkElement*: proc(element: Element, factory: MAtomFactory)
+
   MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
     document*: Document
     factory*: MAtomFactory
@@ -199,9 +201,18 @@ proc createElement(
 
 proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
   if handle of Element:
-    let tagType = Element(handle).tagType
-    if tagType == TAG_STYLE:
+    let
+      element = Element(handle)
+      tagType = element.tagType()
+
+    case tagType
+    of TAG_STYLE:
       builder.callbacks.finishStyle()
+    of TAG_LINK:
+      builder.callbacks.handleLinkElement(element, builder.factory)
+      builder.callbacks.finishStyle()
+    else:
+      discard
 
 proc createHTMLElementImpl(builder: MiniDOMBuilder): Node =
   let localName = builder.factory.tagTypeToAtom(TAG_HTML)

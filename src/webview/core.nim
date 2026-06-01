@@ -87,6 +87,24 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
       finishStyle: proc() =
         echo view.style
         view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style)))),
+      handleLinkElement: proc(element: Element, factory: MAtomFactory) =
+        let
+          rel = element.getAttr(factory, "rel")
+          href = element.getAttr(factory, "href")
+
+        if (!rel or !href) or &rel != "stylesheet":
+          return
+
+        info "Found external stylesheet", href = &href
+        # HACK: This isn't how we resolve relative URLs. Make a proper routine for it.
+        # FIXME: Also, this blocks
+        let (resp, err) =
+          view.net.getStream(view.target.scheme & "://" & view.target.host & &href)
+        assert err.kind == TransportErrorKind.None
+        resp.body.stream.setPosition(0)
+
+        let style = resp.body.stream.readAll()
+        view.style &= style,
     ),
   )
   userAgent.close()
