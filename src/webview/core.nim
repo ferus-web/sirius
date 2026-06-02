@@ -198,6 +198,8 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
     vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
   )
 
+  view.app.setCursorShape(Shape.Default)
+
   stream.close()
 
 proc loadFile(view: WebView, path: string) =
@@ -218,6 +220,8 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
   loadHTMLStream(view, newStringStream(ensureMove(errorTemplate)))
 
 proc loadUrl(view: WebView, url: URL) =
+  view.app.setCursorShape(Shape.Wait)
+
   let (resp, err) =
     view.net.getStream(url, timeoutMs = 60000) # TODO: Timeout should be customizable
 
@@ -268,6 +272,7 @@ proc handleFocusedDomElement(
 
 proc handleFocusedElement(view: WebView, clicked: bool = false) =
   if !view.focusedElement:
+    view.app.setCursorShape(Shape.Default)
     return
 
   let elem = &view.focusedElement
