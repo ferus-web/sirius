@@ -11,6 +11,7 @@ binaries = ["sirius"]
 version = "2.2.0"
 
 [dependencies]
+pixie = ">= 6.1.0"
 url = ">= 0.1.7"
 chame = ">= 1.0.5"
 shakar = ">= 0.1.3"

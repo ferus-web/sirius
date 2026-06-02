@@ -8,16 +8,16 @@
       "checksum": "974c434b5e8d1369b7a78c38d864916a784b79ba32a28205b89cfbe59344df8b"
     },
     "pixie": {
-      "version": "5.1.0",
-      "commit": "f05c89f547006a76816254c8bf06ff7ad176543c",
+      "version": "6.1.0",
+      "commit": "de230f6d061d0b6d6288fc7988de753f22cdd366",
       "url": "https://github.com/treeform/pixie",
-      "checksum": "052745e311f6bd5fc8b6432e54abde05502cbab0f7345b72677e2be43ccea60c"
+      "checksum": "cc1fc06af2032e8f4590726d9b658d5a7c824b15b95871f126443298f502cf11"
     },
     "zippy": {
-      "version": "0.10.6",
-      "commit": "123cd593f513d584526f119e7ccb65a7baefa8fa",
+      "version": "0.10.16",
+      "commit": "a99f6a7d8a8e3e0213b3cad0daf0ea974bf58e3f",
       "url": "https://github.com/guzba/zippy",
-      "checksum": "a0e8a83b16cc2b99599f26ba6aea0bc4cdf63f1f792ee3d455364621ffcf2201"
+      "checksum": "431035f59da85cf2e4c3e272b157e852a930507ca6b25cadae82cae95e9e4689"
     },
     "json_serialization": {
       "version": "0.4.4",
@@ -133,11 +133,11 @@
       "url": "https://github.com/treeform/vmath",
       "checksum": "14394941cf9568e61e47ce4e1c790afca50ce0aa30b57e0fb182ffba882318e0"
     },
-    "gh:xTrayambak/overdrive": {
-      "version": "0.2.0",
-      "commit": "13cf1cab8157f4aebd6f1313c8203d0576e42539",
-      "url": "gh:xTrayambak/overdrive",
-      "checksum": "83eec5d8addec46c1f1060b47d6b30d74f89be6cfc0b57f1c18f76b7bf06c9d0"
+    "crunchy": {
+      "version": "0.1.11",
+      "commit": "98eb6526982bb8aae8eec6e8781f4539fa19e049",
+      "url": "https://github.com/guzba/crunchy",
+      "checksum": "c0625f3df18697d1fbb5e2514c3cd28cb1656ffbc8e45523fefc88aea93a5056"
     },
     "stylus": {
       "version": "0.1.4",
@@ -145,11 +145,11 @@
       "url": "https://github.com/ferus-web/stylus",
       "checksum": "53a3c0de1f742cb6f83852abea6fbabed39d0bd860aa1f854cff656758fc666b"
     },
-    "crunchy": {
-      "version": "0.1.0",
-      "commit": "79e7b5bb58cded3479b06275977977284e1dca21",
-      "url": "https://github.com/guzba/crunchy",
-      "checksum": "4b412da981a0c991edcba444390466879a9f57b18c84ad1980ee405cd55d5104"
+    "gh:xTrayambak/overdrive": {
+      "version": "0.2.0",
+      "commit": "13cf1cab8157f4aebd6f1313c8203d0576e42539",
+      "url": "gh:xTrayambak/overdrive",
+      "checksum": "83eec5d8addec46c1f1060b47d6b30d74f89be6cfc0b57f1c18f76b7bf06c9d0"
     },
     "libcurl": {
       "version": "1.0.0",
