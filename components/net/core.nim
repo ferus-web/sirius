@@ -7,7 +7,7 @@ import
   components/impure/libcurl,
   components/net/[http_headers, curl_wrapper],
   components/os/threads
-import pkg/chronicles
+import pkg/[chronicles, url]
 
 export http_headers
 
@@ -604,7 +604,7 @@ proc get*(
 
 proc getStream*(
     client: NetworkClient,
-    url: sink string,
+    url: url.URL | sink string,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
@@ -612,7 +612,12 @@ proc getStream*(
   debug "Streamed GET request", url = url, id = requestId, timeoutMs = timeoutMs
   client.makeVerbRequest(
     HttpVerb.Get,
-    url,
+    (
+      when url is URL:
+        serialize(url)
+      else:
+        url
+    ),
     headers,
     "",
     requestId,
