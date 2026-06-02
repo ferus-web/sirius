@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/tables, options
-import pkg/[nanovg, shakar, vmath]
+import pkg/[nanovg, shakar, vmath], pkg/nanovg/wrapper
 import
   components/gfx/types, components/layout/[output_manager, types], components/os/fonts
 
@@ -37,8 +37,36 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
       )
       ctx.vg.strokeColor(rgb(255, 0, 0))
       ctx.vg.stroke()
-    else:
-      discard
+
+    if node.imageContent != nil:
+      let
+        dx = node.absolutePos.x + ctx.viewerPosition.x
+        dy = node.absolutePos.y + ctx.viewerPosition.y
+        dw = node.dimensions.x
+        dh = node.dimensions.y
+
+      if not ctx.imageTextures.contains(cast[pointer](node.imageContent)):
+        ctx.imageTextures[cast[pointer](node.imageContent)] = ctx.vg.createImageRGBA(
+          w = node.imageContent.width.int32,
+          h = node.imageContent.height.int32,
+          imageFlags = {ifPremultiplied},
+          data = cast[ptr byte](node.imageContent.data[0].addr),
+        )
+
+      ctx.vg.beginPath()
+      ctx.vg.rect(dx, dy, dw, dh)
+      ctx.vg.fillPaint(
+        ctx.vg.imagePattern(
+          dx,
+          dy,
+          dw,
+          dh,
+          0'f32,
+          ctx.imageTextures[cast[pointer](node.imageContent)],
+          1'f32,
+        )
+      )
+      ctx.vg.fill()
   of DisplayMode.Anonymous:
     ctx.vg.beginPath()
 

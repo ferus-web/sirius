@@ -1,9 +1,9 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, streams, strformat, strutils, sequtils]
+import std/[options, streams, strformat, strutils, sequtils, tables]
 import ./[hit_testing, types]
-import pkg/[chronicles, chroma, shakar, url, vmath, xkb], pkg/surfer/app
+import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
   components/html/[dom, dom_utils],
@@ -22,6 +22,7 @@ proc initWebView*(): WebView =
   let webview = WebView(
     app: newApp(title = "Sirius", appId = "xyz.xtrayambak.sirius"),
     outputManager: OutputManager(),
+    imageCache: newTable[string, pixie.Image](),
   )
   webview.app.initialize()
   webview.app.createWindow(ivec2(1024, 768), Renderer.GLES)
@@ -72,6 +73,54 @@ proc getDocumentTitle(doc: dom.Document): Option[string] =
 
   walk(doc).title
 
+proc resolveURLSegment*(
+    view: WebView, segment: string
+): Result[url.URL, url.ParseError] =
+  ## Given a portion of the URL (e.g `/style.css`, `index.html`, etc.) or a full,
+  ## absolute URL (e.g `https://foobar.lol/style.css`), resolve a full qualified URL.
+  ##
+  ## If the segment is not absolute, the view's base URL's scheme and host will be prefixed to the segment.
+  # NOTE: I have zero clue if this is guaranteed to work everywhere. The below algorithm
+  #       is simply based on my observations on what different sites had.
+
+  let absoluteByDefault = tryParseURL(segment)
+    # FIXME: Use `baseUrl = some(view.target)`. There is a bug in nim-url that seems to make the first character of `segment` disappear when we do that. Fix it and do this.
+  if *absoluteByDefault:
+    # If the segment is absolute on its own, return its parsed representation.
+    return ok(&absoluteByDefault)
+
+  # Otherwise, if the parsing error was not related to relativity, return nothing.
+  # The segment is likely malformed.
+  if absoluteByDefault.error() notin
+      {ParseError.RelativeUrlWithoutBase, ParseError.MissingSchemeNonRelativeUrl}:
+    error "Cannot resolve URL segment",
+      segment = segment, fault = absoluteByDefault.error()
+    return absoluteByDefault
+
+  # Let fixedBuffer be a String. Now, perform the following steps on it.
+  let
+    baseScheme = view.target.scheme
+    baseHost = view.target.host
+
+  var fixedBuffer = newStringOfCap(segment.len + baseScheme.len + 3 + baseHost.len + 1)
+
+  # 1. Append the WebView's base URL's scheme to it, along with "://"
+  fixedBuffer &= baseScheme
+  fixedBuffer &= "://"
+
+  # 2. Append the WebView's base URL's host to it.
+  fixedBuffer &= baseHost
+
+  # 3. If the segment does not begin with '/', append '/' to fixedBuffer.
+  if not segment.startsWith('/'):
+    fixedBuffer &= '/'
+
+  # 4. Append the segment to fixedBuffer.
+  fixedBuffer &= segment
+
+  # 5. Return the result of URL parsing performed on fixedBuffer.
+  tryParseURL(ensureMove(fixedBuffer))
+
 proc loadHTMLStream(view: WebView, stream: Stream) =
   stream.setPosition(0)
 
@@ -87,7 +136,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
       finishStyle: proc() =
         echo view.style
         view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style)))),
-      handleLinkElement: proc(element: Element, factory: MAtomFactory) =
+      handleLinkElement: proc(element: dom.Element, factory: dom.MAtomFactory) =
         let
           rel = element.getAttr(factory, "rel")
           href = element.getAttr(factory, "href")
@@ -95,16 +144,38 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         if (!rel or !href) or &rel != "stylesheet":
           return
 
-        info "Found external stylesheet", href = &href
-        # HACK: This isn't how we resolve relative URLs. Make a proper routine for it.
-        # FIXME: Also, this blocks
-        let (resp, err) =
-          view.net.getStream(view.target.scheme & "://" & view.target.host & &href)
+        let relURL = view.resolveURLSegment(&href)
+
+        info "Found external stylesheet", href = relURL
+        # FIXME: This blocks
+        let (resp, err) = view.net.getStream(&relURL)
         assert err.kind == TransportErrorKind.None
         resp.body.stream.setPosition(0)
 
         let style = resp.body.stream.readAll()
         view.style &= style,
+      fetchImageResource: proc(
+          element: dom.HTMLImageElement, factory: dom.MAtomFactory
+      ) =
+        let
+          srcRaw = element.getAttr(factory, "src")
+          src = view.resolveURLSegment(&srcRaw)
+          (resp, err) = view.net.getStream(&src)
+
+        element.src = srcRaw
+
+        if err.kind != TransportErrorKind.None:
+          error "Failed to fetch image", src = src, err = err.kind
+          return
+
+        resp.body.stream.setPosition(0)
+        debug "Fetched image", src = &src, size = resp.body.stream.data.len
+        try:
+          view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
+        except pixie.PixieError as exc:
+          error "Failed to decode image, it will not be shown!",
+            err = exc.msg, src = &src, size = resp.body.stream.data.len
+      ,
     ),
   )
   userAgent.close()
@@ -118,7 +189,8 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
   )[0] # HACK: This is stupid. Do it properly.
 
   view.styleMap = resolveStyling(htmlElem, view.dom.factory, view.stylesheet)
-  view.tree = buildLayoutTree(htmlElem, view.styleMap, view.fontProvider)
+  view.tree =
+    buildLayoutTree(htmlElem, view.styleMap, view.fontProvider, view.imageCache)
   propagateStyles(view.tree, view.styleMap, view.fontProvider)
 
   view.renderCtx.tree = view.tree.clone()
@@ -147,7 +219,7 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
 
 proc loadUrl(view: WebView, url: URL) =
   let (resp, err) =
-    view.net.getStream($url, timeoutMs = 60000) # TODO: Timeout should be customizable
+    view.net.getStream(url, timeoutMs = 60000) # TODO: Timeout should be customizable
 
   if err.kind == TransportErrorKind.None:
     loadHTMLStream(view, resp.body.stream)

@@ -88,6 +88,9 @@ type
   HTMLTemplateElement* = ref object of Element
     content*: DocumentFragment
 
+  HTMLImageElement* = ref object of Element
+    src*: Option[string]
+
 type
   MiniDOMBuilderCallbacks* = object
     ## These are called to help the overarching code (generally `WebView`) prepare a list of stylesheets.
@@ -95,6 +98,7 @@ type
     finishStyle*: proc()
 
     handleLinkElement*: proc(element: Element, factory: MAtomFactory)
+    fetchImageResource*: proc(element: HTMLImageElement, factory: MAtomFactory)
 
   MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
     document*: Document
@@ -190,8 +194,10 @@ proc createElement(
     document: Document, localName: MAtom, namespace: Namespace
 ): Element =
   let element =
-    if localName.toTagType() == TAG_TEMPLATE and namespace == Namespace.HTML:
+    if namespace == Namespace.HTML and localName.toTagType() == TAG_TEMPLATE:
       HTMLTemplateElement(content: DocumentFragment())
+    elif namespace == Namespace.HTML and localName.toTagType() == TAG_IMG:
+      HTMLImageElement()
     else:
       Element()
   element.localName = localName
@@ -208,6 +214,8 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
     case tagType
     of TAG_STYLE:
       builder.callbacks.finishStyle()
+    of TAG_IMG:
+      builder.callbacks.fetchImageResource(HTMLImageElement(element), builder.factory)
     of TAG_LINK:
       builder.callbacks.handleLinkElement(element, builder.factory)
       builder.callbacks.finishStyle()

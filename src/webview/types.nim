@@ -1,9 +1,9 @@
 ## Types for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/options
+import std/[tables, options]
 import pkg/surfer/app
-import pkg/[chronicles, nanovg, url, vmath]
+import pkg/[chronicles, nanovg, pixie, url, vmath]
 import
   components/gfx/types,
   components/html/dom,
@@ -38,6 +38,8 @@ type
 
     cursor*: vmath.Vec2
     focusedElement*: Option[LayoutNode]
+
+    imageCache*: TableRef[string, pixie.Image]
 
   WebView* = ref WebViewObj
 

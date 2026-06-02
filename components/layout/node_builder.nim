@@ -7,7 +7,7 @@ import
   components/style/types,
   components/layout/types,
   components/os/fonts
-import pkg/[chronicles, chroma, results, shakar]
+import pkg/[chronicles, chroma, pixie, results, shakar]
 import pretty
 
 logScope:
@@ -157,7 +157,10 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
         layoutNode.backgroundColor = layoutNode.execColoringFunction(prop.fn)
 
 proc createLayoutNode*(
-    node: dom.Node, style: StyleMap, fontProvider: FontProvider
+    node: dom.Node,
+    style: StyleMap,
+    fontProvider: FontProvider,
+    imageCache: TableRef[string, pixie.Image],
 ): LayoutNode =
   let layoutNode = LayoutNode(domNode: node)
 
@@ -169,6 +172,11 @@ proc createLayoutNode*(
     layoutNode.content = textData
     layoutNode.display = DisplayMode.Anonymous
     return layoutNode
+
+  if node of dom.HTMLImageElement:
+    let imageElement = HTMLImageElement(node)
+    if *imageElement.src:
+      layoutNode.imageContent = imageCache.getOrDefault(&imageElement.src)
 
   if node in style:
     # If we have a style for the DOM node, we can apply it to the layout node
@@ -212,9 +220,12 @@ proc propagateStyles*(node: LayoutNode, style: StyleMap, fontProvider: FontProvi
       node.backgroundColor = child.backgroundColor
 
 proc buildLayoutTree*(
-    node: dom.Node, style: StyleMap, fontProvider: FontProvider
+    node: dom.Node,
+    style: StyleMap,
+    fontProvider: FontProvider,
+    imageCache: TableRef[string, pixie.Image],
 ): LayoutNode =
-  let currentLayout = createLayoutNode(node, style, fontProvider)
+  let currentLayout = createLayoutNode(node, style, fontProvider, imageCache)
   # if currentLayout != nil:
   #  setStyleProperties(currentLayout)
 
@@ -227,7 +238,7 @@ proc buildLayoutTree*(
       if tag in [TAG_SCRIPT, TAG_STYLE, TAG_HEAD]:
         continue
 
-    let childLayout = buildLayoutTree(child, style, fontProvider)
+    let childLayout = buildLayoutTree(child, style, fontProvider, imageCache)
     if childLayout != nil:
       currentLayout.children &= childLayout
 

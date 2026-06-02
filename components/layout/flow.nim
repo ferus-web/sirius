@@ -38,6 +38,35 @@ proc computeLayout*(
 ) =
   node.absolutePos = parent
 
+  let isImage =
+    node.domNode != nil and node.domNode of dom.Element and
+    Element(node.domNode).tagType() == TAG_IMG
+
+  if isImage:
+    if node.imageContent != nil:
+      let img = node.imageContent
+      let intrinsicWidth = float32(img.width)
+      let intrinsicHeight = float32(img.height)
+      let aspect =
+        if intrinsicHeight > 0'f32:
+          intrinsicWidth / intrinsicHeight
+        else:
+          1'f32
+
+      if node.dimensions.x == 0'f32 and node.dimensions.y == 0'f32:
+        node.dimensions.x = intrinsicWidth
+        node.dimensions.y = intrinsicHeight
+      elif node.dimensions.x > 0'f32 and node.dimensions.y == 0'f32:
+        node.dimensions.y = node.dimensions.x / aspect
+      elif node.dimensions.y > 0'f32 and node.dimensions.x == 0'f32:
+        node.dimensions.x = node.dimensions.y * aspect
+
+    if node.display == DisplayMode.Block and node.dimensions.x > availableWidth:
+      let ratio = availableWidth / node.dimensions.x
+      node.dimensions = vec2(availableWidth, node.dimensions.y * ratio)
+
+    return
+
   var hasInline = false
   for child in node.children:
     if child.display in {DisplayMode.Anonymous, DisplayMode.Inline}:

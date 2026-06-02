@@ -1,4 +1,5 @@
-import pkg/[nanovg, vmath]
+import std/tables
+import pkg/[nanovg, pixie, vmath]
 import components/layout/[output_manager, types], components/os/fonts
 
 type RenderingContext* = ref object
@@ -10,3 +11,6 @@ type RenderingContext* = ref object
   fontProvider*: FontProvider
 
   viewerPosition*: vmath.Vec2
+  imageTextures*: Table[pointer, nanovg.Image]
+    # HACK: Very nasty hack to map pixie images to GPU framebuffers
+    # (key is pixie::Image, which is a RC-backed pointer)

@@ -2,7 +2,7 @@
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
-import pkg/[chroma, vmath]
+import pkg/[chroma, pixie, vmath]
 import components/html/dom, components/style/types, components/os/fonts
 
 type
@@ -21,12 +21,13 @@ type
 
     display*: DisplayMode ## `display` attribute taken from computed style
     margins*: LayoutMargins
-    fontFamily*: Font
+    fontFamily*: fonts.Font
     fontSize*: Option[CSSValue]
     color*, backgroundColor*: chroma.ColorRGBA
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
+    imageContent*: pixie.Image ## Any image content
 
     relativePos*, absolutePos*: vmath.Vec2
     dimensions*: vmath.Vec2
@@ -47,6 +48,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.backgroundColor = node.backgroundColor
   result.style = node.style
   result.content = node.content
+  result.imageContent = node.imageContent
 
   result.relativePos = node.relativePos
   result.absolutePos = node.absolutePos
