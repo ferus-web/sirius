@@ -1,12 +1,21 @@
 import std/os
-import webview/core
+import webview/[core, types], argparser
+import pretty, tables
 
 proc main() {.inline.} =
-  if paramCount() < 1:
-    quit "Usage: sirius [path/to/file.html]"
+  let args = parseInput()
+  print args
+  if args.command.len < 1:
+    quit "Usage: sirius [URL] [flags]"
 
-  let view = initWebView()
-  view.loadPage(paramStr(1))
+  let view = initWebView(
+    WebViewOpts(
+      disableImageLoading: args.enabled("disable-image-loading"),
+      disableExternalStylesheets: args.enabled("disable-external-stylesheets"),
+      disableStyling: args.enabled("disable-styling"),
+    )
+  )
+  view.loadPage(args.command)
   quit(view.loop())
 
 when isMainModule:

@@ -16,9 +16,13 @@ logScope:
   topics = "webview/types"
 
 type
+  WebViewOpts* = object
+    disableImageLoading*, disableExternalStylesheets*, disableStyling*: bool
+
   WebViewObj = object
     app*: App
     renderCtx*: RenderingContext
+    opts*: WebViewOpts
 
     fontProvider*: FontProvider
     assetProvider*: AssetProvider

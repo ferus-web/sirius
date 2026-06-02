@@ -15,7 +15,7 @@ import
 logScope:
   topics = "webview/core"
 
-proc initWebView*(): WebView =
+proc initWebView*(opts: WebViewOpts): WebView =
   debug "Initialize WebView"
   setThreadName("WebView")
 
@@ -23,6 +23,7 @@ proc initWebView*(): WebView =
     app: newApp(title = "Sirius", appId = "xyz.xtrayambak.sirius"),
     outputManager: OutputManager(),
     imageCache: newTable[string, pixie.Image](),
+    opts: opts,
   )
   webview.app.initialize()
   webview.app.createWindow(ivec2(1024, 768), Renderer.GLES)
@@ -135,6 +136,10 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         view.style &= text,
       finishStyle: proc() =
         echo view.style
+        if view.opts.disableStyling:
+          warn "Styling is explicitly disabled. All styles will be derived from the user agent."
+          return
+
         view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style)))),
       handleLinkElement: proc(element: dom.Element, factory: dom.MAtomFactory) =
         let
@@ -153,10 +158,15 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         resp.body.stream.setPosition(0)
 
         let style = resp.body.stream.readAll()
-        view.style &= style,
+        if not view.opts.disableExternalStylesheets:
+          view.style &= style
+      ,
       fetchImageResource: proc(
           element: dom.HTMLImageElement, factory: dom.MAtomFactory
       ) =
+        if view.opts.disableImageLoading:
+          return
+
         let
           srcRaw = element.getAttr(factory, "src")
           src = view.resolveURLSegment(&srcRaw)
