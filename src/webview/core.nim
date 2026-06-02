@@ -111,7 +111,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
 
   let title = getDocumentTitle(view.dom)
   if *title:
-    view.app.setTitle(&"Sirius — {&title}")
+    view.app.setTitle(&"{&title} — Sirius")
 
   let htmlElem = view.dom.childList.filterIt(
     it of dom.Element and tagType(Element(it)) == TAG_HTML
