@@ -257,19 +257,11 @@ proc loadPage*(view: WebView, target: string) =
 proc handleFocusedDomElement(
     view: WebView, element: dom.Element, clicked: bool = false
 ): bool {.discardable.} =
-  if element.childList.len > 0 and
+  if element.childList.len > 0 and element.tagType() == TAG_A and
       (let href = getAttr(element, view.dom.factory, "href"); *href):
     view.app.setCursorShape(Shape.Pointer)
     if clicked:
-      if (let standalone = tryParseURL(&href); *standalone):
-        view.target = &standalone
-        loadURL(view, view.target)
-        return true
-
-      echo view.target.scheme & view.target.host & &href
-      view.target = parseURL(view.target.scheme & "://" & view.target.host & &href)
-        # HACK: This is bad.
-      loadURL(view, view.target)
+      loadURL(view, &view.resolveURLSegment(&href))
 
     return true
 
