@@ -113,7 +113,7 @@ proc getFontByFamily*(provider: FontProvider, family: string): Option[Font] =
       # OPTIMIZE: This is a bit wasteful.
       # We're calling fontconfig twice. But eh, I can't think of anything better right now.
       let nam = $cast[cstring](fontFileName)
-      debug "Found candidate by family", name = nam
+      debug "Found candidate by family", pattern = family, name = nam
 
       provider.familyCache[family] = nam
       return provider.getFontByName(nam)
