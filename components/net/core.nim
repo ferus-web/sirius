@@ -568,8 +568,14 @@ proc makeRequest*(client: NetworkClient, request: sink RequestSpec): RequestResu
     raise newException(IOError, "makeRequest requires an idle client")
 
   client.startRequest(request)
-  if not client.waitForResult(result):
+  var res: RequestResult
+  if not client.waitForResult(res):
     raise newException(IOError, "client stopped before response arrived")
+
+  if res.response.body.kind == BodyWriterKind.AsyncStream:
+    res.response.body.stream.setPosition(0)
+
+  ensureMove(res)
 
 proc makeVerbRequest(
     client: NetworkClient,

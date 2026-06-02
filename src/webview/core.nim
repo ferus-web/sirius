@@ -123,8 +123,6 @@ proc resolveURLSegment*(
   tryParseURL(ensureMove(fixedBuffer))
 
 proc loadHTMLStream(view: WebView, stream: Stream) =
-  stream.setPosition(0)
-
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
   view.stylesheet = parseStylesheet(newParser(newParserInput(userAgent.readAll())))
@@ -155,7 +153,6 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         # FIXME: This blocks
         let (resp, err) = view.net.getStream(&relURL)
         assert err.kind == TransportErrorKind.None
-        resp.body.stream.setPosition(0)
 
         let style = resp.body.stream.readAll()
         if not view.opts.disableExternalStylesheets:
@@ -178,7 +175,6 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
           error "Failed to fetch image", src = src, err = err.kind
           return
 
-        resp.body.stream.setPosition(0)
         debug "Fetched image", src = &src, size = resp.body.stream.data.len
         try:
           view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
