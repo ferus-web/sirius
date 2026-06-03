@@ -2,12 +2,12 @@
 ##
 ## Largely derived from relay: https://github.com/planetis-m/relay
 
-import std/[deques, locks, tables, streams]
+import std/[deques, locks, options, streams, tables]
 import
   components/impure/libcurl,
   components/net/[http_headers, curl_wrapper],
   components/os/threads
-import pkg/[chronicles, url]
+import pkg/[chronicles, results, shakar, url]
 
 export http_headers
 
@@ -44,19 +44,19 @@ type
 
   RequestInfo* = object
     verb*: HttpVerb
-    url*: string
+    url*: url.URL
     requestId*: int64
 
   Response* = object
     code*: int
-    url*: string
+    url*: Option[url.URL]
     headers*: HttpHeaders
     body*: BodyWriterContext
     request*: RequestInfo
 
   RequestSpec* = object
     verb*: HttpVerb
-    url*: string
+    url*: url.URL
     headers*: HttpHeaders
     body*: string
     requestId*: int64
@@ -71,7 +71,7 @@ type
 
   RequestWrap = ref object
     verb: HttpVerb
-    url: string
+    url: url.URL
     headers: HttpHeaders
     body: string
     requestId: int64
@@ -172,7 +172,7 @@ proc headerWriteCb(
 proc newResponse(request: RequestWrap): Response {.inline.} =
   Response(
     code: 0,
-    url: request.url,
+    url: some(request.url),
     headers: @[],
     body: request.responseBody,
     request: RequestInfo(
@@ -186,7 +186,7 @@ proc storeCompletionLocked(client: NetworkClient, item: sink RequestResult) =
 
 proc configureEasy(client: NetworkClient, request: RequestWrap, easy: var Easy) =
   easy.reset()
-  easy.setUrl(request.url)
+  easy.setUrl(serialize(request.url, excludeFragment = true))
   easy.setHttpVersion2Tls()
 
   easy.setMethod($request.verb)
@@ -225,8 +225,8 @@ proc completionFromCurl(
     try:
       result.response.code = request.easy.responseCode()
       let effective = request.easy.effectiveUrl()
-      if effective.len > 0:
-        result.response.url = effective
+      if effective.len > 0 and (let parsed = tryParseURL(effective); *parsed):
+        result.response.url = some(&parsed)
       result.response.headers = parseHeaders(request.responseHeadersRaw)
       result.response.body = move request.responseBody
       result.error = noTransportError()
@@ -346,7 +346,7 @@ proc waitForWorkOrClose(client: NetworkClient): bool =
     result = false
   release(client.lock)
 
-proc workerMain(clientPtr: ptr NetworkClientObj) {.thread, raises: [].} =
+proc workerMain(clientPtr: ptr NetworkClientObj) {.thread, raises: [Exception].} =
   debug "Starting network worker"
   setThreadName("Network")
 
@@ -580,7 +580,7 @@ proc makeRequest*(client: NetworkClient, request: sink RequestSpec): RequestResu
 proc makeVerbRequest(
     client: NetworkClient,
     verb: HttpVerb,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -601,7 +601,7 @@ proc makeVerbRequest(
 
 proc get*(
     client: NetworkClient,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
@@ -610,7 +610,7 @@ proc get*(
 
 proc getStream*(
     client: NetworkClient,
-    url: url.URL | sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
@@ -618,12 +618,7 @@ proc getStream*(
   debug "Streamed GET request", url = url, id = requestId, timeoutMs = timeoutMs
   client.makeVerbRequest(
     HttpVerb.Get,
-    (
-      when url is URL:
-        serialize(url)
-      else:
-        url
-    ),
+    url,
     headers,
     "",
     requestId,
@@ -633,7 +628,7 @@ proc getStream*(
 
 proc post*(
     client: NetworkClient,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -643,7 +638,7 @@ proc post*(
 
 proc put*(
     client: NetworkClient,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -653,7 +648,7 @@ proc put*(
 
 proc patch*(
     client: NetworkClient,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -663,7 +658,7 @@ proc patch*(
 
 proc delete*(
     client: NetworkClient,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
@@ -672,7 +667,7 @@ proc delete*(
 
 proc head*(
     client: NetworkClient,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
@@ -688,7 +683,7 @@ proc `[]`*(batch: RequestBatch, i: int): lent RequestSpec =
 proc addRequest*(
     batch: var RequestBatch,
     verb: HttpVerb,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -707,7 +702,7 @@ proc addRequest*(
 
 proc get*(
     batch: var RequestBatch,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
@@ -716,7 +711,7 @@ proc get*(
 
 proc post*(
     batch: var RequestBatch,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -726,7 +721,7 @@ proc post*(
 
 proc put*(
     batch: var RequestBatch,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -736,7 +731,7 @@ proc put*(
 
 proc patch*(
     batch: var RequestBatch,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     body: sink string = "",
     requestId = 0'i64,
@@ -746,7 +741,7 @@ proc patch*(
 
 proc delete*(
     batch: var RequestBatch,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
@@ -755,7 +750,7 @@ proc delete*(
 
 proc head*(
     batch: var RequestBatch,
-    url: sink string,
+    url: url.URL,
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
