@@ -14,3 +14,5 @@ type RenderingContext* = ref object
   imageTextures*: Table[pointer, nanovg.Image]
     # HACK: Very nasty hack to map pixie images to GPU framebuffers
     # (key is pixie::Image, which is a RC-backed pointer)
+
+  paintDebugBounds*: bool

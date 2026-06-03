@@ -2,27 +2,26 @@
 ## I mostly intend to make this similar to the equivalent web APIs just to make my life easier.
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[algorithm, options]
+import std/[options]
 import components/layout/types, components/html/dom
 import ./types
-import pkg/[shakar, vmath]
+import pkg/[bumpy, shakar, vmath]
 
 proc hitTest*(view: WebView, node: LayoutNode, pos: vmath.Vec2): Option[LayoutNode] =
-  let nodePos = view.renderCtx.viewerPosition + node.absolutePos
+  proc walk(node: LayoutNode): Option[LayoutNode] =
+    let nodeSpatial = rect(
+      pos = view.renderCtx.viewerPosition + node.absolutePos, size = node.dimensions
+    )
 
-  if pos.x < nodePos.x or pos.x > (nodePos.x + node.dimensions.x) or pos.y < nodePos.y or
-      pos.y > (nodePos.y + node.dimensions.y):
-    return none(LayoutNode)
+    if pos.overlaps(nodeSpatial):
+      for child in node.children:
+        if not (child.domNode of dom.Element):
+          continue
 
-  for child in reversed(node.children):
-    let res = hitTest(view, child, pos)
-    if *res:
-      return res
+        let res = walk(child)
+        if *res:
+          return res
 
-  if (
-    node.domNode != nil and node.domNode of dom.Element and
-    Element(node.domNode).tagType() in {TAG_HTML, TAG_BODY}
-  ):
-    return none(LayoutNode)
+      return some(node)
 
-  some(node)
+  walk(node)

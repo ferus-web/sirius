@@ -255,24 +255,18 @@ proc loadPage*(view: WebView, target: string) =
 proc handleFocusedDomElement(
     view: WebView, element: dom.Element, clicked: bool = false
 ): bool {.discardable.} =
-  if element.childList.len > 0 and element.tagType() == TAG_A and
-      (let href = getAttr(element, view.dom.factory, "href"); *href):
-    view.app.setCursorShape(Shape.Pointer)
-    if clicked:
-      loadURL(view, &view.resolveURLSegment(&href))
+  if element.tagType() == TAG_A:
+    if (let href = getAttr(element, view.dom.factory, "href"); *href):
+      view.app.setCursorShape(Shape.Pointer)
+      if clicked:
+        loadURL(view, &view.resolveURLSegment(&href))
 
-    return true
-
-  for child in element.childList:
-    if not (child of dom.Element):
-      continue
-
-    if handleFocusedDomElement(view, Element(child), clicked = clicked):
-      break
+      return true
+  else:
+    view.app.setCursorShape(Shape.Default)
 
 proc handleFocusedElement(view: WebView, clicked: bool = false) =
   if !view.focusedElement:
-    view.app.setCursorShape(Shape.Default)
     return
 
   let elem = &view.focusedElement
@@ -309,6 +303,8 @@ proc loop*(view: WebView): int =
         view.renderCtx.viewerPosition.x += 5
       elif keysym == XKB_Key_Right:
         view.renderCtx.viewerPosition.x -= 5
+      elif keysym == XKB_Key_Tab:
+        view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
     of EventKind.CursorMove:
       view.cursor = event.cursor.pos
       let lastFocused = view.focusedElement

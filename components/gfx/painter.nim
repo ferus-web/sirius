@@ -27,7 +27,7 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
 
   case node.display
   of DisplayMode.Block, DisplayMode.Inline:
-    when defined(gfxPaintBounds):
+    if ctx.paintDebugBounds:
       ctx.vg.beginPath()
       ctx.vg.rect(
         node.absolutePos.x + ctx.viewerPosition.x,

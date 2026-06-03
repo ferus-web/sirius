@@ -163,5 +163,7 @@ proc computeLayout*(
 
     if node.display == DisplayMode.Inline:
       node.dimensions.x = maxLineWidth
+    else:
+      node.dimensions.x = availableWidth
 
     node.dimensions.y = cursor.y + currLineHeight
