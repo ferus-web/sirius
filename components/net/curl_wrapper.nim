@@ -13,6 +13,10 @@ type
   Slist* = object
     raw: ptr curl_slist
 
+  RawUrl* = object
+    raw: CURLU
+    rc: uint8
+
 proc `=destroy`(easy: Easy) =
   if easy.raw != nil:
     curl_easy_cleanup(easy.raw)
@@ -26,6 +30,9 @@ proc `=destroy`*(list: Slist) =
   if list.raw != nil:
     curl_slist_free_all(list.raw)
 
+proc `=destroy`*(url: var RawUrl) =
+  discard "NOTE: Curl_URL lifecycles are too complex to be represented as destructors."
+
 proc `=wasMoved`*(easy: var Easy) =
   easy.raw = nil
   `=wasMoved`(easy.errorBuf)
@@ -36,9 +43,20 @@ proc `=wasMoved`*(multi: var Multi) =
 proc `=wasMoved`*(list: var Slist) =
   list.raw = nil
 
+proc `=wasMoved`*(url: var RawUrl) =
+  discard
+
+proc `=copy`*(dest: var RawUrl, src: RawUrl) {.error.}
+
+proc `=sink`*(dest: var RawUrl, src: RawUrl) =
+  `=destroy`(dest)
+  dest.raw = src.raw
+
 proc `=dup`*(src: Easy): Easy {.error.}
 proc `=dup`*(src: Multi): Multi {.error.}
 proc `=dup`*(src: Slist): Slist {.error.}
+proc `=dup`*(src: RawUrl): RawUrl =
+  RawUrl(raw: curl_url_dup(src.raw))
 
 proc `=copy`*(dest: var Easy, src: Easy) {.error.}
 proc `=copy`*(dest: var Multi, src: Multi) {.error.}
@@ -126,6 +144,22 @@ proc tryInfoRead*(multi: var Multi, msg: var CURLMsg, msgsInQueue: var int): boo
 
 proc setUrl*(easy: var Easy, url: string) =
   checkCurl(curl_easy_setopt(easy.raw, CURLOPT_URL, url.cstring), "CURLOPT_URL failed")
+
+proc set*(url: var RawUrl, what: CURLUPart, str: sink string, flags: int32 = 0'i32) =
+  if str.len < 1:
+    return
+
+  if (let err = curl_url_set(url.raw, what, str[0].addr, flags); err != CURLUE_OK):
+    raise
+      newException(ValueError, "Cannot set URL component: " & $curl_url_strerror(err))
+
+proc drop*(url: RawUrl) =
+  curl_url_cleanup(url.raw)
+
+proc setUrl*(easy: var Easy, handle: sink RawUrl) =
+  checkCurl(
+    curl_easy_setopt(easy.raw, CURLOPT_CURLU, handle.raw), "CURLOPT_CURLU failed"
+  )
 
 proc setWriteCallback*(easy: var Easy, cb: curl_write_callback, userdata: pointer) =
   checkCurl(
@@ -262,3 +296,6 @@ proc handleKey*(easy: Easy): pointer =
 
 proc handleKey*(msg: CURLMsg): pointer =
   msg.easy_handle
+
+proc newRawUrl*(): RawUrl =
+  RawUrl(raw: curl_url(), rc: 1)

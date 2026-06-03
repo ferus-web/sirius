@@ -80,6 +80,7 @@ type
     responseHeadersRaw: string
     easy: Easy
     curlHeaders: Slist
+    curlUrl: RawUrl
 
   NetworkClientObj = object
     lock: Lock
@@ -170,6 +171,8 @@ proc headerWriteCb(
       result = csize_t(total)
 
 proc newResponse(request: RequestWrap): Response {.inline.} =
+  request.curlUrl.drop()
+
   Response(
     code: 0,
     url: some(request.url),
@@ -186,7 +189,31 @@ proc storeCompletionLocked(client: NetworkClient, item: sink RequestResult) =
 
 proc configureEasy(client: NetworkClient, request: RequestWrap, easy: var Easy) =
   easy.reset()
-  easy.setUrl(serialize(request.url, excludeFragment = true))
+  var finalUrl = newRawUrl()
+  finalUrl.set(CURLUPart.Scheme, request.url.scheme)
+  let
+    user = request.url.username
+    password = request.url.password
+    host = request.url.hostname
+    port = request.url.port
+    path = request.url.pathname
+    query = request.url.query
+
+  finalUrl.set(CURLUPart.User, user)
+  finalUrl.set(CURLUPart.Password, password)
+
+  if *host:
+    finalUrl.set(CURLUPart.Host, &host)
+  if *port:
+    finalUrl.set(CURLUPart.Port, $(&port))
+
+  finalUrl.set(CURLUPart.Path, path)
+
+  if *query:
+    finalUrl.set(CURLUPart.Query, &query)
+
+  request.curlUrl = ensureMove(finalUrl)
+  easy.setUrl(request.curlUrl)
   easy.setHttpVersion2Tls()
 
   easy.setMethod($request.verb)
@@ -246,6 +273,7 @@ proc flushCanceledLocked(client: NetworkClient, message: string) =
       client.multi.removeHandle(req.easy)
     except CatchableError:
       discard
+
     client.availableEasy.add(move req.easy)
     client.storeCompletionLocked(
       (newResponse(req), newTransportError(Canceled, message))

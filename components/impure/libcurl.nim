@@ -5,11 +5,26 @@
 type
   CURL* = ptr object
   CURLM* = ptr object
-  CURLcode* = distinct cint
-  CURLMcode* = distinct cint
-  CURLoption* = distinct cint
-  CURLMoption* = distinct cint
-  CURLINFO* = distinct cint
+  CURLU* = ptr object
+  CURLcode* = distinct int32
+  CURLUCode* = distinct int32
+  CURLMcode* = distinct int32
+  CURLoption* = distinct int32
+  CURLMoption* = distinct int32
+  CURLINFO* = distinct int32
+
+  CURLUPart* {.pure, importc, size: sizeof(uint8).} = enum
+    URL
+    Scheme
+    User
+    Password
+    Options
+    Host
+    Port
+    Path
+    Query
+    Fragment
+    ZoneID
 
   curl_slist* {.
     importc: "struct curl_slist", header: "<curl/curl.h>", incompleteStruct
@@ -30,6 +45,7 @@ type
     proc(buffer: ptr char, size, nitems: csize_t, outstream: pointer): csize_t {.cdecl.}
 
 proc `==`*(a, b: CURLcode): bool {.borrow.}
+proc `==`*(a, b: CURLUCode): bool {.borrow.}
 proc `==`*(a, b: CURLMcode): bool {.borrow.}
 proc `==`*(a, b: CurlMsgType): bool {.borrow.}
 
@@ -71,6 +87,7 @@ const
   CURLOPT_ACCEPT_ENCODING* = CURLoption(CURLOPTTYPE_OBJECTPOINT + 102)
   CURLOPT_TIMEOUT_MS* = CURLoption(CURLOPTTYPE_LONG + 155)
   CURLOPT_CONNECTTIMEOUT_MS* = CURLoption(CURLOPTTYPE_LONG + 156)
+  CURLOPT_CURLU* = CURLoption(CURLOPTTYPE_OBJECTPOINT + 282)
 
   CURL_HTTP_VERSION_2TLS* = clong(4)
 
@@ -87,12 +104,46 @@ const
   CURLINFO_EFFECTIVE_URL* = CURLINFO(CURLINFO_STRING + 1)
   CURLINFO_RESPONSE_CODE* = CURLINFO(CURLINFO_LONG + 2)
 
+  CURLUE_OK* = CURLUCode(0)
+  CURLUE_BAD_HANDLE* = CURLUCode(1)
+  CURLUE_BAD_PARTPOINTER* = CURLUCode(2)
+  CURLUE_MALFORMED_INPUT* = CURLUCode(3)
+  CURLUE_BAD_PORT_NUMBER* = CURLUCode(4)
+  CURLUE_UNSUPPORTED_SCHEME* = CURLUCode(5)
+  CURLUE_URLDECODE* = CURLUCode(6)
+  CURLUE_OUT_OF_MEMORY* = CURLUCode(7)
+  CURLUE_USER_NOT_ALLOWED* = CURLUCode(8)
+  CURLUE_UNKNOWN_PART* = CURLUCode(9)
+  CURLUE_NO_SCHEME* = CURLUCode(10)
+  CURLUE_NO_USER* = CURLUCode(11)
+  CURLUE_NO_PASSWORD* = CURLUCode(12)
+  CURLUE_NO_OPTIONS* = CURLUCode(13)
+  CURLUE_NO_HOST* = CURLUCode(14)
+  CURLUE_NO_PORT* = CURLUCode(15)
+  CURLUE_NO_QUERY* = CURLUCode(16)
+  CURLUE_NO_FRAGMENT* = CURLUCode(17)
+  CURLUE_NO_ZONEID* = CURLUCode(18)
+  CURLUE_BAD_FILE_URL* = CURLUCode(19)
+  CURLUE_BAD_FRAGMENT* = CURLUCode(20)
+  CURLUE_BAD_HOSTNAME* = CURLUCode(21)
+  CURLUE_BAD_IPV6* = CURLUCode(22)
+  CURLUE_BAD_LOGIN* = CURLUCode(23)
+  CURLUE_BAD_PASSWORD* = CURLUCode(24)
+  CURLUE_BAD_PATH* = CURLUCode(25)
+  CURLUE_BAD_QUERY* = CURLUCode(26)
+  CURLUE_BAD_SCHEME* = CURLUCode(27)
+  CURLUE_BAD_SLASHES* = CURLUCode(28)
+  CURLUE_BAD_USER* = CURLUCode(29)
+  CURLUE_LACKS_IDN* = CURLUCode(30)
+  CURLUE_TOO_LARGE* = CURLUCode(31)
+
 {.push importc, callconv: cdecl, header: "<curl/curl.h>".}
 
 proc curl_easy_init*(): CURL
 proc curl_easy_cleanup*(curl: CURL)
 proc curl_easy_reset*(curl: CURL)
 proc curl_easy_setopt*(curl: CURL, option: CURLoption): CURLcode {.varargs.}
+proc curl_easy_setopt_url*(curl: CURL, option: CURLoption, u: CURLU): CURLcode
 proc curl_easy_getinfo*(curl: CURL, info: CURLINFO): CURLcode {.varargs.}
 proc curl_easy_strerror*(code: CURLcode): cstring
 
@@ -122,5 +173,18 @@ proc curl_multi_poll*(
 proc curl_multi_info_read*(multiHandle: CURLM, msgsInQueue: ptr cint): ptr CURLMsg
 proc curl_multi_cleanup*(multiHandle: CURLM): CURLMcode
 proc curl_multi_strerror*(code: CURLMcode): cstring
+
+{.pop.}
+
+{.push importc, callconv: cdecl, header: "<curl/urlapi.h>".}
+
+proc curl_url*(): CURLU
+proc curl_url_cleanup*(u: CURLU)
+proc curl_url_dup*(u: CURLU): CURLU
+proc curl_url_set*(
+  u: CURLU, what: CURLUPart, part: cstring | ptr char, flags: int32
+): CURLUCode
+
+proc curl_url_strerror*(err: CURLUCode): cstring
 
 {.pop.}
