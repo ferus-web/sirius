@@ -170,6 +170,8 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
           (resp, err) = view.net.getStream(&src)
 
         element.src = srcRaw
+        element.width = element.getUintAttr(factory, "width")
+        element.height = element.getUintAttr(factory, "height")
 
         if err.kind != TransportErrorKind.None:
           error "Failed to fetch image", src = src, err = err.kind

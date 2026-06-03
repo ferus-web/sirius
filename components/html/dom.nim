@@ -91,6 +91,8 @@ type
   HTMLImageElement* = ref object of Element
     src*: Option[string]
 
+    width*, height*: Option[uint]
+
 type
   MiniDOMBuilderCallbacks* = object
     ## These are called to help the overarching code (generally `WebView`) prepare a list of stylesheets.

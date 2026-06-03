@@ -39,19 +39,28 @@ proc computeLayout*(
   node.absolutePos = parent
 
   let isImage =
-    node.domNode != nil and node.domNode of dom.Element and
+    node.domNode != nil and node.domNode of dom.HTMLImageElement and
     Element(node.domNode).tagType() == TAG_IMG
 
   if isImage:
+    let element = HTMLImageElement(node.domNode)
     if node.imageContent != nil:
       let img = node.imageContent
-      let intrinsicWidth = float32(img.width)
-      let intrinsicHeight = float32(img.height)
+      var
+        intrinsicWidth = float32(img.width)
+        intrinsicHeight = float32(img.height)
+
       let aspect =
         if intrinsicHeight > 0'f32:
           intrinsicWidth / intrinsicHeight
         else:
           1'f32
+
+      if *element.width:
+        intrinsicWidth = float32(&element.width)
+
+      if *element.height:
+        intrinsicHeight = float32(&element.height)
 
       if node.dimensions.x == 0'f32 and node.dimensions.y == 0'f32:
         node.dimensions.x = intrinsicWidth
