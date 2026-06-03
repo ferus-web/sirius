@@ -4,7 +4,6 @@
 import std/[options, importutils, strformat, strutils, sugar]
 import pkg/stylus/[parser, shared, tokenizer], pkg/[results, shakar]
 import components/style/types
-import pretty
 
 privateAccess(tokenizer.Tokenizer)
 

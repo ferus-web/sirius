@@ -8,7 +8,6 @@ import
   components/layout/types,
   components/os/fonts
 import pkg/[chronicles, chroma, pixie, results, shakar]
-import pretty
 
 logScope:
   topics = "layout/node_builder"

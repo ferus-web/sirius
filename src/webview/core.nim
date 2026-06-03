@@ -1,12 +1,12 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, streams, strformat, strutils, sequtils, tables]
+import std/[base64, options, streams, strformat, strutils, sequtils, tables]
 import ./[hit_testing, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
-  components/html/[dom, dom_utils],
+  components/html/[dom, dom_utils, data_parser],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
@@ -167,22 +167,35 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         let
           srcRaw = element.getAttr(factory, "src")
           src = view.resolveURLSegment(&srcRaw)
-          (resp, err) = view.net.getStream(&src)
 
         element.src = srcRaw
         element.width = element.getUintAttr(factory, "width")
         element.height = element.getUintAttr(factory, "height")
 
-        if err.kind != TransportErrorKind.None:
-          error "Failed to fetch image", src = src, err = err.kind
-          return
+        let dataUrl = parseDataURL(&srcRaw)
 
-        debug "Fetched image", src = &src, size = resp.body.stream.data.len
-        try:
-          view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
-        except pixie.PixieError as exc:
-          error "Failed to decode image, it will not be shown!",
-            err = exc.msg, src = &src, size = resp.body.stream.data.len
+        if !dataUrl:
+          let (resp, err) = view.net.getStream(&src)
+
+          if err.kind != TransportErrorKind.None:
+            error "Failed to fetch image", src = src, err = err.kind
+            return
+
+          debug "Fetched image", src = &src, size = resp.body.stream.data.len
+          try:
+            view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
+          except pixie.PixieError as exc:
+            error "Failed to decode image, it will not be shown!",
+              err = exc.msg, src = &src, size = resp.body.stream.data.len
+        else:
+          let data = (&dataUrl)
+          assert data.base64
+
+          try:
+            view.imageCache[&srcRaw] = decodeImage(base64.decode(data.data))
+          except pixie.PixieError as exc:
+            error "Failed to decode image, it will not be shown!",
+              err = exc.msg, src = &src, size = data.data.len
       ,
     ),
   )
