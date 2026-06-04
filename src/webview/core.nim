@@ -84,8 +84,7 @@ proc resolveURLSegment*(
   # NOTE: I have zero clue if this is guaranteed to work everywhere. The below algorithm
   #       is simply based on my observations on what different sites had.
 
-  let absoluteByDefault = tryParseURL(segment)
-    # FIXME: Use `baseUrl = some(view.target)`. There is a bug in nim-url that seems to make the first character of `segment` disappear when we do that. Fix it and do this.
+  let absoluteByDefault = tryParseURL(segment, baseUrl = some(view.target))
   if *absoluteByDefault:
     # If the segment is absolute on its own, return its parsed representation.
     return ok(&absoluteByDefault)
