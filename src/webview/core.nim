@@ -213,6 +213,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
     buildLayoutTree(htmlElem, view.styleMap, view.fontProvider, view.imageCache)
   propagateStyles(view.tree, view.styleMap, view.fontProvider)
 
+  view.renderCtx.viewerPosition = vec2(0, 0)
   view.renderCtx.tree = view.tree.clone()
   view.renderCtx.tree.computeLayout(
     vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
