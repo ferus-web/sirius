@@ -10,8 +10,11 @@ type OutputManager* = ref object
   pixelsPerInch*: float32 = 96.0f
 
 func computePixels*(manager: OutputManager, value: CSSValue): float32 =
+  if value.kind == CSSValueKind.Integer:
+    # HACK: This is to make `em` half-work.
+    return float32(value.num)
+
   if value.kind != CSSValueKind.Dimension:
-    assert off, $value.kind
     return 0'f32 # FIXME: Not compliant. I think.
 
   case value.dim.unit
