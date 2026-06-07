@@ -4,7 +4,7 @@
 
 import std/[algorithm, hashes, options, sets, streams, tables]
 import pkg/chame/[htmlparser, tags]
-import components/dom/prelude
+import components/dom/prelude, components/html/dom_utils
 
 export tags
 
@@ -99,13 +99,20 @@ proc getParentNodeImpl(builder: MiniDOMBuilder, handle: Node): Option[Node] =
 proc createElement(
     document: Document, localName: MAtom, namespace: Namespace
 ): Element =
-  let element =
-    if namespace == Namespace.HTML and localName.toTagType() == TAG_TEMPLATE:
-      HTMLTemplateElement(content: DocumentFragment())
-    elif namespace == Namespace.HTML and localName.toTagType() == TAG_IMG:
-      HTMLImageElement()
+  let element = block:
+    if namespace == Namespace.HTML:
+      case toTagType(localName)
+      of TAG_TEMPLATE:
+        HTMLTemplateElement(content: DocumentFragment())
+      of TAG_IMG:
+        HTMLImageElement()
+      of TAG_A:
+        HTMLAnchorElement()
+      else:
+        Element()
     else:
       Element()
+
   element.localName = localName
   element.namespace = namespace
   element.document = document
@@ -125,6 +132,8 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
     of TAG_LINK:
       builder.callbacks.handleLinkElement(element, builder.factory)
       builder.callbacks.finishStyle()
+    of TAG_A:
+      HTMLAnchorElement(element).href = element.getAttr(builder.factory, "href")
     else:
       discard
 

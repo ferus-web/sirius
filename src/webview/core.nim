@@ -317,10 +317,13 @@ proc handleFocusedDomElement(
 ): bool {.discardable.} =
   applyCursorState(view, layoutNode)
 
-  if element.tagType() == TAG_A and
-      (let href = getAttr(element, view.dom.factory, "href"); *href):
-    if clicked:
-      loadURL(view, &view.resolveURLSegment(&href))
+  if clicked and element of tags.HTMLAnchorElement:
+    let anchorElement = HTMLAnchorElement(element)
+    if *anchorElement.href:
+      # TODO: The styling engine needs to support :not so that if an anchor element
+      # doesn't have a href, it should _NOT_ appear as clickable due to `cursor: pointer`
+      # in Sirius' UA stylesheet globally applied to all anchors.
+      loadURL(view, &view.resolveURLSegment(&anchorElement.href))
 
     return true
 
