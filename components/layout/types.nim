@@ -22,6 +22,7 @@ type
     display*: DisplayMode ## `display` attribute taken from computed style
     margins*: LayoutMargins
     fontFamily*: fonts.Font
+    cursor*: Option[string]
     fontSize*: Option[CSSValue]
     color*, backgroundColor*: chroma.ColorRGBA
 
@@ -45,6 +46,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.fontFamily = node.fontFamily
   result.fontSize = node.fontSize
   result.color = node.color
+  result.cursor = node.cursor
   result.backgroundColor = node.backgroundColor
   result.style = node.style
   result.content = node.content

@@ -84,7 +84,7 @@ proc resolveURLSegment*(
   # NOTE: I have zero clue if this is guaranteed to work everywhere. The below algorithm
   #       is simply based on my observations on what different sites had.
 
-  let absoluteByDefault = tryParseURL(segment, baseUrl = some(view.target))
+  let absoluteByDefault = tryParseURL(segment)
   if *absoluteByDefault:
     # If the segment is absolute on its own, return its parsed representation.
     return ok(&absoluteByDefault)
@@ -264,18 +264,63 @@ proc loadPage*(view: WebView, target: string) =
   of SchemeType.File:
     loadFile(view, view.target.host & view.target.pathname)
 
-proc handleFocusedDomElement(
-    view: WebView, element: dom.Element, clicked: bool = false
-): bool {.discardable.} =
-  if element.tagType() == TAG_A:
-    if (let href = getAttr(element, view.dom.factory, "href"); *href):
-      view.app.setCursorShape(Shape.Pointer)
-      if clicked:
-        loadURL(view, &view.resolveURLSegment(&href))
+proc applyCursorState(view: WebView, layoutNode: LayoutNode) =
+  if !layoutNode.cursor:
+    return
 
-      return true
-  else:
-    view.app.setCursorShape(Shape.Default)
+  # Source: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor
+  let cursorMap = toTable {
+    "default": Shape.Default,
+    "pointer": Shape.Pointer,
+    "context-menu": Shape.ContextMenu,
+    "help": Shape.Help,
+    "progress": Shape.Progress,
+    "wait": Shape.Wait,
+    "cell": Shape.Cell,
+    "crosshair": Shape.Crosshair,
+    "text": Shape.Text,
+    "vertical-text": Shape.VerticalText,
+    "alias": Shape.Alias,
+    "copy": Shape.Copy,
+    "move": Shape.Move,
+    "no-drop": Shape.NoDrop,
+    "not-allowed": Shape.NotAllowed,
+    "grab": Shape.Grab,
+    "grabbing": Shape.Grabbing,
+    "all-scroll": Shape.AllScroll,
+    "col-resize": Shape.ColResize,
+    "row-resize": Shape.RowResize,
+    "n-resize": Shape.NResize,
+    "e-resize": Shape.EResize,
+    "s-resize": Shape.SResize,
+    "w-resize": Shape.WResize,
+    "ne-resize": Shape.NEResize,
+    "nw-resize": Shape.NWResize,
+    "se-resize": Shape.SEResize,
+    "sw-resize": Shape.SWResize,
+    "ew-resize": Shape.EWResize,
+    "ns-resize": Shape.NSResize,
+    "nesw-resize": Shape.NESWResize,
+    "nwse-resize": Shape.NWSEResize,
+    "zoom-in": Shape.ZoomIn,
+    "zoom-out": Shape.ZoomOut,
+  }
+  let cursor = &layoutNode.cursor
+
+  if cursor in cursorMap:
+    view.app.setCursorShape(cursorMap[cursor])
+
+proc handleFocusedDomElement(
+    view: WebView, layoutNode: LayoutNode, element: dom.Element, clicked: bool = false
+): bool {.discardable.} =
+  applyCursorState(view, layoutNode)
+
+  if element.tagType() == TAG_A and
+      (let href = getAttr(element, view.dom.factory, "href"); *href):
+    if clicked:
+      loadURL(view, &view.resolveURLSegment(&href))
+
+    return true
 
 proc handleFocusedElement(view: WebView, clicked: bool = false) =
   if !view.focusedElement:
@@ -283,7 +328,7 @@ proc handleFocusedElement(view: WebView, clicked: bool = false) =
 
   let elem = &view.focusedElement
   if elem.domNode of dom.Element:
-    handleFocusedDomElement(view, Element(elem.domNode), clicked = clicked)
+    handleFocusedDomElement(view, elem, Element(elem.domNode), clicked = clicked)
 
 proc loop*(view: WebView): int =
   info "Entering main loop"

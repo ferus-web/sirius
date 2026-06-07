@@ -26,6 +26,8 @@ const
   ColorAttr = "color"
   BackgroundColorAttr = "background-color"
 
+  CursorAttr = "cursor"
+
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
   # TODO: This routine doesn't belong here.
@@ -154,6 +156,9 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == BackgroundColorAttr:
       if prop.kind == CSSValueKind.Function:
         layoutNode.backgroundColor = layoutNode.execColoringFunction(prop.fn)
+    elif attr == CursorAttr:
+      if prop.kind == CSSValueKind.String and prop.str != "auto":
+        layoutNode.cursor = some(prop.str)
 
 proc createLayoutNode*(
     node: dom.Node,
