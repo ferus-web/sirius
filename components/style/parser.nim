@@ -155,7 +155,7 @@ proc eatRules(parser: Parser, selectors: seq[Selector], rules: var Stylesheet) =
 
     let ruleOpt = parseRule(parser)
     if !ruleOpt:
-      continue
+      break
 
     var rule = get ruleOpt
     rule.selectors = selectors
