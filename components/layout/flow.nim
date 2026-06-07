@@ -3,7 +3,9 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, tables]
 import
-  components/style/types, components/html/dom, components/layout/[output_manager, types]
+  components/style/types,
+  components/dom/[dom, tags],
+  components/layout/[output_manager, types]
 import pkg/[chronicles, shakar, vmath]
 
 logScope:
@@ -39,7 +41,7 @@ proc computeLayout*(
   node.absolutePos = parent
 
   let isImage =
-    node.domNode != nil and node.domNode of dom.HTMLImageElement and
+    node.domNode != nil and node.domNode of tags.HTMLImageElement and
     Element(node.domNode).tagType() == TAG_IMG
 
   if isImage:

@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[hashes, options, strutils]
-import components/html/dom
+import components/dom/dom
 import pkg/shakar
 
 func hash*(node: dom.Node): hashes.Hash {.inline.} =

@@ -3,7 +3,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options]
-import components/layout/types, components/html/dom
+import components/layout/types, components/dom/dom
 import ./types
 import pkg/[bumpy, shakar, vmath]
 

@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[tables, options]
-import components/html/dom
+import components/dom/dom
 
 type
   SelectorKind* = enum

@@ -6,7 +6,8 @@ import ./[hit_testing, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
-  components/html/[dom, dom_utils, data_parser],
+  components/dom/[dom, tags],
+  components/html/[parser, dom_utils, data_parser],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
@@ -158,7 +159,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
           view.style &= style
       ,
       fetchImageResource: proc(
-          element: dom.HTMLImageElement, factory: dom.MAtomFactory
+          element: tags.HTMLImageElement, factory: dom.MAtomFactory
       ) =
         if view.opts.disableImageLoading:
           return

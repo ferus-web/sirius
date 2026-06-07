@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, strutils, tables]
-import components/html/[dom, dom_utils], components/style/types
+import components/dom/dom, components/html/dom_utils, components/style/types
 import pkg/[chronicles, shakar]
 
 logScope:

@@ -3,7 +3,8 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, sequtils, strformat, strutils, tables]
 import
-  components/html/[dom, dom_utils],
+  components/dom/[dom, tags],
+  components/html/dom_utils,
   components/style/types,
   components/layout/types,
   components/os/fonts
@@ -177,7 +178,7 @@ proc createLayoutNode*(
     layoutNode.display = DisplayMode.Anonymous
     return layoutNode
 
-  if node of dom.HTMLImageElement:
+  if node of tags.HTMLImageElement:
     let imageElement = HTMLImageElement(node)
     if *imageElement.src:
       layoutNode.imageContent = imageCache.getOrDefault(&imageElement.src)

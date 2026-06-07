@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
 import pkg/[chroma, pixie, vmath]
-import components/html/dom, components/style/types, components/os/fonts
+import components/dom/dom, components/style/types, components/os/fonts
 
 type
   DisplayMode* {.pure, size: sizeof(uint8).} = enum

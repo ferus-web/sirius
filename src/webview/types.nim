@@ -6,7 +6,8 @@ import pkg/surfer/app
 import pkg/[chronicles, nanovg, pixie, url, vmath]
 import
   components/gfx/types,
-  components/html/dom,
+  components/dom/dom,
+  components/html/parser,
   components/style/types,
   components/layout/[output_manager, types],
   components/os/[assets, fonts],
