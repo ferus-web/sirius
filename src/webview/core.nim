@@ -152,11 +152,11 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         info "Found external stylesheet", href = relURL
         # FIXME: This blocks
         let (resp, err) = view.net.getStream(&relURL)
-        assert err.kind == TransportErrorKind.None
 
-        let style = resp.body.stream.readAll()
-        if not view.opts.disableExternalStylesheets:
-          view.style &= style
+        if resp.code == 200:
+          let style = resp.body.stream.readAll()
+          if not view.opts.disableExternalStylesheets:
+            view.style &= style
       ,
       fetchImageResource: proc(
           element: tags.HTMLImageElement, factory: dom.MAtomFactory
@@ -255,7 +255,6 @@ proc loadUrl(view: WebView, url: URL) =
     showTransportErrorPage(view, url, err)
 
 proc loadPage*(view: WebView, target: string) =
-  view.target = parseURL(target)
   debug "Load page", target = view.target, scheme = view.target.scheme
 
   case getSchemeType(view.target)
