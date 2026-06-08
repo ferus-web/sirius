@@ -102,8 +102,10 @@ proc resolveURLSegment*(
   let
     baseScheme = view.target.scheme
     baseHost = view.target.host
+    basePath = view.target.pathname
 
-  var fixedBuffer = newStringOfCap(segment.len + baseScheme.len + 3 + baseHost.len + 1)
+  var fixedBuffer =
+    newStringOfCap(segment.len + baseScheme.len + 3 + baseHost.len + 1 + basePath.len)
 
   # 1. Append the WebView's base URL's scheme to it, along with "://"
   fixedBuffer &= baseScheme
@@ -112,9 +114,10 @@ proc resolveURLSegment*(
   # 2. Append the WebView's base URL's host to it.
   fixedBuffer &= baseHost
 
-  # 3. If the segment does not begin with '/', append '/' to fixedBuffer.
+  # 3. If the segment does not begin with '/', append '/', along with the base URL's path, to fixedBuffer.
   if not segment.startsWith('/'):
     fixedBuffer &= '/'
+    fixedBuffer &= basePath
 
   # 4. Append the segment to fixedBuffer.
   fixedBuffer &= segment
@@ -242,6 +245,8 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
   loadHTMLStream(view, newStringStream(ensureMove(errorTemplate)))
 
 proc loadUrl(view: WebView, url: URL) =
+  echo "loadURL " & $url
+  view.target = url
   view.app.setCursorShape(Shape.Wait)
 
   let (resp, err) =
@@ -255,13 +260,14 @@ proc loadUrl(view: WebView, url: URL) =
     showTransportErrorPage(view, url, err)
 
 proc loadPage*(view: WebView, target: string) =
+  view.target = parseURL(target)
   debug "Load page", target = view.target, scheme = view.target.scheme
 
   case getSchemeType(view.target)
   of SchemeType.Ws, SchemeType.Ftp, SchemeType.Wss, SchemeType.NotSpecial:
     assert off, "Not supported"
   of SchemeType.Http, SchemeType.Https:
-    loadUrl(view, view.target)
+    loadURL(view, view.target)
   of SchemeType.File:
     loadFile(view, view.target.host & view.target.pathname)
 
@@ -322,6 +328,8 @@ proc handleFocusedDomElement(
       # TODO: The styling engine needs to support :not so that if an anchor element
       # doesn't have a href, it should _NOT_ appear as clickable due to `cursor: pointer`
       # in Sirius' UA stylesheet globally applied to all anchors.
+      echo "click on " & &anchorElement.href
+      echo "======\n"
       loadURL(view, &view.resolveURLSegment(&anchorElement.href))
 
     return true
@@ -375,7 +383,8 @@ proc loop*(view: WebView): int =
     of EventKind.CursorFocusObtained:
       view.app.setCursorShape(Shape.Default)
     of EventKind.CursorClick:
-      handleFocusedElement(view, clicked = true)
+      if event.cursor.state == ButtonState.Released:
+        handleFocusedElement(view, clicked = true)
     else:
       discard # debug "Unhandled surfer event", kind = event.kind
 
