@@ -1,7 +1,7 @@
 ## Painter implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/tables, options
+import std/[monotimes, tables, times, options]
 import pkg/[nanovg, shakar, vmath], pkg/nanovg/wrapper
 import
   components/gfx/types, components/layout/[output_manager, types], components/os/fonts
@@ -85,6 +85,16 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
     draw(ctx, child)
 
 proc drawTree*(ctx: RenderingContext) =
+  let currTime = getMonoTime()
+
+  let delta = float32(inMilliseconds(currTime - ctx.lastRender)) / 100'f32
+  if ctx.scrollVelocity > 0'f32:
+    ctx.scrollVelocity = max(0'f32, ctx.scrollVelocity - delta)
+  elif ctx.scrollVelocity < 0'f32:
+    ctx.scrollVelocity = min(0'f32, ctx.scrollVelocity + delta)
+
+  ctx.viewerPosition.y += -ctx.scrollVelocity
+
   # HACK: We don't have something like the Initial Containing Block right now,
   # so we can just paint the initial background as whatever <html> has. That
   # element should inherit <body>'s color if not specified for itself.
@@ -99,3 +109,5 @@ proc drawTree*(ctx: RenderingContext) =
   ctx.vg.fill()
 
   draw(ctx, ctx.tree)
+
+  ctx.lastRender = currTime

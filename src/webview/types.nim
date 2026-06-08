@@ -45,6 +45,7 @@ type
     focusedElement*: Option[LayoutNode]
 
     imageCache*: TableRef[string, pixie.Image]
+    failedPlaceholderImage*: pixie.Image
 
   WebView* = ref WebViewObj
 

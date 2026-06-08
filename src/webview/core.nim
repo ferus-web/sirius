@@ -25,7 +25,10 @@ proc initWebView*(opts: WebViewOpts): WebView =
     outputManager: OutputManager(),
     imageCache: newTable[string, pixie.Image](),
     opts: opts,
+    failedPlaceholderImage: newImage(64, 64),
   )
+  webview.failedPlaceholderImage.fill(rgb(255, 0, 0))
+
   webview.app.initialize()
   webview.app.createWindow(ivec2(1024, 768), Renderer.GLES)
   webview.renderCtx = newRenderingContext()
@@ -190,6 +193,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
           except pixie.PixieError as exc:
             error "Failed to decode image, it will not be shown!",
               err = exc.msg, src = &src, size = resp.body.stream.data.len
+            view.imageCache[&srcRaw] = view.failedPlaceholderImage
         else:
           let data = (&dataUrl)
           assert data.base64
@@ -199,7 +203,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
           except pixie.PixieError as exc:
             error "Failed to decode image, it will not be shown!",
               err = exc.msg, src = &src, size = data.data.len
-      ,
+            view.imageCache[&srcRaw] = view.failedPlaceholderImage,
     ),
   )
   userAgent.close()
@@ -328,8 +332,6 @@ proc handleFocusedDomElement(
       # TODO: The styling engine needs to support :not so that if an anchor element
       # doesn't have a href, it should _NOT_ appear as clickable due to `cursor: pointer`
       # in Sirius' UA stylesheet globally applied to all anchors.
-      echo "click on " & &anchorElement.href
-      echo "======\n"
       loadURL(view, &view.resolveURLSegment(&anchorElement.href))
 
     return true
@@ -382,6 +384,8 @@ proc loop*(view: WebView): int =
       handleFocusedElement(view, clicked = false)
     of EventKind.CursorFocusObtained:
       view.app.setCursorShape(Shape.Default)
+    of EventKind.CursorScroll:
+      view.renderCtx.scrollVelocity = event.cursor.scroll * 0.25'f32
     of EventKind.CursorClick:
       if event.cursor.state == ButtonState.Released:
         handleFocusedElement(view, clicked = true)
