@@ -14,7 +14,8 @@ body {
 }
 
 * {
-  cursor: default;  
+  cursor: default;
+  color: black;
 
   font-family: serif;
   font-size: 16px; /* HACK: To prevent crashes on elements we don't handle here. In the long run we should probs fix how we resolve font-size instead. */

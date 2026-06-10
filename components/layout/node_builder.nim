@@ -29,6 +29,9 @@ const
 
   CursorAttr = "cursor"
 
+  LineHeightAttr = "line-height"
+  PaddingAttr = "padding"
+
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
   # TODO: This routine doesn't belong here.
@@ -41,11 +44,13 @@ func cleanFontFamily(family: CSSValue): string =
   else:
     discard
 
-proc applyMarginAttr(layoutNode: LayoutNode, prop: CSSValue): Result[void, string] =
+proc applyRectAttr[T: object](output: var T, prop: CSSValue): Result[void, string] =
   if prop.kind == CSSValueKind.Dimension:
     let value = some(prop)
-    layoutNode.margins =
-      LayoutMargins(top: value, bottom: value, left: value, right: value)
+    output.top = value
+    output.bottom = value
+    output.left = value
+    output.right = value
   elif prop.kind == CSSValueKind.List:
     case prop.list.len
     of 1:
@@ -54,30 +59,28 @@ proc applyMarginAttr(layoutNode: LayoutNode, prop: CSSValue): Result[void, strin
       let
         horiz = some(prop.list[0])
         vert = some(prop.list[1])
-      layoutNode.margins =
-        LayoutMargins(top: vert, bottom: vert, left: horiz, right: horiz)
+
+      output.top = vert
+      output.bottom = vert
+      output.left = horiz
+      output.right = horiz
     of 3:
-      layoutNode.margins = LayoutMargins(
-        top: some(prop.list[0]),
-        left: some(prop.list[1]),
-        right: some(prop.list[1]),
-        bottom: some(prop.list[2]),
-      )
+      output.top = some(prop.list[0])
+      output.left = some(prop.list[1])
+      output.right = some(prop.list[1])
+      output.bottom = some(prop.list[2])
     of 4:
-      layoutNode.margins = LayoutMargins(
-        top: some(prop.list[0]),
-        right: some(prop.list[1]),
-        bottom: some(prop.list[2]),
-        left: some(prop.list[3]),
-      )
+      output.top = some(prop.list[0])
+      output.right = some(prop.list[1])
+      output.bottom = some(prop.list[2])
+      output.left = some(prop.list[3])
     else:
       return err(
-        &"Property 'margin' expects four values at most, got {prop.list.len} values instead."
+        &"Property expects four values at most, got {prop.list.len} values instead."
       )
   else:
-    return err(
-      &"Property 'margin' expects dimension or list of dimensions, got {prop.kind} instead."
-    )
+    return
+      err(&"Property expects dimension or list of dimensions, got {prop.kind} instead.")
 
 proc execColoringFunction*(node: LayoutNode, fn: CSSFunction): ColorRGBA =
   var col = rgba(0, 0, 0, 255)
@@ -271,19 +274,20 @@ proc handleNamedColor(value: string): Option[ColorRGBA] =
 
 proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
   for attr, prop in layoutNode.style:
-    if attr == DisplayAttr and layoutNode.display != DisplayMode.Anonymous:
-      if prop.kind != CSSValueKind.String:
-        warn "Ignoring display property, expected String.", got = prop.kind
-      else:
-        layoutNode.display = (
-          if prop.str == "block":
-            DisplayMode.Block
-          elif prop.str == "inline":
-            DisplayMode.Inline
-          else:
-            warn "Unhandled display property for node", display = prop
-            DisplayMode.Block
-        )
+    if attr == DisplayAttr:
+      if layoutNode.display != DisplayMode.Anonymous:
+        if prop.kind != CSSValueKind.String:
+          warn "Ignoring display property, expected String.", got = prop.kind
+        else:
+          layoutNode.display = (
+            if prop.str == "block":
+              DisplayMode.Block
+            elif prop.str == "inline":
+              DisplayMode.Inline
+            else:
+              warn "Unhandled display property for node", display = prop
+              DisplayMode.Block
+          )
     elif attr == FontSizeAttr:
       layoutNode.fontSize = some(prop)
     elif attr == MarginBottomAttr:
@@ -300,7 +304,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == MarginRightAttr:
       layoutNode.margins.right = some(prop)
     elif attr == MarginAttr:
-      if (let warning = applyMarginAttr(layoutNode, prop); *warning):
+      if (let warning = applyRectAttr(layoutNode.margins, prop); *warning):
         warn "Styling warning", msg = warning.error()
     elif attr == ColorAttr:
       if prop.kind == CSSValueKind.Function:
@@ -325,6 +329,13 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == CursorAttr:
       if prop.kind == CSSValueKind.String and prop.str != "auto":
         layoutNode.cursor = some(prop.str)
+    elif attr == LineHeightAttr:
+      layoutNode.lineHeight = some(prop)
+    elif attr == PaddingAttr:
+      if (let warning = applyRectAttr(layoutNode.padding, prop); *warning):
+        warn "Styling warning while applying padding", msg = warning.error()
+    else:
+      warn "Unhandled style property", name = attr
 
 proc createLayoutNode*(
     node: dom.Node,

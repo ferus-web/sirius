@@ -15,16 +15,21 @@ type
   LayoutMargins* = object
     top*, right*, bottom*, left*: Option[CSSValue]
 
+  LayoutPadding* = object
+    top*, right*, bottom*, left*: Option[CSSValue]
+
   LayoutNode* = ref object
     domNode*: dom.Node ## The associated DOM node with this element
     children*: seq[LayoutNode]
 
     display*: DisplayMode ## `display` attribute taken from computed style
     margins*: LayoutMargins
+    padding*: LayoutPadding
     fontFamily*: fonts.Font
     cursor*: Option[string]
     fontSize*: Option[CSSValue]
     color*, backgroundColor*: chroma.ColorRGBA
+    lineHeight*: Option[CSSValue]
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -51,6 +56,8 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.style = node.style
   result.content = node.content
   result.imageContent = node.imageContent
+  result.lineHeight = node.lineHeight
+  result.padding = node.padding
 
   result.relativePos = node.relativePos
   result.absolutePos = node.absolutePos
