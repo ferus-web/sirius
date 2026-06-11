@@ -35,6 +35,9 @@ const
 
   TextDecorationAttr = "text-decoration"
 
+  WidthAttr = "width"
+  HeightAttr = "height"
+
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
   # TODO: This routine doesn't belong here.
@@ -48,13 +51,14 @@ func cleanFontFamily(family: CSSValue): string =
     discard
 
 proc applyRectAttr[T: object](output: var T, prop: CSSValue): Result[void, string] =
-  if prop.kind == CSSValueKind.Dimension:
+  case prop.kind
+  of CSSValueKind.Dimension, CSSValueKind.Integer, CSSValueKind.Float:
     let value = some(prop)
     output.top = value
     output.bottom = value
     output.left = value
     output.right = value
-  elif prop.kind == CSSValueKind.List:
+  of CSSValueKind.List:
     case prop.list.len
     of 1:
       unreachable
@@ -82,8 +86,9 @@ proc applyRectAttr[T: object](output: var T, prop: CSSValue): Result[void, strin
         &"Property expects four values at most, got {prop.list.len} values instead."
       )
   else:
-    return
-      err(&"Property expects dimension or list of dimensions, got {prop.kind} instead.")
+    return err(
+      &"Property expects dimension, numeric or list of dimensions and numerics, got {prop.kind} instead."
+    )
 
   ok()
 
@@ -383,6 +388,10 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
         !warning
       ):
         warn "Styling warning while applying text-decoration", msg = warning.error()
+    elif attr == WidthAttr:
+      layoutNode.width = some(prop)
+    elif attr == HeightAttr:
+      layoutNode.height = some(prop)
     else:
       warn "Unhandled style property", name = attr
 

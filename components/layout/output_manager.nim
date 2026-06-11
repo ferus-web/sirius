@@ -9,7 +9,9 @@ import components/style/types
 type OutputManager* = ref object
   pixelsPerInch*: float32 = 96.0f
 
-func computePixels*(manager: OutputManager, value: CSSValue): float32 =
+func computePixels*(
+    manager: OutputManager, value: CSSValue, relativeBase: float32 = 0'f32
+): float32 =
   if value.kind == CSSValueKind.Integer:
     # HACK: This is to make `em` half-work.
     return float32(value.num)
@@ -27,4 +29,4 @@ func computePixels*(manager: OutputManager, value: CSSValue): float32 =
   of CSSUnit.In:
     return value.dim.value * manager.pixelsPerInch
   of CSSUnit.Percent:
-    unreachable
+    return value.dim.value * relativeBase

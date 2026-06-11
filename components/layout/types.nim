@@ -32,6 +32,7 @@ type
     color*, backgroundColor*: chroma.ColorRGBA
     lineHeight*: Option[CSSValue]
     textDecoration*: TextDecoration
+    width*, height*: Option[CSSValue]
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -61,6 +62,8 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.lineHeight = node.lineHeight
   result.padding = node.padding
   result.textDecoration = node.textDecoration
+  result.width = node.width
+  result.height = node.height
 
   result.relativePos = node.relativePos
   result.absolutePos = node.absolutePos

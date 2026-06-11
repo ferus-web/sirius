@@ -49,8 +49,7 @@ proc parseValueFromToken*(parser: Parser, token: Token): Result[CSSValue, string
       else:
         return ok(number(&token.dIntVal))
   of tkPercentage:
-    return ok(dimension(token.pUnitValue * 100, CSSUnit.Percent))
-      # FIXME: for some weird reason, percentage tokens are divided by 100 in stylus?
+    return ok(dimension(token.pUnitValue, CSSUnit.Percent))
   of tkIdent:
     return ok(str(token.ident))
   of tkQuotedString:
