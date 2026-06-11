@@ -127,4 +127,6 @@ img {
   display: inline;
 }
 
-p, h1, h2, h3, h4, h5, h6, strong, b, footer, blockquote { cursor: text; }
+p, h1, h2, h3, h4, h5, h6, strong, b, footer, blockquote, li {
+  cursor: text;
+} /* FIXME: Ideally, this should target all anonymous nodes that have text in them. */
