@@ -3,6 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, sequtils, strformat, strutils, tables]
 import
+  components/css/[text_decoration, types],
   components/dom/[dom, tags],
   components/html/dom_utils,
   components/style/types,
@@ -31,6 +32,8 @@ const
 
   LineHeightAttr = "line-height"
   PaddingAttr = "padding"
+
+  TextDecorationAttr = "text-decoration"
 
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
@@ -272,6 +275,44 @@ proc handleNamedColor(value: string): Option[ColorRGBA] =
 
   none(ColorRGBA)
 
+proc applyTextDecorationAttr(
+    decor: out TextDecoration, value: CSSValue
+): Result[void, string] =
+  func handleDecorationUnit(
+      decor: var TextDecoration, unit: string
+  ): Result[void, string] {.inline.} =
+    let prop = toLowerAscii(unit)
+    if (let decorLine = getTextDecorationLine(prop); *decorLine):
+      decor.line = &decorLine
+      return ok()
+
+    if (let decorStyle = getTextDecorationStyle(prop); *decorStyle):
+      decor.style = &decorStyle
+      return ok()
+
+    if (let underlineStyle = getTextUnderlineStyle(prop); *underlineStyle):
+      decor.underlineStyle = &underlineStyle
+      return ok()
+
+    err(&"Unknown value '{unit}' for text-decoration")
+
+  decor = TextDecoration()
+  case value.kind
+  of CSSValueKind.String:
+    return handleDecorationUnit(decor, value.str)
+  of CSSValueKind.List:
+    for val in value.list:
+      if val.kind != CSSValueKind.String:
+        return err(&"Expected String for text-decoration, got {val.kind}")
+
+      let res = handleDecorationUnit(decor, val.str)
+      if !res:
+        return res
+  else:
+    return err(
+      &"Property 'text-decoration' expects list of decorations or String, got {value.kind} instead."
+    )
+
 proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
   for attr, prop in layoutNode.style:
     if attr == DisplayAttr:
@@ -304,7 +345,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == MarginRightAttr:
       layoutNode.margins.right = some(prop)
     elif attr == MarginAttr:
-      if (let warning = applyRectAttr(layoutNode.margins, prop); *warning):
+      if (let warning = applyRectAttr(layoutNode.margins, prop); !warning):
         warn "Styling warning", msg = warning.error()
     elif attr == ColorAttr:
       if prop.kind == CSSValueKind.Function:
@@ -332,8 +373,14 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == LineHeightAttr:
       layoutNode.lineHeight = some(prop)
     elif attr == PaddingAttr:
-      if (let warning = applyRectAttr(layoutNode.padding, prop); *warning):
+      if (let warning = applyRectAttr(layoutNode.padding, prop); !warning):
         warn "Styling warning while applying padding", msg = warning.error()
+    elif attr == TextDecorationAttr:
+      if (
+        let warning = applyTextDecorationAttr(layoutNode.textDecoration, prop)
+        !warning
+      ):
+        warn "Styling warning while applying text-decoration", msg = warning.error()
     else:
       warn "Unhandled style property", name = attr
 

@@ -4,7 +4,33 @@
 import std/[monotimes, tables, times, options]
 import pkg/[nanovg, shakar, vmath], pkg/nanovg/wrapper
 import
-  components/gfx/types, components/layout/[output_manager, types], components/os/fonts
+  components/css/types,
+  components/gfx/types,
+  components/layout/[output_manager, types],
+  components/os/fonts
+
+proc drawNodeTextUnderline(ctx: RenderingContext, node: LayoutNode) =
+  var yLevel: float32
+
+  case node.textDecoration.line
+  of TextDecorationLine.None:
+    return
+  of TextDecorationLine.Underline:
+    yLevel = node.absolutePos.y + node.dimensions.y
+  of TextDecorationLine.Overline:
+    yLevel = node.absolutePos.y
+  of TextDecorationLine.LineThrough:
+    yLevel = node.absolutePos.y + (node.dimensions.y * 0.5'f32)
+  of TextDecorationLine.Blink:
+    discard "Deprecated"
+
+  ctx.vg.beginPath()
+  ctx.vg.moveTo(node.absolutePos.x, yLevel)
+  ctx.vg.lineTo(node.absolutePos.x + node.dimensions.x, yLevel)
+  ctx.vg.strokeColor(rgba(node.color.r, node.color.g, node.color.b, node.color.a))
+    # TODO: Support for `text-decoration-color` in the CSS subsystem
+  ctx.vg.strokeWidth(2'f32) # TODO: Support for `text-decoration-thickness`
+  ctx.vg.stroke()
 
 proc draw(ctx: RenderingContext, node: LayoutNode) =
   if node == nil:
@@ -74,12 +100,12 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
     ctx.vg.fontFace(cast[nanovg.Font](node.fontFamily.impl))
     ctx.vg.fillColor(rgba(node.color.r, node.color.g, node.color.b, node.color.a))
     ctx.vg.textAlign(haLeft, vaTop)
-    # echo $node.absolutePos & " @ " & $fontsize & "px"
     discard ctx.vg.text(
       node.absolutePos.x + ctx.viewerPosition.x,
       node.absolutePos.y + ctx.viewerPosition.y,
       node.content,
     )
+    drawNodeTextUnderline(ctx, node)
 
   for child in node.children:
     draw(ctx, child)

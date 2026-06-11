@@ -3,7 +3,8 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
 import pkg/[chroma, pixie, vmath]
-import components/dom/dom, components/style/types, components/os/fonts
+import
+  components/dom/dom, components/style/types, components/os/fonts, components/css/types
 
 type
   DisplayMode* {.pure, size: sizeof(uint8).} = enum
@@ -30,6 +31,7 @@ type
     fontSize*: Option[CSSValue]
     color*, backgroundColor*: chroma.ColorRGBA
     lineHeight*: Option[CSSValue]
+    textDecoration*: TextDecoration
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -58,6 +60,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.imageContent = node.imageContent
   result.lineHeight = node.lineHeight
   result.padding = node.padding
+  result.textDecoration = node.textDecoration
 
   result.relativePos = node.relativePos
   result.absolutePos = node.absolutePos
