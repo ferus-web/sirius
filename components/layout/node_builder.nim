@@ -85,6 +85,8 @@ proc applyRectAttr[T: object](output: var T, prop: CSSValue): Result[void, strin
     return
       err(&"Property expects dimension or list of dimensions, got {prop.kind} instead.")
 
+  ok()
+
 proc execColoringFunction*(node: LayoutNode, fn: CSSFunction): ColorRGBA =
   var col = rgba(0, 0, 0, 255)
 
@@ -346,7 +348,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       layoutNode.margins.right = some(prop)
     elif attr == MarginAttr:
       if (let warning = applyRectAttr(layoutNode.margins, prop); !warning):
-        warn "Styling warning", msg = warning.error()
+        warn "Styling warning while applying margin", msg = warning.error()
     elif attr == ColorAttr:
       if prop.kind == CSSValueKind.Function:
         layoutNode.color = layoutNode.execColoringFunction(prop.fn)
