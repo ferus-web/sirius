@@ -12,7 +12,7 @@ type
     skClass
     skUniversal # skPseudoClass, skPseudoElem
 
-  SelectorList* = seq[Selector]
+  SelectorList* = seq[ComplexSelector]
 
   Selector* = object
     case kind*: SelectorKind
@@ -26,22 +26,19 @@ type
       attr*: string
     of skUniversal: discard
 
-  PseudoClass* = enum
-    pcFirstChild
-    pcLastChild
-    pcOnlyChild
-    pcHover
-    pcRoot
-    pcNthChild
-    pcNthLastChild
-    pcChecked
-    pcFocus
-    pcIs
-    pcNot
-    pcWhere
-    pcLang
-    pcLink
-    pcVisited
+  Combinator* {.pure, size: sizeof(uint8).} = enum
+    Descendant
+    Child
+    Adjacent
+    Sibling
+
+  CompoundSelector* = seq[Selector]
+
+  ComplexItem* = object
+    selector*: CompoundSelector
+    combinator*: Combinator
+
+  ComplexSelector* = seq[ComplexItem]
 
   CSSUnit* {.pure.} = enum
     Px
@@ -84,11 +81,14 @@ type
     of CSSValueKind.List:
       list*: seq[CSSValue]
 
-  Stylesheet* = seq[Rule]
-  Rule* = object
-    selectors*: seq[Selector]
+  Declaration* = object
     key*: string
     value*: CSSValue
+
+  Stylesheet* = seq[Rule]
+  Rule* = object
+    selectors*: SelectorList
+    declarations*: seq[Declaration]
 
   ComputedStyle* = Table[string, CSSValue]
   StyleMap* = Table[Node, ComputedStyle]

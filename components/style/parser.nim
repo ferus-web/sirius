@@ -83,7 +83,7 @@ proc parseFunction*(parser: Parser, nameTok: Token): Option[CSSValue] {.inline.}
   parser.atStartOf = none(BlockType)
   some(function(name, move(args)))
 
-proc parseRule*(parser: Parser): Option[Rule] =
+proc parseDeclaration*(parser: Parser): Option[Declaration] =
   let startInput = parser.input.clone()
 
   let ident = parser.expectIdent()
@@ -125,10 +125,10 @@ proc parseRule*(parser: Parser): Option[Rule] =
       break
     else:
       # assert off, $value.kind # & ' ' & $value.delim
-      return none(Rule)
+      return none(Declaration)
 
   return some(
-    Rule(
+    Declaration(
       key: (&ident),
       value:
         if values.list.len == 1:
@@ -138,7 +138,7 @@ proc parseRule*(parser: Parser): Option[Rule] =
     )
   )
 
-proc eatRules(parser: Parser, selectors: seq[Selector], rules: var Stylesheet) =
+proc eatDeclarations(parser: Parser, decls: var seq[Declaration]) =
   template checkEnd() =
     let state = parser.input.clone()
     if *parser.expectCloseCurlyBracket:
@@ -152,13 +152,11 @@ proc eatRules(parser: Parser, selectors: seq[Selector], rules: var Stylesheet) =
   while not parser.eof:
     checkEnd()
 
-    let ruleOpt = parseRule(parser)
-    if !ruleOpt:
+    let declOpt = parseDeclaration(parser)
+    if !declOpt:
       break
 
-    var rule = get ruleOpt
-    rule.selectors = selectors
-    rules &= ensureMove(rule)
+    decls &= &declOpt
 
     checkEnd()
 
@@ -206,45 +204,136 @@ proc parseSelector(parser: Parser, initial: Token): Option[Selector] =
   else:
     return
 
-proc parseSelectors(parser: Parser, initial: Token): seq[Selector] =
-  var sels: seq[Selector]
-
+proc parseSelectors*(parser: Parser, initial: Token): SelectorList =
+  var sels: SelectorList
   var token = initial
+
   while not parser.eof:
-    let selector = parser.parseSelector(token)
-    if !selector:
-      break
+    var complexSel: ComplexSelector
 
-    sels &= &selector
+    while not parser.eof:
+      var compSels: CompoundSelector
 
-    let preNextInput = parser.input.clone()
+      while not parser.eof:
+        let selector = parser.parseSelector(token)
+        if !selector:
+          break
+
+        compSels &= &selector
+
+        let preNextInput = parser.input.clone()
+        let tok = parser.next()
+        if !tok:
+          break
+
+        token = &tok
+
+        if token.kind in {tkCurlyBracketBlock, tkComma, tkWhitespace} or
+            (token.kind == tkDelim and token.delim in {'>', '+', '~'}):
+          parser.input = preNextInput
+          break
+        else:
+          discard
+
+      if compSels.len == 0:
+        break
+
+      var nextCombinator = Combinator.Descendant
+      var hitEnd = false
+      var hasWhitespace = false
+
+      var prePeekInput = parser.input.clone()
+      var tok = parser.next()
+
+      while *tok and (&tok).kind == tkWhitespace:
+        hasWhitespace = true
+        prePeekInput = parser.input.clone()
+        tok = parser.next()
+
+      if !tok:
+        complexSel &= ComplexItem(selector: compSels, combinator: nextCombinator)
+        break
+
+      token = &tok
+
+      case token.kind
+      of tkCurlyBracketBlock, tkComma:
+        hitEnd = true
+        complexSel &= ComplexItem(selector: compSels, combinator: Combinator.Descendant)
+
+        parser.input = prePeekInput
+      of tkDelim:
+        if token.delim in {'>', '~', '+'}:
+          if token.delim == '>':
+            nextCombinator = Combinator.Child
+          elif token.delim == '+':
+            nextCombinator = Combinator.Adjacent
+          elif token.delim == '~':
+            nextCombinator = Combinator.Sibling
+
+          complexSel &= ComplexItem(selector: compSels, combinator: nextCombinator)
+
+          var trailTok = parser.next()
+          while *trailTok and (&trailTok).kind == tkWhitespace:
+            trailTok = parser.next()
+
+          if *trailTok:
+            token = &trailTok
+          else:
+            break
+        else:
+          hitEnd = true
+          complexSel &=
+            ComplexItem(selector: compSels, combinator: Combinator.Descendant)
+          parser.input = prePeekInput
+      else:
+        if hasWhitespace:
+          complexSel &=
+            ComplexItem(selector: compSels, combinator: Combinator.Descendant)
+        else:
+          hitEnd = true
+          complexSel &=
+            ComplexItem(selector: compSels, combinator: Combinator.Descendant)
+          parser.input = prePeekInput
+
+      if hitEnd:
+        break
+
+    if complexSel.len > 0:
+      sels &= complexSel
+
+    let preBoundaryInput = parser.input.clone()
     let tok = parser.next()
     if !tok:
       break
-
     token = &tok
+
     case token.kind
     of tkComma:
-      token = &parser.next()
+      var nextTok = parser.next()
+      while *nextTok and (&nextTok).kind == tkWhitespace:
+        nextTok = parser.next()
+      if *nextTok:
+        token = &nextTok
       continue
-    of tkCurlyBracketBlock:
-      parser.input = preNextInput
     else:
-      discard
+      parser.input = preBoundaryInput
+      break
 
-    break
+  return sels
 
-  ensureMove(sels)
+proc handleRuleset(parser: Parser, token: Token): Option[Rule] =
+  var rule: Rule
 
-proc handleRuleset(parser: Parser, token: Token): Stylesheet =
-  var rules: Stylesheet
   let selectors = parseSelectors(parser, initial = token)
 
   if !parser.expectCurlyBracketBlock():
-    return
+    return none(Rule)
 
-  eatRules(parser, selectors, rules)
-  ensureMove(rules)
+  rule.selectors = selectors
+  eatDeclarations(parser, rule.declarations)
+
+  some(ensureMove(rule))
 
 proc parseStylesheet*(parser: Parser): Stylesheet =
   var rules: Stylesheet
@@ -254,7 +343,14 @@ proc parseStylesheet*(parser: Parser): Stylesheet =
     if !token:
       break
 
-    rules &= handleRuleset(parser, &token)
+    if (&token).kind in {tkWhitespace, tkComment}:
+      continue
+
+    let rule = handleRuleset(parser, &token)
+    if !rule:
+      break
+
+    rules &= &rule
 
   ensureMove(rules)
 
