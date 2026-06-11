@@ -338,6 +338,7 @@ proc handleFocusedDomElement(
 
 proc handleFocusedElement(view: WebView, clicked: bool = false) =
   if !view.focusedElement:
+    view.app.setCursorShape(Shape.Default)
     return
 
   let elem = &view.focusedElement
