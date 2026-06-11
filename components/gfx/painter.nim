@@ -10,17 +10,19 @@ import
   components/os/fonts
 
 proc drawNodeTextUnderline(ctx: RenderingContext, node: LayoutNode) =
-  var yLevel: float32
+  let posX = node.absolutePos.x + ctx.viewerPosition.x
+  var yLevel = node.absolutePos.y + ctx.viewerPosition.y
 
   case node.textDecoration.line
   of TextDecorationLine.None:
     return
   of TextDecorationLine.Underline:
-    yLevel = node.absolutePos.y + node.dimensions.y
+    yLevel += node.dimensions.y
   of TextDecorationLine.Overline:
-    yLevel = node.absolutePos.y
+    discard
+  # We're already at the correct position.
   of TextDecorationLine.LineThrough:
-    yLevel = node.absolutePos.y + (node.dimensions.y * 0.5'f32)
+    yLevel += node.dimensions.y * 0.5'f32
   of TextDecorationLine.Blink:
     discard "Deprecated"
 
