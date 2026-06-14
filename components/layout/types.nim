@@ -42,6 +42,8 @@ type
     dimensions*: vmath.Vec2
 
 proc clone*(node: LayoutNode): LayoutNode =
+  assert(node != nil)
+
   result = new(LayoutNode)
   result.domNode = node.domNode
 

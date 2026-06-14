@@ -3,7 +3,7 @@
   "packages": {
     "serialization": {
       "version": "0.5.2",
-      "commit": "b0f2fa32960ea532a184394b0f27be37bd80248b",
+      "commit": "1790d8a931fce125d6722f7ee8432ee8c054d297",
       "url": "https://github.com/status-im/nim-serialization",
       "checksum": "974c434b5e8d1369b7a78c38d864916a784b79ba32a28205b89cfbe59344df8b"
     },
@@ -73,6 +73,12 @@
       "url": "https://github.com/treeform/flatty",
       "checksum": "7c19fafe94ec272a273d373a2ec9849c0ecb97f9bd906ba388e5c0a0e5845ad5"
     },
+    "gh:planetis-m/vulkan": {
+      "version": "1.4.344",
+      "commit": "07669e9c954d2e18e478015504b7b5b1bb32a0ae",
+      "url": "gh:planetis-m/vulkan",
+      "checksum": "d3f0f57cffadec70a012d25447e33ce8a973c77edb6def28103c8009f261b95b"
+    },
     "results": {
       "version": "0.5.1",
       "commit": "df8113dda4c2d74d460a8fa98252b0b771bf1f27",
@@ -86,10 +92,10 @@
       "checksum": "0957d2c2474abd002f3e8ea744fbd2ea6edc1a255894af28b5d80e2efacc3373"
     },
     "surfer": {
-      "version": "0.2.2",
-      "commit": "8bec94567a095b9d3a7684ce5fd0984b241034c6",
+      "version": "0.2.4",
+      "commit": "0854ed13784bd33a3d4043b33de84d3b38b32d87",
       "url": "https://github.com/nim-windowing/surfer",
-      "checksum": "dfa39a0490b13218b8373eca2f99d4e9b0c7555f632aa9fdcbdbe445474f539d"
+      "checksum": "580dc8604e8327dba62786d8ef903b1366f840abe07509f125657b1edfcf8e21"
     },
     "xkb": {
       "version": "1.4.1",

@@ -6,6 +6,7 @@ mkShell {
     curl
     clang
     wayland
+    vulkan-loader
     libxkbcommon
     fontconfig
     libGL
@@ -16,6 +17,7 @@ mkShell {
     wayland.dev
     fontconfig.dev
     libGL.dev
+    vulkan-loader.dev
     libxkbcommon.dev
   ];
 }

@@ -16,6 +16,19 @@ import
 logScope:
   topics = "webview/core"
 
+proc waitForRendererInit(webview: WebView) =
+  # A tiny hack because some compositors are incredibly strict about buffer attach timings.
+  # Here, we wait till Surfer signals that the renderer context is ready.
+
+  while true:
+    let event = &webview.app.flushQueue()
+    echo event.kind
+    if event.kind == EventKind.WindowResized:
+      break # The OpenGL context is (probably) ready.
+    elif event.kind == EventKind.RedrawRequested:
+      # We should respond to these with a requeue.
+      webview.app.queueRedraw()
+
 proc initWebView*(opts: WebViewOpts): WebView =
   debug "Initialize WebView"
   setThreadName("WebView")
@@ -31,7 +44,9 @@ proc initWebView*(opts: WebViewOpts): WebView =
 
   webview.app.initialize()
   webview.app.createWindow(ivec2(1024, 768), Renderer.GLES)
-  webview.renderCtx = newRenderingContext()
+  waitForRendererInit(webview)
+
+  webview.renderCtx = newRenderingContext(vec2(webview.app.windowSize))
 
   webview.fontProvider = initFontProvider(getLoaderImplementation(webview.renderCtx.vg))
   webview.assetProvider = initAssetProvider(
@@ -345,6 +360,13 @@ proc handleFocusedElement(view: WebView, clicked: bool = false) =
   if elem.domNode of dom.Element:
     handleFocusedDomElement(view, elem, Element(elem.domNode), clicked = clicked)
 
+proc handleWindowResize(view: WebView, viewportSize: IVec2) =
+  view.renderCtx.resize(vec2(viewportSize))
+  view.renderCtx.tree = view.tree.clone()
+  view.renderCtx.tree.computeLayout(
+    vec2(0, 0), float32(viewportSize.x), view.outputManager
+  )
+
 proc loop*(view: WebView): int =
   info "Entering main loop"
 
@@ -359,11 +381,7 @@ proc loop*(view: WebView): int =
       view.renderCtx.drawFrame()
       view.app.queueRedraw()
     of EventKind.WindowResized:
-      view.renderCtx.resize(vec2(event.windowSize))
-      view.renderCtx.tree = view.tree.clone()
-      view.renderCtx.tree.computeLayout(
-        vec2(0, 0), float32(event.windowSize.x), view.outputManager
-      )
+      handleWindowResize(view, event.windowSize)
       # print view.renderCtx.tree
     of EventKind.KeyPressed, EventKind.KeyRepeated:
       let keysym = view.app.xkbState.getOneSym(event.key.code + 8)
