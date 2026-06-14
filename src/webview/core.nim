@@ -22,7 +22,6 @@ proc waitForRendererInit(webview: WebView) =
 
   while true:
     let event = &webview.app.flushQueue()
-    echo event.kind
     if event.kind == EventKind.WindowResized:
       break # The OpenGL context is (probably) ready.
     elif event.kind == EventKind.RedrawRequested:
