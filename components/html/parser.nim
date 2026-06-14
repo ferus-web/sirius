@@ -4,7 +4,7 @@
 
 import std/[algorithm, hashes, options, sets, streams, tables]
 import pkg/chame/[htmlparser, tags]
-import components/dom/prelude, components/html/dom_utils
+import components/dom/prelude, components/html/dom_utils, components/impure/simdutf
 
 export tags
 
@@ -32,8 +32,13 @@ include chame/htmlparseriface
 
 # We use this to validate input strings, since htmltokenizer/htmlparser does no
 # input validation.
-proc toValidUTF8(s: string): string =
-  result = ""
+func toValidUTF8(s: string): string =
+  if s.len < 1 or validateUtf8(s[0].addr, cast[uint64](s.len)):
+    # OPTIMIZE: If simdutf says the buffer is well-formed UTF-8, we needn't fix it up.
+    return s
+
+  result = newStringOfCap(s.len)
+
   var i = 0
   while i < s.len:
     if int(s[i]) < 0x80:

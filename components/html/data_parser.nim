@@ -3,6 +3,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[tables, options]
+import components/impure/simdutf
 
 type
   MediaType* = object
@@ -22,6 +23,34 @@ type
     ParamKey
     ParamValue
     Data
+
+func decodeBase64*(url: DataURL): Option[string] =
+  if not url.base64:
+    return none(string)
+
+  let
+    opts = {Base64Options.DefaultAcceptGarbage}
+    bufferSize =
+      simdutf.base64LengthFromBinary(cast[uint64](url.data.len), options = opts)
+
+  var
+    buffer = newString(bufferSize)
+    emissionCount = bufferSize
+
+  let res = simdutf.base64ToBinarySafe(
+    input = url.data[0].addr,
+    length = cast[uint64](url.data.len),
+    output = buffer[0].addr,
+    outlen = emissionCount.addr,
+    options = opts,
+    lastChunkOptions = LastChunkHandlingOptions.Loose,
+    decodeUpToBadChar = false,
+  )
+
+  if res.error != ErrorCode.Success:
+    return none(string)
+
+  some(ensureMove(buffer))
 
 func parseDataURL*(buffer: string): Option[DataURL] =
   if buffer.len > cast[int64](uint32.high):

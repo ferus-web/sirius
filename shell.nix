@@ -9,6 +9,7 @@ mkShell {
     vulkan-loader
     libxkbcommon
     fontconfig
+    simdutf
     libGL
   ];
 
@@ -16,6 +17,7 @@ mkShell {
     curl.dev
     wayland.dev
     fontconfig.dev
+    simdutf
     libGL.dev
     vulkan-loader.dev
     libxkbcommon.dev

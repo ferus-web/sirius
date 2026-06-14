@@ -1,7 +1,7 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[base64, options, streams, strformat, strutils, sequtils, tables]
+import std/[options, streams, strformat, strutils, sequtils, tables]
 import ./[hit_testing, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
@@ -192,9 +192,9 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         element.width = element.getUintAttr(factory, "width")
         element.height = element.getUintAttr(factory, "height")
 
-        let dataUrl = parseDataURL(&srcRaw)
+        let dataUrlOpt = parseDataURL(&srcRaw)
 
-        if !dataUrl:
+        if !dataUrlOpt:
           let (resp, err) = view.net.getStream(&src)
 
           if err.kind != TransportErrorKind.None:
@@ -209,14 +209,18 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
               err = exc.msg, src = &src, size = resp.body.stream.data.len
             view.imageCache[&srcRaw] = view.failedPlaceholderImage
         else:
-          let data = (&dataUrl)
-          assert data.base64
+          let dataUrl = &dataUrlOpt
 
           try:
-            view.imageCache[&srcRaw] = decodeImage(base64.decode(data.data))
+            let decodedData = dataUrl.decodeBase64()
+
+            if *decodedData:
+              view.imageCache[&srcRaw] = decodeImage(&decodedData)
+            else:
+              warn "Image element has data URL, but its content could not be decoded as base64."
           except pixie.PixieError as exc:
             error "Failed to decode image, it will not be shown!",
-              err = exc.msg, src = &src, size = data.data.len
+              err = exc.msg, src = &srcRaw
             view.imageCache[&srcRaw] = view.failedPlaceholderImage,
     ),
   )
