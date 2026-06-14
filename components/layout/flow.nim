@@ -4,6 +4,7 @@
 import std/[options, tables]
 import
   components/style/types,
+  components/css/types,
   components/dom/[dom, tags],
   components/layout/[output_manager, types]
 import pkg/[chronicles, shakar, vmath]
@@ -43,6 +44,17 @@ proc resolveLineHeight*(
     return float32(value.num) * fontSize
   else:
     return fontSize * 1.2'f32
+
+func processTextContent(text: var string, whitespaceBehaviour: Whitespace) =
+  # FIXME: This is probably a bad way to do it.
+  case whitespaceBehaviour
+  of Whitespace.Normal, Whitespace.NoWrap, Whitespace.PreLine:
+    for i, c in text:
+      if c in {'\n', '\r', '\t'}:
+        text[i] = cast[char](0x20) # Replace the whitespace character with a space
+  else:
+    # TODO: Implement other behaviors in other components!
+    discard
 
 proc computeLayout*(
     node: LayoutNode,
@@ -161,6 +173,8 @@ proc computeLayout*(
           fontSize = computePixels(outputManager, &child.fontSize)
           lineHeight = resolveLineHeight(child.lineHeight, fontSize, outputManager)
 
+        processTextContent(child.content, node.whitespace)
+          # Process the text so that we can handle some values of `white-space` here.
         child.dimensions = vec2(
           float32(child.content.len) * (fontSize * 0.55'f32),
             # HACK: Estimate the character width at 55% of the height

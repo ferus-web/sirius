@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, sequtils, strformat, strutils, tables]
 import
-  components/css/[text_decoration, types],
+  components/css/[text, text_decoration, types],
   components/dom/[dom, tags],
   components/html/dom_utils,
   components/style/types,
@@ -37,6 +37,8 @@ const
 
   WidthAttr = "width"
   HeightAttr = "height"
+
+  WhitespaceAttr = "white-space"
 
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
@@ -392,6 +394,10 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       layoutNode.width = some(prop)
     elif attr == HeightAttr:
       layoutNode.height = some(prop)
+    elif attr == WhitespaceAttr:
+      if prop.kind == CSSValueKind.String and
+          (let whitespaceProp = getWhitespaceProperty(prop.str); *whitespaceProp):
+        layoutNode.whitespace = &whitespaceProp
     else:
       warn "Unhandled style property", name = attr
 

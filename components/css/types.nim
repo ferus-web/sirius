@@ -34,3 +34,15 @@ type
     line*: TextDecorationLine
     style*: TextDecorationStyle
     underlineStyle*: TextUnderlineStyle # TODO: color for `text-decoration-color`
+
+type
+  ## Types for the CSS Text Module Level 3 specification
+  ## https://www.w3.org/TR/css-text-3
+  Whitespace* {.pure, size: sizeof(uint8).} = enum
+    ## https://www.w3.org/TR/css-text-3/#white-space-property
+    Normal = 0
+    Pre
+    NoWrap
+    PreWrap
+    BreakSpaces
+    PreLine

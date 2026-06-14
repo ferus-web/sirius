@@ -33,6 +33,7 @@ type
     lineHeight*: Option[CSSValue]
     textDecoration*: TextDecoration
     width*, height*: Option[CSSValue]
+    whitespace*: Whitespace
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -64,6 +65,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.lineHeight = node.lineHeight
   result.padding = node.padding
   result.textDecoration = node.textDecoration
+  result.whitespace = node.whitespace
   result.width = node.width
   result.height = node.height
 
