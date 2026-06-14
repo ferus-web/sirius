@@ -92,10 +92,10 @@
       "checksum": "0957d2c2474abd002f3e8ea744fbd2ea6edc1a255894af28b5d80e2efacc3373"
     },
     "surfer": {
-      "version": "0.2.4",
-      "commit": "0854ed13784bd33a3d4043b33de84d3b38b32d87",
+      "version": "0.2.5",
+      "commit": "df5b95732252b7d639652703f459d7197826363b",
       "url": "https://github.com/nim-windowing/surfer",
-      "checksum": "580dc8604e8327dba62786d8ef903b1366f840abe07509f125657b1edfcf8e21"
+      "checksum": "57c802636d2afc68797db4429a2a2c83bac41f648dcc1a461a466709a1c841b2"
     },
     "xkb": {
       "version": "1.4.1",
