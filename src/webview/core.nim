@@ -187,14 +187,16 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         let relURL = view.resolveURLSegment(&href)
 
         info "Found external stylesheet", href = relURL
-        # FIXME: This blocks
-        let (resp, err) = view.loader.net.getStream(&relURL)
-
-        if resp.code == 200:
-          let style = resp.body.stream.readAll()
-          if not view.opts.disableExternalStylesheets:
-            view.style &= style
-      ,
+        discard view.loader.getAsyncStream(
+          &relURL,
+          finalize = proc(resp: Response, err: TransportError) =
+            if resp.code == 200:
+              let style = resp.body.stream.readAll()
+              if not view.opts.disableExternalStylesheets:
+                view.stylesheet &= parseStylesheet(newParser(newParserInput(style)))
+                view.reflow()
+          ,
+        ),
       fetchImageResource: proc(
           element: tags.HTMLImageElement, factory: dom.MAtomFactory
       ) =

@@ -22,8 +22,6 @@ proc getAsyncStream*(
 ): RequestID =
   let requestId = loader.net.requestCount
 
-  debugEcho "GET " & $url
-
   inc loader.net.requestCount
   let
     spec = RequestSpec(
