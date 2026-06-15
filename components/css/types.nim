@@ -2,6 +2,8 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
+import components/style/types
+import pkg/chroma
 
 type
   ## Types for the CSS Text Decoration Module Level 3 specification
@@ -33,7 +35,34 @@ type
     ## https://www.w3.org/TR/css-text-decor-3/#text-decoration-property
     line*: TextDecorationLine
     style*: TextDecorationStyle
-    underlineStyle*: TextUnderlineStyle # TODO: color for `text-decoration-color`
+    underlineStyle*: TextUnderlineStyle
+    color*: Option[chroma.ColorRGBA]
+
+type
+  ## Types from the CSS Level 1 specification
+  ## https://www.w3.org/TR/CSS1
+  FloatMode* {.pure, size: sizeof(uint8).} = enum
+    ## https://www.w3.org/TR/CSS1/#float
+    None = 0
+    Left
+    Right
+
+  BorderStyle* {.pure, size: sizeof(uint8).} = enum
+    ## https://www.w3.org/TR/CSS1/#border-style
+    None = 0
+    Dotted
+    Dashed
+    Solid
+    Double
+    Groove
+    Ridge
+    Inset
+    Outset
+
+  Border* = object ## https://www.w3.org/TR/CSS1/#border
+    width*: Option[CSSValue]
+    style*: Option[BorderStyle]
+    color*: Option[chroma.ColorRGBA]
 
 type
   ## Types for the CSS Text Module Level 3 specification

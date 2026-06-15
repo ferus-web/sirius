@@ -34,6 +34,8 @@ type
     textDecoration*: TextDecoration
     width*, height*: Option[CSSValue]
     whitespace*: Whitespace
+    floatMode*: FloatMode
+    border*: Border
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -68,6 +70,8 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.whitespace = node.whitespace
   result.width = node.width
   result.height = node.height
+  result.floatMode = node.floatMode
+  result.border = node.border
 
   result.relativePos = node.relativePos
   result.absolutePos = node.absolutePos

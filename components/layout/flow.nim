@@ -7,13 +7,16 @@ import
   components/css/types,
   components/dom/[dom, tags],
   components/layout/[output_manager, types]
-import pkg/[chronicles, shakar, vmath]
+import pkg/[bumpy, chronicles, shakar, vmath]
 
 logScope:
   topics = "layout/flow"
 
 proc resolveMargin*(
-    value: Option[CSSValue], availableWidth: float32, outputManager: OutputManager
+    value: Option[CSSValue],
+    availableWidth: float32,
+    outputManager: OutputManager,
+    fontSize: float32 = 0'f32,
 ): float32 =
   if !value:
     return 0.0'f32
@@ -21,7 +24,9 @@ proc resolveMargin*(
   let value = &value
   case value.kind
   of CSSValueKind.Dimension:
-    return outputManager.computePixels(value, relativeBase = availableWidth)
+    return outputManager.computePixels(
+      value, relativeBase = availableWidth, fontSize = fontSize
+    )
   of CSSValueKind.Integer:
     return float32(value.num)
   else:
@@ -85,7 +90,6 @@ proc computeLayout*(
 
       if *element.width:
         intrinsicWidth = float32(&element.width)
-
       if *element.height:
         intrinsicHeight = float32(&element.height)
 
@@ -100,14 +104,23 @@ proc computeLayout*(
     if node.display == DisplayMode.Block and node.dimensions.x > availableWidth:
       let ratio = availableWidth / node.dimensions.x
       node.dimensions = vec2(availableWidth, node.dimensions.y * ratio)
-
     return
 
   let
-    padTop = resolveMargin(node.padding.top, availableWidth, outputManager)
-    padBottom = resolveMargin(node.padding.bottom, availableWidth, outputManager)
-    padLeft = resolveMargin(node.padding.left, availableWidth, outputManager)
-    padRight = resolveMargin(node.padding.right, availableWidth, outputManager)
+    borderWidth =
+      if *node.border.width and *node.border.style and
+          (&node.border.style) != BorderStyle.None:
+        computePixels(outputManager, &node.border.width)
+      else:
+        0.0'f32
+
+    fontSize = computePixels(outputManager, &node.fontSize, fontSize = 16'f32)
+    padTop = resolveMargin(node.padding.top, availableWidth, outputManager, fontSize)
+    padBottom =
+      resolveMargin(node.padding.bottom, availableWidth, outputManager, fontSize)
+    padLeft = resolveMargin(node.padding.left, availableWidth, outputManager, fontSize)
+    padRight =
+      resolveMargin(node.padding.right, availableWidth, outputManager, fontSize)
 
     explicitWidth =
       if *node.width:
@@ -127,9 +140,24 @@ proc computeLayout*(
 
     layoutWidth =
       if *explicitWidth:
-        &explicitWidth + padLeft + padRight
+        &explicitWidth + padLeft + padRight + (borderWidth * 2.0'f32)
       else:
         availableWidth
+
+  var leftFloats, rightFloats: seq[Rect]
+
+  proc getLineBounds(y: float32): tuple[left, right: float32] =
+    var bounds =
+      (left: borderWidth + padLeft, right: layoutWidth - borderWidth - padRight)
+    for f in leftFloats:
+      if y >= f.y and y < (f.y + f.h):
+        bounds.left = max(bounds.left, f.x + f.w)
+
+    for f in rightFloats:
+      if y >= f.y and y < (f.y + f.h):
+        bounds.right = min(bounds.right, f.x)
+
+    ensureMove(bounds)
 
   var hasInline = false
   for child in node.children:
@@ -138,7 +166,73 @@ proc computeLayout*(
       break
 
   if not hasInline:
-    node.dimensions = vec2(layoutWidth, padTop)
+    node.dimensions = vec2(layoutWidth, borderWidth + padTop)
+    var currentY = borderWidth + padTop
+
+    for child in node.children:
+      let
+        fontSize = computePixels(outputManager, &child.fontSize, fontSize = 16'f32)
+          # FIXME: Not compliant.
+        marginTop =
+          resolveMargin(child.margins.top, layoutWidth, outputManager, fontSize)
+        marginBottom =
+          resolveMargin(child.margins.bottom, layoutWidth, outputManager, fontSize)
+        marginLeft =
+          resolveMargin(child.margins.left, layoutWidth, outputManager, fontSize)
+        marginRight =
+          resolveMargin(child.margins.right, layoutWidth, outputManager, fontSize)
+
+      if child.floatMode in {FloatMode.Left, FloatMode.Right}:
+        let bounds = getLineBounds(currentY)
+        let floatWidth = bounds.right - bounds.left - marginLeft - marginRight
+
+        let fPos = vec2(
+          node.absolutePos.x + bounds.left + marginLeft,
+          node.absolutePos.y + currentY + marginTop,
+        )
+        computeLayout(child, fPos, floatWidth, outputManager, explicitHeight)
+
+        if child.floatMode == FloatMode.Left:
+          child.absolutePos.x = node.absolutePos.x + bounds.left + marginLeft
+          leftFloats.add(
+            rect(
+              bounds.left,
+              currentY,
+              child.dimensions.x + marginLeft + marginRight,
+              child.dimensions.y + marginTop + marginBottom,
+            )
+          )
+        else:
+          let rEdge = bounds.right - child.dimensions.x - marginRight
+          child.absolutePos.x = node.absolutePos.x + rEdge
+          rightFloats.add(
+            rect(
+              rEdge,
+              currentY,
+              child.dimensions.x + marginLeft + marginRight,
+              child.dimensions.y + marginTop + marginBottom,
+            )
+          )
+        continue
+
+      let childAvailableWidth =
+        layoutWidth - (borderWidth * 2.0'f32) - padLeft - padRight - marginLeft -
+        marginRight
+      let cpos = vec2(
+        node.absolutePos.x + borderWidth + padLeft + marginLeft,
+        node.absolutePos.y + currentY + marginTop,
+      )
+      computeLayout(child, cpos, childAvailableWidth, outputManager, explicitHeight)
+      currentY += marginTop + child.dimensions.y + marginBottom
+
+    node.dimensions.y = currentY + padBottom + borderWidth
+  else:
+    node.dimensions.x = 0'f32
+
+    var cursor = vec2(borderWidth + padLeft, borderWidth + padTop)
+    var currLineHeight: float32
+    var maxLineWidth: float32
+    let innerAvailableWidth = layoutWidth - (borderWidth * 2.0'f32) - padLeft - padRight
 
     for child in node.children:
       let
@@ -147,105 +241,117 @@ proc computeLayout*(
         marginLeft = resolveMargin(child.margins.left, layoutWidth, outputManager)
         marginRight = resolveMargin(child.margins.right, layoutWidth, outputManager)
 
-        childAvailableWidth =
-          node.dimensions.x - padLeft - padRight - marginLeft - marginRight
+      if child.floatMode in {FloatMode.Left, FloatMode.Right}:
+        let bounds = getLineBounds(cursor.y)
+        let floatWidth = bounds.right - bounds.left - marginLeft - marginRight
 
-      let cpos = vec2(
-        node.absolutePos.x + padLeft + marginLeft,
-        node.absolutePos.y + node.dimensions.y + marginTop,
-      )
-      computeLayout(child, cpos, childAvailableWidth, outputManager, explicitHeight)
-      node.dimensions.y += marginTop + child.dimensions.y + marginBottom
+        computeLayout(child, vec2(0, 0), floatWidth, outputManager, explicitHeight)
 
-    node.dimensions.y += padBottom
-  else:
-    node.dimensions.x = 0'f32
+        if child.floatMode == FloatMode.Left:
+          child.absolutePos.x = node.absolutePos.x + bounds.left + marginLeft
+          child.absolutePos.y = node.absolutePos.y + cursor.y + marginTop
+          leftFloats.add(
+            rect(
+              bounds.left,
+              cursor.y,
+              child.dimensions.x + marginLeft + marginRight,
+              child.dimensions.y + marginTop + marginBottom,
+            )
+          )
+          cursor.x =
+            max(cursor.x, bounds.left + child.dimensions.x + marginLeft + marginRight)
+        else:
+          let rEdge = bounds.right - child.dimensions.x - marginRight
+          child.absolutePos.x = node.absolutePos.x + rEdge
+          child.absolutePos.y = node.absolutePos.y + cursor.y + marginTop
+          rightFloats.add(
+            rect(
+              rEdge,
+              cursor.y,
+              child.dimensions.x + marginLeft + marginRight,
+              child.dimensions.y + marginTop + marginBottom,
+            )
+          )
+        continue
 
-    var cursor = vec2(padLeft, padTop)
-    var currLineHeight: float32
-    var maxLineWidth: float32
-
-    let innerAvailableWidth = layoutWidth - padLeft - padRight
-
-    for child in node.children:
       if child.display == DisplayMode.Anonymous:
         let
           fontSize = computePixels(outputManager, &child.fontSize)
           lineHeight = resolveLineHeight(child.lineHeight, fontSize, outputManager)
 
         processTextContent(child.content, node.whitespace)
-          # Process the text so that we can handle some values of `white-space` here.
-        child.dimensions = vec2(
-          float32(child.content.len) * (fontSize * 0.55'f32),
-            # HACK: Estimate the character width at 55% of the height
-          fontSize,
-        ) # TODO: Proper text bounds measuring
+        child.dimensions =
+          vec2(float32(child.content.len) * (fontSize * 0.55'f32), fontSize)
 
-        if cursor.x + child.dimensions.x > (layoutWidth - padRight) and
-            cursor.x > padLeft:
-          cursor.x = padLeft
-          cursor.y += currLineHeight
+        var bounds = getLineBounds(cursor.y)
+        if cursor.x < bounds.left:
+          cursor.x = bounds.left
+
+        if cursor.x + child.dimensions.x > bounds.right and cursor.x > bounds.left:
+          cursor.y += max(currLineHeight, fontSize)
           currLineHeight = 0.0'f32
+          bounds = getLineBounds(cursor.y)
+          cursor.x = bounds.left
 
         let halfLeading = (lineHeight - fontSize) * 0.5'f32
 
         child.absolutePos.x = node.absolutePos.x + cursor.x
-        child.absolutePOs.y = node.absolutePos.y + cursor.y + halfLeading
+        child.absolutePos.y = node.absolutePos.y + cursor.y + halfLeading
 
         cursor.x += child.dimensions.x
         currLineHeight = max(currLineHeight, lineHeight)
-        maxLineWidth = max(maxLineWidth, cursor.x + padRight)
+        maxLineWidth = max(maxLineWidth, cursor.x + padRight + borderWidth)
       elif child.display == DisplayMode.Inline:
+        var bounds = getLineBounds(cursor.y)
+        if cursor.x < bounds.left:
+          cursor.x = bounds.left
+
         computeLayout(
           child,
           vec2(node.absolutePos.x + cursor.x, node.absolutePos.y + cursor.y),
-          layoutWidth - cursor.x - padRight,
+          bounds.right - cursor.x,
           outputManager,
           explicitHeight,
         )
 
         let lineHeight =
           resolveLineHeight(child.lineHeight, child.dimensions.y, outputManager)
-
         cursor.x += child.dimensions.x
         currLineHeight = max(currLineHeight, lineHeight)
-        maxLineWidth = max(maxLineWidth, cursor.x + padRight)
+        maxLineWidth = max(maxLineWidth, cursor.x + padRight + borderWidth)
       elif child.display == DisplayMode.Block:
-        if cursor.x > padLeft:
-          # If we had some text before this block elem inside the inline parent
-          # then we need to force a line break.
-          cursor.x = padLeft
+        var bounds = getLineBounds(cursor.y)
+        if cursor.x > bounds.left:
           cursor.y += currLineHeight
           currLineHeight = 0'f32
+          bounds = getLineBounds(cursor.y)
+          cursor.x = bounds.left
 
-        let
-          marginTop = resolveMargin(child.margins.top, layoutWidth, outputManager)
-          marginBottom = resolveMargin(child.margins.bottom, layoutWidth, outputManager)
-          marginLeft = resolveMargin(child.margins.left, layoutWidth, outputManager)
-
-          blockPos = vec2(
-            node.absolutePos.x + padLeft + marginLeft,
-            node.absolutePos.y + cursor.y + marginTop,
-          )
+        let blockPos = vec2(
+          node.absolutePos.x + bounds.left + marginLeft,
+          node.absolutePos.y + cursor.y + marginTop,
+        )
 
         computeLayout(
           child,
           blockPos,
-          innerAvailableWidth - marginLeft,
+          bounds.right - bounds.left - marginLeft,
           outputManager,
           explicitHeight,
         )
 
         cursor.y += marginTop + child.dimensions.y + marginBottom
-        maxLineWidth =
-          max(maxLineWidth, child.dimensions.x + padLeft + marginLeft + padRight)
+        maxLineWidth = max(
+          maxLineWidth,
+          child.dimensions.x + bounds.left + marginLeft + padRight + borderWidth,
+        )
 
     if node.display == DisplayMode.Inline:
       node.dimensions.x = maxLineWidth
     else:
       node.dimensions.x = layoutWidth
 
-    node.dimensions.y = cursor.y + currLineHeight + padBottom
+    node.dimensions.y = cursor.y + currLineHeight + padBottom + borderWidth
 
   if *explicitHeight:
-    node.dimensions.y = &explicitHeight + padTop + padBottom
+    node.dimensions.y = &explicitHeight + padTop + padBottom + (borderWidth * 2.0'f32)

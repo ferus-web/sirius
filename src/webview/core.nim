@@ -170,7 +170,6 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         # HACK: yeah... we don't do stuff like this.
         view.style &= text,
       finishStyle: proc() =
-        echo view.style
         if view.opts.disableStyling:
           warn "Styling is explicitly disabled. All styles will be derived from the user agent."
           return

@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, sequtils, strformat, strutils, tables]
 import
-  components/css/[text, text_decoration, types],
+  components/css/[level1, text, text_decoration, types],
   components/dom/[dom, tags],
   components/html/dom_utils,
   components/style/types,
@@ -39,6 +39,13 @@ const
   HeightAttr = "height"
 
   WhitespaceAttr = "white-space"
+
+  FloatAttr = "float"
+
+  BorderAttr = "border"
+  BorderWidthAttr = "border-width"
+  BorderColorAttr = "border-color"
+  BorderStyleAttr = "border-style"
 
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
@@ -94,7 +101,7 @@ proc applyRectAttr[T: object](output: var T, prop: CSSValue): Result[void, strin
 
   ok()
 
-proc execColoringFunction*(node: LayoutNode, fn: CSSFunction): ColorRGBA =
+proc execColoringFunction*(fn: CSSFunction): ColorRGBA =
   var col = rgba(0, 0, 0, 255)
 
   if fn.name == "rgb":
@@ -284,6 +291,16 @@ proc handleNamedColor(value: string): Option[ColorRGBA] =
 
   none(ColorRGBA)
 
+proc evaluateColor*(value: CSSValue): Option[ColorRGBA] =
+  if value.kind == CSSValueKind.String and
+      (let namedColor = handleNamedColor(value.str); *namedColor):
+    return namedColor
+
+  if value.kind == CSSValueKind.Function:
+    return some(execColoringFunction(value.fn))
+
+  none(ColorRGBA)
+
 proc applyTextDecorationAttr(
     decor: out TextDecoration, value: CSSValue
 ): Result[void, string] =
@@ -322,6 +339,36 @@ proc applyTextDecorationAttr(
       &"Property 'text-decoration' expects list of decorations or String, got {value.kind} instead."
     )
 
+proc applyBorderAttr(
+    border: out Border, prop: static string, value: CSSValue
+): Result[void, string] =
+  border = Border()
+
+  case value.kind
+  of CSSValueKind.Integer, CSSValueKind.Float:
+    border.width = some(value)
+  of CSSValueKind.List:
+    for val in value.list:
+      case val.kind
+      of CSSValueKind.Float, CSSValueKind.Integer, CSSValueKind.Dimension:
+        border.width = some(val)
+      of CSSValueKind.String:
+        if (let style = getBorderStyle(toLowerAscii(val.str)); *style):
+          border.style = style
+
+        if (let color = handleNamedColor(val.str); *color):
+          border.color = color
+      of CSSValueKind.Function:
+        border.color = some(execColoringFunction(value.fn))
+      else:
+        return err(
+          &"Property '{prop}' list expects numeric, function or string, got {val.kind} instead"
+        )
+  else:
+    return err(&"Property '{prop}' expects list or numeric, got {value.kind} instead")
+
+  ok()
+
 proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
   for attr, prop in layoutNode.style:
     if attr == DisplayAttr:
@@ -358,7 +405,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
         warn "Styling warning while applying margin", msg = warning.error()
     elif attr == ColorAttr:
       if prop.kind == CSSValueKind.Function:
-        layoutNode.color = layoutNode.execColoringFunction(prop.fn)
+        layoutNode.color = execColoringFunction(prop.fn)
       elif prop.kind == CSSValueKind.Hex:
         case prop.hex.len
         of 8:
@@ -372,7 +419,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
         layoutNode.color = &color
     elif attr == BackgroundColorAttr:
       if prop.kind == CSSValueKind.Function:
-        layoutNode.backgroundColor = layoutNode.execColoringFunction(prop.fn)
+        layoutNode.backgroundColor = execColoringFunction(prop.fn)
       elif prop.kind == CSSValueKind.String and
           (let color = handleNamedColor(prop.str); *color):
         layoutNode.backgroundColor = &color
@@ -395,9 +442,29 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == HeightAttr:
       layoutNode.height = some(prop)
     elif attr == WhitespaceAttr:
-      if prop.kind == CSSValueKind.String and
-          (let whitespaceProp = getWhitespaceProperty(prop.str); *whitespaceProp):
+      if prop.kind == CSSValueKind.String and (
+        let whitespaceProp = getWhitespaceProperty(toLowerAscii(prop.str))
+        *whitespaceProp
+      ):
         layoutNode.whitespace = &whitespaceProp
+    elif attr == FloatAttr:
+      if prop.kind == CSSValueKind.String and
+          (let floatProp = getFloatMode(toLowerAscii(prop.str)); *floatProp):
+        layoutNode.floatMode = &floatProp
+    elif attr == BorderAttr:
+      if (let warning = applyBorderAttr(layoutNode.border, BorderAttr, prop); !warning):
+        warn "Styling warning", msg = warning.error()
+    elif attr == BorderColorAttr:
+      layoutNode.border.color = evaluateColor(prop)
+    elif attr == BorderStyleAttr:
+      if prop.kind == CSSValueKind.String:
+        layoutNode.border.style = getBorderStyle(prop.str)
+    elif attr == BorderWidthAttr:
+      case prop.kind
+      of CSSValueKind.Float, CSSValueKind.Integer:
+        layoutNode.border.width = some(prop)
+      else:
+        discard
     else:
       warn "Unhandled style property", name = attr
 
@@ -444,8 +511,16 @@ proc propagateStyles*(node: LayoutNode, style: StyleMap, fontProvider: FontProvi
 
   for child in node.children:
     if child.display == DisplayMode.Anonymous:
-      # Make anonymous nodes inherit their parent's style
-      child.style = node.style
+      # HACK: This is not how it works!
+      const AvoidInheritance =
+        [BorderAttr, BorderColorAttr, BorderStyleAttr, BorderWidthAttr]
+
+      # Make anonymous nodes inherit their parent's style, besides some.
+      for property, value in node.style:
+        if property in AvoidInheritance:
+          continue
+
+        child.style[property] = value
 
     propagateStyles(child, style, fontProvider)
 

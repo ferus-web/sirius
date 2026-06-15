@@ -27,8 +27,8 @@ proc drawNodeTextUnderline(ctx: RenderingContext, node: LayoutNode) =
     discard "Deprecated"
 
   ctx.vg.beginPath()
-  ctx.vg.moveTo(node.absolutePos.x, yLevel)
-  ctx.vg.lineTo(node.absolutePos.x + node.dimensions.x, yLevel)
+  ctx.vg.moveTo(posX, yLevel)
+  ctx.vg.lineTo(posX + node.dimensions.x, yLevel)
   ctx.vg.strokeColor(rgba(node.color.r, node.color.g, node.color.b, node.color.a))
     # TODO: Support for `text-decoration-color` in the CSS subsystem
   ctx.vg.strokeWidth(2'f32) # TODO: Support for `text-decoration-thickness`
@@ -108,6 +108,36 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
       node.content,
     )
     drawNodeTextUnderline(ctx, node)
+
+  if *node.border.style:
+    case &node.border.style
+    of BorderStyle.None:
+      discard
+    # No border rendering.
+    of BorderStyle.Dotted, BorderStyle.Dashed, BorderStyle.Double, BorderStyle.Groove,
+        BorderStyle.Ridge, BorderStyle.Inset, BorderStyle.Outset:
+      discard
+    # TODO: Implement more of these.
+    of BorderStyle.Solid:
+      ctx.vg.beginPath()
+      ctx.vg.rect(
+        node.absolutePos.x + ctx.viewerPosition.x,
+        node.absolutePos.y + ctx.viewerPosition.y,
+        node.dimensions.x,
+        node.dimensions.y,
+      )
+
+      if *node.border.color:
+        let borderColor = &node.border.color
+        ctx.vg.strokeColor(
+          rgba(borderColor.r, borderColor.g, borderColor.b, borderColor.a)
+        )
+      else:
+        ctx.vg.strokeColor(rgba(node.color.r, node.color.g, node.color.b, node.color.a))
+
+      if *node.border.width:
+        ctx.vg.strokeWidth(ctx.outputManager.computePixels(&node.border.width))
+      ctx.vg.stroke()
 
   for child in node.children:
     draw(ctx, child)

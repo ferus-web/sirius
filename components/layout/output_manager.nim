@@ -10,12 +10,11 @@ type OutputManager* = ref object
   pixelsPerInch*: float32 = 96.0f
 
 func computePixels*(
-    manager: OutputManager, value: CSSValue, relativeBase: float32 = 0'f32
+    manager: OutputManager,
+    value: CSSValue,
+    relativeBase: float32 = 0'f32,
+    fontSize: float32 = 0'f32,
 ): float32 =
-  if value.kind == CSSValueKind.Integer:
-    # HACK: This is to make `em` half-work.
-    return float32(value.num)
-
   if value.kind != CSSValueKind.Dimension:
     return 0'f32 # FIXME: Not compliant. I think.
 
@@ -30,3 +29,5 @@ func computePixels*(
     return value.dim.value * manager.pixelsPerInch
   of CSSUnit.Percent:
     return value.dim.value * relativeBase
+  of CSSUnit.Em:
+    return value.dim.value * fontSize

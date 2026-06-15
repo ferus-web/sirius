@@ -46,6 +46,7 @@ type
     Mm
     In
     Percent # TODO: Rem
+    Em
 
   CSSDimension* = object
     value*: float32
@@ -113,15 +114,17 @@ func dimension*(value: float32, unit: CSSUnit): CSSValue {.inline.} =
 func parseUnit*(str: string): Option[CSSUnit] =
   case str
   of "px":
-    return some(CSSUnit.Px)
+    some(CSSUnit.Px)
   of "mm":
-    return some(CSSUnit.Mm)
+    some(CSSUnit.Mm)
   of "cm":
-    return some(CSSUnit.Cm)
+    some(CSSUnit.Cm)
   of "in":
-    return some(CSSUnit.In)
+    some(CSSUnit.In)
+  of "em":
+    some(CSSUnit.Em)
   else:
-    discard
+    none(CSSUnit)
 
 func str*(str: string): CSSValue {.inline.} =
   CSSValue(kind: CSSValueKind.String, str: str)
