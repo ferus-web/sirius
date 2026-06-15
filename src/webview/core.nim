@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, streams, strformat, strutils, sequtils, tables]
-import ./[hit_testing, types]
+import ./[hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/gfx/[core, init, font_loader],
@@ -65,9 +65,11 @@ proc initWebView*(opts: WebViewOpts): WebView =
   webview.renderCtx.outputManager = webview.outputManager
   webview.renderCtx.fontProvider = webview.fontProvider
 
-  webview.net = newNetworkClient(
-    userAgent =
-      "Mozilla/5.0 Sirius (+https://github.com/ferus-web/sirius; Wayland; Linux x86_64; rv: 0.1.0)"
+  webview.loader = newResourceLoader(
+    newNetworkClient(
+      userAgent =
+        "Mozilla/5.0 Sirius (+https://github.com/ferus-web/sirius; Wayland; Linux x86_64; rv: 0.1.0)"
+    )
   )
 
   webview
@@ -142,6 +144,21 @@ proc resolveURLSegment*(
   # 5. Return the result of URL parsing performed on fixedBuffer.
   tryParseURL(ensureMove(fixedBuffer))
 
+proc reflow(view: WebView) =
+  let htmlElem = view.dom.childList.filterIt(
+    it of dom.Element and tagType(Element(it)) == TAG_HTML
+  )[0] # HACK: This is stupid. Do it properly.
+
+  view.styleMap = resolveStyling(htmlElem, view.dom.factory, view.stylesheet)
+  view.tree =
+    buildLayoutTree(htmlElem, view.styleMap, view.fontProvider, view.imageCache)
+  propagateStyles(view.tree, view.styleMap, view.fontProvider)
+
+  view.renderCtx.tree = view.tree.clone()
+  view.renderCtx.tree.computeLayout(
+    vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
+  )
+
 proc loadHTMLStream(view: WebView, stream: Stream) =
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
@@ -171,7 +188,7 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
 
         info "Found external stylesheet", href = relURL
         # FIXME: This blocks
-        let (resp, err) = view.net.getStream(&relURL)
+        let (resp, err) = view.loader.net.getStream(&relURL)
 
         if resp.code == 200:
           let style = resp.body.stream.readAll()
@@ -195,19 +212,23 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         let dataUrlOpt = parseDataURL(&srcRaw)
 
         if !dataUrlOpt:
-          let (resp, err) = view.net.getStream(&src)
+          let id = view.loader.getAsyncStream(
+            &src,
+            finalize = proc(resp: Response, err: TransportError) =
+              if err.kind != TransportErrorKind.None:
+                error "Failed to fetch image", src = src, err = err.kind
+                return
 
-          if err.kind != TransportErrorKind.None:
-            error "Failed to fetch image", src = src, err = err.kind
-            return
+              debug "Fetched image", src = &src, size = resp.body.stream.data.len
+              try:
+                view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
+              except pixie.PixieError as exc:
+                error "Failed to decode image, it will not be shown!",
+                  err = exc.msg, src = &src, size = resp.body.stream.data.len
+                view.imageCache[&srcRaw] = view.failedPlaceholderImage
 
-          debug "Fetched image", src = &src, size = resp.body.stream.data.len
-          try:
-            view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
-          except pixie.PixieError as exc:
-            error "Failed to decode image, it will not be shown!",
-              err = exc.msg, src = &src, size = resp.body.stream.data.len
-            view.imageCache[&srcRaw] = view.failedPlaceholderImage
+              view.reflow(),
+          )
         else:
           let dataUrl = &dataUrlOpt
 
@@ -230,20 +251,8 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
   if *title:
     view.app.setTitle(&"{&title} — Sirius")
 
-  let htmlElem = view.dom.childList.filterIt(
-    it of dom.Element and tagType(Element(it)) == TAG_HTML
-  )[0] # HACK: This is stupid. Do it properly.
-
-  view.styleMap = resolveStyling(htmlElem, view.dom.factory, view.stylesheet)
-  view.tree =
-    buildLayoutTree(htmlElem, view.styleMap, view.fontProvider, view.imageCache)
-  propagateStyles(view.tree, view.styleMap, view.fontProvider)
-
+  view.reflow()
   view.renderCtx.viewerPosition = vec2(0, 0)
-  view.renderCtx.tree = view.tree.clone()
-  view.renderCtx.tree.computeLayout(
-    vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
-  )
 
   view.app.setCursorShape(Shape.Default)
 
@@ -271,8 +280,8 @@ proc loadUrl(view: WebView, url: URL) =
   view.target = url
   view.app.setCursorShape(Shape.Wait)
 
-  let (resp, err) =
-    view.net.getStream(url, timeoutMs = 60000) # TODO: Timeout should be customizable
+  let (resp, err) = view.loader.net.getStream(url, timeoutMs = 60000)
+    # TODO: Timeout should be customizable
 
   if err.kind == TransportErrorKind.None:
     loadHTMLStream(view, resp.body.stream)
@@ -374,6 +383,8 @@ proc loop*(view: WebView): int =
   info "Entering main loop"
 
   while not view.app.closureRequested:
+    view.loader.poll()
+
     let eventOpt = view.app.flushQueue()
     if !eventOpt:
       continue

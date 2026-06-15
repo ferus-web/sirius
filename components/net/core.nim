@@ -19,6 +19,8 @@ const
   DefaultConnectTimeoutMs = 10_000
 
 type
+  RequestID* = int64
+
   HttpVerb* {.pure, size: sizeof(uint8).} = enum
     Get = "GET"
     Post = "POST"
@@ -45,7 +47,7 @@ type
   RequestInfo* = object
     verb*: HttpVerb
     url*: url.URL
-    requestId*: int64
+    requestId*: RequestID
 
   Response* = object
     code*: int
@@ -74,7 +76,7 @@ type
     url: url.URL
     headers: HttpHeaders
     body: string
-    requestId: int64
+    requestId: RequestID
     timeoutMs: int
     responseBody: BodyWriterContext
     responseHeadersRaw: string
@@ -83,7 +85,7 @@ type
     curlUrl: RawUrl
 
   NetworkClientObj = object
-    lock: Lock
+    lock*: Lock
     wakeCond: Cond
     resultCond: Cond
     thread: Thread[ptr NetworkClientObj] # break cycle
@@ -98,8 +100,10 @@ type
     availableEasy: seq[Easy]
     queue: Deque[RequestWrap]
     inFlight: Table[pointer, RequestWrap]
-    readyResults: Deque[RequestResult]
+    readyResults*: Deque[RequestResult]
     userAgent: string
+
+    requestCount*: RequestID
 
   BodyWriterKind* {.pure, size: sizeof(uint8).} = enum
     SyncString
@@ -626,6 +630,13 @@ proc makeVerbRequest(
       writerKind: writerKind,
     )
   )
+
+proc fireVerbRequest*(client: NetworkClient, spec: RequestSpec): bool =
+  if client.clientIsBusy():
+    return false
+
+  client.startRequest(spec)
+  true
 
 proc get*(
     client: NetworkClient,

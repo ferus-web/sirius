@@ -1,7 +1,7 @@
 ## Types for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[tables, options]
+import std/[deques, options, streams, tables]
 import pkg/surfer/app
 import pkg/[chronicles, nanovg, pixie, url, vmath]
 import
@@ -20,6 +20,17 @@ type
   WebViewOpts* = object
     disableImageLoading*, disableExternalStylesheets*, disableStyling*: bool
 
+  FinalizeCallback* = proc(response: Response, err: TransportError)
+
+  PendingAsset* = object
+    finalize*: FinalizeCallback
+
+  ResourceLoader* = ref object
+    net*: NetworkClient
+    pendingAssets*: Table[RequestID, PendingAsset]
+
+    retryQueue*: Deque[RequestSpec]
+
   WebViewObj = object
     app*: App
     renderCtx*: RenderingContext
@@ -37,7 +48,7 @@ type
 
     outputManager*: OutputManager
 
-    net*: NetworkClient
+    loader*: ResourceLoader
 
     style*: string
 
