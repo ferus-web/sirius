@@ -32,7 +32,7 @@ type
     obj*: cstring
     typ*: FcType
 
-  FcResult* = enum
+  FcResult* {.size: sizeof(int32).} = enum
     FcResultMatch
     FcResultNoMatch
     FcResultTypeMismatch
