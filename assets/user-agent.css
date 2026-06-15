@@ -130,3 +130,5 @@ img {
 p, h1, h2, h3, h4, h5, h6, strong, b, footer, blockquote, li {
   cursor: text;
 } /* FIXME: Ideally, this should target all anonymous nodes that have text in them. */
+
+strike { text-decoration: line-through; }
