@@ -25,21 +25,23 @@ proc getAsyncStream*(
   debugEcho "GET " & $url
 
   inc loader.net.requestCount
-  let spec = RequestSpec(
-    verb: HttpVerb.Get,
-    url: url,
-    headers: headers,
-    body: newString(0),
-    requestId: requestId,
-    timeoutMs: timeoutMs,
-    writerKind: BodyWriterKind.AsyncStream,
-  )
+  let
+    spec = RequestSpec(
+      verb: HttpVerb.Get,
+      url: url,
+      headers: headers,
+      body: newString(0),
+      requestId: requestId,
+      timeoutMs: timeoutMs,
+      writerKind: BodyWriterKind.AsyncStream,
+    )
+    asset = PendingAsset(finalize: finalize)
 
   if not loader.net.fireVerbRequest(spec):
-    warn "Client is busy, adding request to try queue"
-    loader.retryQueue.addLast(spec)
+    # warn "Client is busy, adding request to try queue"
+    loader.retryQueue.addLast((spec: spec, asset: asset))
   else:
-    loader.pendingAssets[requestId] = PendingAsset(finalize: finalize)
+    loader.pendingAssets[requestId] = asset
 
   requestId
 
@@ -55,6 +57,14 @@ proc poll*(loader: ResourceLoader) =
       loader.pendingAssets[requestId].finalize(
         response = resp.response, err = resp.error
       )
+
+  if loader.retryQueue.len > 0:
+    let queued = loader.retryQueue.popFirst()
+    if not loader.net.fireVerbRequest(queued.spec):
+      # warn "Client is busy, adding request to try queue"
+      loader.retryQueue.addFirst(queued)
+    else:
+      loader.pendingAssets[queued.spec.requestId] = queued.asset
 
 proc newResourceLoader*(net: NetworkClient): ResourceLoader =
   info "Starting resource loader"

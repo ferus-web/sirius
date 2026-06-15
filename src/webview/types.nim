@@ -29,7 +29,7 @@ type
     net*: NetworkClient
     pendingAssets*: Table[RequestID, PendingAsset]
 
-    retryQueue*: Deque[RequestSpec]
+    retryQueue*: Deque[tuple[spec: RequestSpec, asset: PendingAsset]]
 
   WebViewObj = object
     app*: App
