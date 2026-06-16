@@ -123,7 +123,7 @@ proc resolveStyling*(
     if node of dom.Element:
       let elem = dom.Element(node)
       var computed: ComputedStyle
-      var specifsTracker: Table[string, uint]
+      var specifsTracker = newTable[string, uint]()
 
       for rule in stylesheet:
         for complexSel in rule.selectors:
