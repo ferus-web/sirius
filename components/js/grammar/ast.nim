@@ -1,5 +1,5 @@
 import std/[options]
-import pkg/bali/grammar/[statement, errors]
+import components/ast/grammar/[statement, errors]
 
 type
   Test262Negativity* = object
@@ -65,8 +65,7 @@ func scope*(stmts: seq[Statement]): Scope {.inline.} =
 
 func newAST*(): AST {.inline.} =
   AST(
-    scopes:
-      @[
-        Scope() # top-level scope
-      ]
+    scopes: @[
+      Scope() # top-level scope
+    ]
   )

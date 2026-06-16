@@ -5,7 +5,7 @@ version = "0.1.0"
 license = "BSD-3-Clause"
 kind = "Binary"
 backend = "C"
-binaries = ["sirius"]
+binaries = ["balde", "sirius"]
 
 [toolchain]
 version = "2.2.0"
