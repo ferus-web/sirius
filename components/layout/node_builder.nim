@@ -293,15 +293,21 @@ proc handleNamedColor(value: string): Option[ColorRGBA] =
 
 proc parseHexColor(value: string): Option[ColorRGBA] =
   case value.len
+  of 3:
+    try:
+      return some(rgba(parseHtmlHexTiny('#' & value)))
+        # FIXME: Just write a routine for this here. This allocation sucks.
+    except chroma.InvalidColor as exc:
+      return none(ColorRGBA)
   of 6:
     try:
       return some(rgba(parseHex(value)))
-    except ValueError:
+    except chroma.InvalidColor:
       return none(ColorRGBA)
   of 8:
     try:
       return some(rgba(parseHexAlpha(value)))
-    except ValueError:
+    except chroma.InvalidColor:
       return none(ColorRGBA)
   else:
     return none(ColorRGBA)
@@ -313,6 +319,10 @@ proc evaluateColor*(value: CSSValue): Option[ColorRGBA] =
 
   if value.kind == CSSValueKind.Function:
     return some(execColoringFunction(value.fn))
+
+  if value.kind == CSSValueKind.Hex and
+      (let hexColor = parseHexColor(value.hex); *hexColor):
+    return hexColor
 
   none(ColorRGBA)
 
@@ -432,10 +442,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
           (let color = handleNamedColor(prop.str); *color):
         layoutNode.color = &color
     elif attr == BackgroundColorAttr:
-      if prop.kind == CSSValueKind.Function:
-        layoutNode.backgroundColor = execColoringFunction(prop.fn)
-      elif prop.kind == CSSValueKind.String and
-          (let color = handleNamedColor(prop.str); *color):
+      if (let color = evaluateColor(prop); *color):
         layoutNode.backgroundColor = &color
     elif attr == CursorAttr:
       if prop.kind == CSSValueKind.String and prop.str != "auto":
