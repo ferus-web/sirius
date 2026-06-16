@@ -291,6 +291,21 @@ proc handleNamedColor(value: string): Option[ColorRGBA] =
 
   none(ColorRGBA)
 
+proc parseHexColor(value: string): Option[ColorRGBA] =
+  case value.len
+  of 6:
+    try:
+      return some(rgba(parseHex(value)))
+    except ValueError:
+      return none(ColorRGBA)
+  of 8:
+    try:
+      return some(rgba(parseHexAlpha(value)))
+    except ValueError:
+      return none(ColorRGBA)
+  else:
+    return none(ColorRGBA)
+
 proc evaluateColor*(value: CSSValue): Option[ColorRGBA] =
   if value.kind == CSSValueKind.String and
       (let namedColor = handleNamedColor(value.str); *namedColor):
@@ -347,6 +362,8 @@ proc applyBorderAttr(
   case value.kind
   of CSSValueKind.Integer, CSSValueKind.Float:
     border.width = some(value)
+  of CSSValueKind.Hex:
+    border.color = parseHexColor(value.hex)
   of CSSValueKind.List:
     for val in value.list:
       case val.kind
@@ -359,7 +376,9 @@ proc applyBorderAttr(
         if (let color = handleNamedColor(val.str); *color):
           border.color = color
       of CSSValueKind.Function:
-        border.color = some(execColoringFunction(value.fn))
+        border.color = some(execColoringFunction(val.fn))
+      of CSSValueKind.Hex:
+        border.color = parseHexColor(val.hex)
       else:
         return err(
           &"Property '{prop}' list expects numeric, function or string, got {val.kind} instead"
@@ -407,13 +426,8 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       if prop.kind == CSSValueKind.Function:
         layoutNode.color = execColoringFunction(prop.fn)
       elif prop.kind == CSSValueKind.Hex:
-        case prop.hex.len
-        of 8:
-          layoutNode.color = rgba(parseHexAlpha(prop.hex))
-        of 6:
-          layoutNode.color = rgba(parseHex(prop.hex))
-        else:
-          discard
+        if (let color = parseHexColor(prop.hex); *color):
+          layoutNode.color = &color
       elif prop.kind == CSSValueKind.String and
           (let color = handleNamedColor(prop.str); *color):
         layoutNode.color = &color
