@@ -103,15 +103,15 @@ proc parseDeclaration*(parser: Parser): Option[Declaration] =
     if !valueOpt:
       break
 
-    let value = get valueOpt
+    let value = &valueOpt
 
     case value.kind
     of tkFunction:
-      values.list &= get parser.parseFunction(value)
+      values.list &= &parser.parseFunction(value)
     of tkDimension, tkIdent, tkPercentage, tkQuotedString, tkIDHash, tkHash:
       let value = parser.parseValueFromToken(value)
       if *value:
-        values.list &= get value
+        values.list &= &value
     of tkComma:
       discard
     # FIXME: Proper validation
@@ -129,7 +129,7 @@ proc parseDeclaration*(parser: Parser): Option[Declaration] =
 
   return some(
     Declaration(
-      key: (&ident),
+      key: &ident,
       value:
         if values.list.len == 1:
           values.list[0]
