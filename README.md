@@ -18,6 +18,9 @@ The base was written in a day, so don't expect anything grandiose.
 - [X] Initial user agent
 - [ ] Inline styles
 - [X] Network content fetching*
+- [ ] HarfBuzz for text rendering
+- [ ] Content caching
+- [ ] Forms support
 - [ ] CSS Grid Layout
 
 # why not work on ferus?
