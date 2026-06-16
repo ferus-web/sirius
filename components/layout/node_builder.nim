@@ -433,13 +433,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       if (let warning = applyRectAttr(layoutNode.margins, prop); !warning):
         warn "Styling warning while applying margin", msg = warning.error()
     elif attr == ColorAttr:
-      if prop.kind == CSSValueKind.Function:
-        layoutNode.color = execColoringFunction(prop.fn)
-      elif prop.kind == CSSValueKind.Hex:
-        if (let color = parseHexColor(prop.hex); *color):
-          layoutNode.color = &color
-      elif prop.kind == CSSValueKind.String and
-          (let color = handleNamedColor(prop.str); *color):
+      if (let color = evaluateColor(prop); *color):
         layoutNode.color = &color
     elif attr == BackgroundColorAttr:
       if (let color = evaluateColor(prop); *color):
