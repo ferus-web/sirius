@@ -1,7 +1,7 @@
 ## Basic matching routines
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, strutils, tables]
+import std/[options, sequtils, strutils, sugar, tables]
 import components/dom/dom, components/html/dom_utils, components/style/types
 import pkg/[chronicles, shakar]
 
@@ -47,7 +47,9 @@ func matches*(
     return *idAttr and selector.id == &idAttr
   of skClass:
     let classAttr = element.getAttr(factory, "class")
-    return *classAttr and selector.class == &classAttr
+    return
+      *classAttr and any(split(&classAttr), (class: string) => class == selector.class)
+        # TODO: There's probably a cleaner way, right?
   else:
     # TODO: Implement the rest, but it's fine for now.
     return false
@@ -67,43 +69,34 @@ func matches*(
   if complex.len == 0:
     return false
 
-  var currentStepIdx = complex.len - 1
-  var currentElem = element
+  func checkPath(elem: dom.Element, stepIdx: int): bool =
+    if not matches(elem, factory, complex[stepIdx].selector):
+      return false
 
-  if not matches(currentElem, factory, complex[currentStepIdx].selector):
-    return false
+    if stepIdx == 0:
+      return true
 
-  while currentStepIdx > 0:
-    let combinator = complex[currentStepIdx - 1].combinator
-    dec currentStepIdx
-    let targetCompound = complex[currentStepIdx].selector
+    let combinator = complex[stepIdx - 1].combinator
+    let nextIdx = stepIdx - 1
 
     case combinator
     of Combinator.Descendant:
-      var found = false
-      var ancestor = currentElem.parentNode
-
+      var ancestor = elem.parentNode
       while ancestor != nil:
-        if ancestor of dom.Element and
-            matches(dom.Element(ancestor), factory, targetCompound):
-          found = true
-          currentElem = dom.Element(ancestor)
-          break
+        if ancestor of dom.Element and checkPath(dom.Element(ancestor), nextIdx):
+          return true
         ancestor = ancestor.parentNode
-
-      if not found:
-        return false
+      return false
     of Combinator.Child:
-      let parentNode = currentElem.parentNode
-      if parentNode == nil or not (parentNode of dom.Element):
-        return false
-      if not matches(dom.Element(parentNode), factory, targetCompound):
-        return false
-      currentElem = dom.Element(parentNode)
+      let parentNode = elem.parentNode
+      if parentNode != nil and parentNode of dom.Element:
+        return checkPath(dom.Element(parentNode), nextIdx)
+      return false
     of Combinator.Adjacent, Combinator.Sibling:
-      return false # TODO: Implement these!!!
+      # TODO: Implement this!!!
+      return false
 
-  return true
+  return checkPath(element, complex.len - 1)
 
 func matches*(
     element: dom.Element, factory: dom.MAtomFactory, list: SelectorList
