@@ -1,9 +1,9 @@
 import std/[math, logging, options]
-import bali/runtime/vm/prelude
-import bali/internal/sugar
-import bali/runtime/[types, bridge]
-import bali/stdlib/types/std_string_type
-import bali/runtime/abstract/to_primitive
+import components/js/runtime/vm/prelude
+import pkg/shakar
+import components/js/runtime/[types, bridge]
+import components/js/stdlib/types/std_string_type
+import components/js/runtime/abstract/to_primitive
 import pkg/gmp
 
 proc ToString*(runtime: Runtime, value: JSValue): string {.gcsafe.} =

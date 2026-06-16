@@ -4,7 +4,7 @@
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 #!fmt: off
 import std/[logging]
-import pkg/bali/platform/libc
+import components/js/platform/libc
 #!fmt: on
 
 proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer =
@@ -34,7 +34,7 @@ proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer 
       perms = perms or PROT_WRITE
 
     var address: pointer
-    discard posix_memalign(address.addr, sysconf(SC_PAGESIZE).csize_t, size)
+    discard posix_malign(address.addr, sysconf(SC_PAGESIZE), size)
     discard mprotect(address, size.int32, ensureMove(perms))
 
     return address

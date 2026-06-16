@@ -1,5 +1,5 @@
 import std/[options, strutils]
-import bali/runtime/vm/atom
+import components/js/runtime/vm/atom
 
 type
   ExceptionTrace* = ref object
@@ -14,6 +14,12 @@ type
     message*: string
 
   WrongType* = ref object of RuntimeException
+
+proc clone*(exc: RuntimeException): RuntimeException =
+  if exc == nil:
+    return nil
+
+  RuntimeException(operation: exc.operation, clause: exc.clause, message: exc.message)
 
 proc wrongType*(expected, got: MAtomKind): WrongType {.inline, noSideEffect, gcsafe.} =
   WrongType(message: "Expected $1; got $2 instead." % [$expected, $got])

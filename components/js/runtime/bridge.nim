@@ -1,12 +1,12 @@
 ## A neat JavaScript <-> Nim bridge.
 
 import std/[logging, tables, options, strutils, hashes, importutils]
-import bali/runtime/vm/prelude
-import bali/runtime/vm/ir/generator
+import components/js/runtime/vm/prelude
+import components/js/runtime/vm/ir/generator
 import
-  bali/runtime/
+  components/js/runtime/
     [atom_obj_variant, wrapping, atom_helpers, types, normalize, construction]
-import bali/internal/sugar
+import pkg/shakar
 
 privateAccess(Runtime)
 privateAccess(PulsarInterpreter)

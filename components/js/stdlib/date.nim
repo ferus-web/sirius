@@ -2,12 +2,12 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 import std/[math, strformat, times, logging, options]
-import bali/internal/sugar
-import bali/runtime/vm/atom
-import bali/runtime/[atom_helpers, arguments, types, bridge, construction, wrapping]
-import bali/runtime/abstract/[coercion, slots]
-import bali/internal/date/[utils, constants, parser]
-import bali/internal/timezone
+import pkg/shakar
+import components/js/runtime/vm/atom
+import components/js/runtime/[atom_helpers, arguments, types, bridge, construction, wrapping]
+import components/js/runtime/abstract/[coercion, slots]
+import components/js/internal/date/[utils, constants, parser]
+import components/js/internal/timezone
 
 ## 21.4.1.1 Time Values and Time Range
 ## Time measurement in ECMAScript is analogous to time measurement in POSIX, in particular sharing definition in terms of the proleptic Gregorian calendar, an epoch of midnight at the beginning of 1 January 1970 UTC, and an accounting of every day as comprising exactly 86,400 seconds (each of which is 1000 milliseconds long).

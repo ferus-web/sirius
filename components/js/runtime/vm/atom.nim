@@ -3,7 +3,7 @@
 
 import std/[tables, hashes, options]
 import pkg/[shakar, gmp]
-import pkg/bali/runtime/vm/heap/manager
+import components/js/runtime/vm/heap/manager
 
 type
   MAtomKind* {.size: sizeof(uint8).} = enum

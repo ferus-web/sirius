@@ -3,11 +3,11 @@
 ## **NOTE**: All of the functions below are allocating memory on the Bali GC heap and can be nil in the case of an OOM!
 import std/[tables]
 import
-  bali/runtime/vm/atom,
-  bali/runtime/atom_helpers,
-  bali/stdlib/types/std_string_type,
-  bali/runtime/types,
-  bali/internal/sugar
+  components/js/runtime/vm/atom,
+  components/js/runtime/atom_helpers,
+  components/js/stdlib/types/std_string_type,
+  components/js/runtime/types,
+  pkg/shakar
 
 proc wrap*(runtime: Runtime, val: SomeInteger | string | float | bool): JSValue =
   when val is SomeInteger:

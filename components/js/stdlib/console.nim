@@ -1,9 +1,9 @@
 ## JavaScript console API standard interface
 
 import std/[options, logging, tables]
-import bali/runtime/[arguments, types, bridge]
-import bali/runtime/abstract/coercion
-import bali/internal/sugar
+import components/js/runtime/[arguments, types, bridge]
+import components/js/runtime/abstract/coercion
+import pkg/shakar
 
 type JSConsole* = object
 

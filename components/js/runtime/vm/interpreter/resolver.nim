@@ -1,9 +1,9 @@
 import std/[options, tables]
 import
-  pkg/bali/runtime/vm/interpreter/[types, operation],
-  pkg/bali/runtime/vm/shared,
-  pkg/bali/runtime/vm/atom,
-  pkg/bali/runtime/vm/heap/manager
+  components/js/runtime/vm/interpreter/[types, operation],
+  components/js/runtime/vm/shared,
+  components/js/runtime/vm/atom,
+  components/js/runtime/vm/heap/manager
 
 const SequenceBasedRegisters* = [some(1)]
 
@@ -41,7 +41,8 @@ proc resolve*(clause: Clause, op: var Operation, heap: HeapManager) =
     op.arguments &=
       op.consume(String, "CALL expects an ident/string at position 1", heap = heap)
 
-    for i, x in deepCopy(op.rawArgs):
+    let args = op.rawArgs
+    for i, x in args:
       op.arguments &=
         op.consume(Integer, "CALL expects an integer at position " & $i, heap = heap)
   of Jump:

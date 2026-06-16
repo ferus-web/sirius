@@ -3,11 +3,11 @@
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 import std/[tables, posix]
 import
-  pkg/bali/runtime/compiler/base,
-  pkg/bali/runtime/compiler/amd64/native_forwarding,
-  pkg/bali/platform/libc,
-  pkg/bali/internal/assembler/amd64,
-  pkg/bali/runtime/vm/heap/manager
+  components/js/runtime/compiler/base,
+  components/js/runtime/compiler/amd64/native_forwarding,
+  components/js/platform/libc,
+  components/js/internal/assembler/amd64,
+  components/js/runtime/vm/heap/manager
 
 type
   ConstantPool* = seq[cstring]

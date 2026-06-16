@@ -3,7 +3,7 @@
 ## Use this to make Bali's already-simple API even simpler. Get all of Bali's uses while on easy-mode.
 ## It doesn't get easier than this. :^)
 import std/os
-import pkg/bali/grammar/[ast, parser], pkg/bali/runtime/prelude
+import components/js/grammar/[ast, parser], components/js/runtime/prelude
 
 export prelude
 

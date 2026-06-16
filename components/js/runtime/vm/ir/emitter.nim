@@ -2,7 +2,7 @@
 ## This module takes in an IR generator state, and generates MIR accordingly.
 ##
 
-import pkg/bali/runtime/vm/ir/shared, pkg/bali/runtime/vm/[atom, shared]
+import components/js/runtime/vm/ir/shared, components/js/runtime/vm/[atom, shared]
 import pkg/shakar
 
 proc emitOperation*(gen: IRGenerator, op: IROperation): string {.inline.} =

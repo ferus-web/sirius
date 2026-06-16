@@ -2,8 +2,8 @@
 ## Author(s): 
 ## Trayambak Rai (xtrayambak at disroot dot org)
 import std/[math]
-import bali/internal/date/constants
-import bali/internal/sugar
+import components/js/internal/date/constants
+import pkg/shakar
 
 func toDay*(t: float): int =
   ## The abstract operation Day takes argument t (a finite time value) and returns an integral Number. It returns the

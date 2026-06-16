@@ -3,13 +3,13 @@
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[logging, hashes, posix, tables, options, streams]
-import pkg/bali/runtime/compiler/base, pkg/bali/runtime/vm/heap/boehm
+import components/js/runtime/compiler/base, components/js/runtime/vm/heap/boehm
 import pkg/[shakar]
 import
-  pkg/bali/runtime/vm/[atom, shared],
-  pkg/bali/runtime/vm/interpreter/resolver,
-  pkg/bali/runtime/compiler/amd64/[common, native_forwarding],
-  pkg/bali/internal/assembler/amd64
+  components/js/runtime/vm/[atom, shared],
+  components/js/runtime/vm/interpreter/resolver,
+  components/js/runtime/compiler/amd64/[common, native_forwarding],
+  components/js/internal/assembler/amd64
 
 type BaselineJIT* = ref object of AMD64Codegen
 

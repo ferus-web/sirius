@@ -3,18 +3,18 @@
 ## Copyright (C) 2024-2025 Trayambak Rai (xtrayambak at disroot dot org)
 
 import std/[math, tables, strutils, options]
-import pkg/bali/runtime/vm/heap/[manager, boehm]
-import pkg/bali/runtime/vm/[atom, debugging, exceptions]
-import pkg/bali/runtime/vm/interpreter/[operation, types, resolver]
-import pkg/bali/runtime/vm/ir/shared
-import pkg/bali/runtime/normalize
-import pkg/bali/runtime/compiler/base
-import pkg/bali/runtime/atom_helpers
+import components/js/runtime/vm/heap/[manager, boehm]
+import components/js/runtime/vm/[atom, debugging, exceptions]
+import components/js/runtime/vm/interpreter/[operation, types, resolver]
+import components/js/runtime/vm/ir/shared
+import components/js/runtime/normalize
+import components/js/runtime/compiler/base
+import components/js/runtime/atom_helpers
 import pkg/[shakar]
 
 when hasJITSupport:
   when defined(amd64):
-    import bali/runtime/compiler/amd64/[common, baseline, midtier]
+    import components/js/runtime/compiler/amd64/[common, baseline, midtier]
   else:
     {.
       error:
@@ -149,7 +149,7 @@ proc throw*(
     interpreter.currJumpOnErr = none(uint)
     return
 
-  var exception = deepCopy(exception)
+  var exception = exception.clone()
 
   interpreter.halt = true
 
@@ -170,7 +170,7 @@ proc throw*(
 
     let prevClause = interpreter.getClause(rollback.clause.int.some)
 
-    var bubblingException = deepCopy(exception)
+    var bubblingException = exception.clone()
     bubblingException.operation = rollback.opIndex
 
     if *prevClause:
@@ -466,7 +466,7 @@ proc readRegister*(interpreter: var PulsarInterpreter, store, register, index: i
       InvalidRegisterRead, "Attempt to read from non-existant register " & $register
     )
 
-{.push cdecl, gcsafe, quirky.}
+{.push cdecl, gcsafe.}
 proc opCall(interpreter: var PulsarInterpreter, op: ptr Operation) =
   let name = &op.arguments[0].getStr()
   msg "call " & name

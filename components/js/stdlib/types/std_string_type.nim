@@ -2,10 +2,10 @@
 ## Separated from the String prototype functions to prevent circular dependencies. 
 
 import
-  bali/runtime/vm/atom,
-  bali/runtime/atom_helpers,
-  bali/runtime/types,
-  bali/internal/sugar
+  components/js/runtime/vm/atom,
+  components/js/runtime/atom_helpers,
+  components/js/runtime/types
+import pkg/shakar
 
 type JSString* = object
   `@ internal`*: string

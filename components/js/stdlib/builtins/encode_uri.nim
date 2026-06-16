@@ -1,9 +1,10 @@
 ## Implementation of encodeURI()
 ## Author(s):
 ## Trayambak Rai (xtrayambak at disroot dot org)
-import pkg/bali/runtime/[arguments, bridge, types, construction]
-import pkg/bali/runtime/abstract/coercion
-import pkg/bali/internal/[sugar, uri_coding]
+import components/js/runtime/[arguments, bridge, types, construction]
+import components/js/runtime/abstract/coercion
+import components/js/internal/[uri_coding]
+import pkg/shakar
 
 proc generateStdIR*(runtime: Runtime) =
   runtime.defineFn(

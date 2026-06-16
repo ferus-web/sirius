@@ -6,9 +6,9 @@
 import std/[algorithm, options, logging, tables]
 import pkg/[shakar]
 import
-  pkg/bali/runtime/compiler/madhyasthal/ir,
-  pkg/bali/runtime/vm/[atom, shared],
-  pkg/bali/runtime/vm/interpreter/[types, operation]
+  components/js/runtime/compiler/madhyasthal/ir,
+  components/js/runtime/vm/[atom, shared],
+  components/js/runtime/vm/interpreter/[types, operation]
 
 type OpStream* = object
   ops*: seq[operation.Operation]

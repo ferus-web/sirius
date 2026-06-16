@@ -1,13 +1,13 @@
 ## Number type
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
 import std/[math, fenv, logging]
-import bali/runtime/[arguments, bridge, atom_helpers, wrapping, types, construction]
-import bali/runtime/abstract/[to_number, to_string]
-import bali/stdlib/builtins/parse_int
-import bali/stdlib/errors
-import bali/internal/[sugar]
-import pkg/gmp
-import bali/runtime/vm/atom
+import
+  components/js/runtime/[arguments, bridge, atom_helpers, wrapping, types, construction]
+import components/js/runtime/abstract/[to_number, to_string]
+import components/js/stdlib/builtins/parse_int
+import components/js/stdlib/errors
+import pkg/[gmp, shakar]
+import components/js/runtime/vm/atom
 
 type JSNumber* = object
   `@ value`*: JSValue

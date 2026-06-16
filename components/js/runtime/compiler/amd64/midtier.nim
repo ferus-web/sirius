@@ -3,10 +3,10 @@
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak at disroot dot org)
 import std/[logging, posix, options, strutils, tables]
 import
-  pkg/bali/runtime/compiler/madhyasthal/[ir, lowering, pipeline, optimizer, dumper],
-  pkg/bali/runtime/compiler/amd64/[common, native_forwarding],
-  pkg/bali/runtime/compiler/base,
-  pkg/bali/internal/assembler/amd64
+  components/js/runtime/compiler/madhyasthal/[ir, lowering, pipeline, optimizer, dumper],
+  components/js/runtime/compiler/amd64/[common, native_forwarding],
+  components/js/runtime/compiler/base,
+  components/js/internal/assembler/amd64
 import pkg/shakar, pretty
 
 const

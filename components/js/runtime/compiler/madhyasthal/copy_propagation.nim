@@ -6,7 +6,7 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 import std/[sets]
-import pkg/bali/runtime/compiler/madhyasthal/[pipeline, ir]
+import components/js/runtime/compiler/madhyasthal/[pipeline, ir]
 
 const MutationCausingOps = {
   InstKind.LoadNumber, InstKind.LoadString, InstKind.LoadNull, InstKind.LoadUndefined,

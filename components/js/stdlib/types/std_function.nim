@@ -2,10 +2,10 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak@disroot.org)
 import
-  pkg/bali/runtime/vm/atom,
-  pkg/bali/internal/sugar,
-  pkg/bali/stdlib/errors,
-  pkg/bali/runtime/[atom_helpers, types, bridge, construction]
+  components/js/runtime/vm/atom,
+  components/js/stdlib/errors,
+  components/js/runtime/[atom_helpers, types, bridge, construction]
+import pkg/shakar
 
 type JSFunction* = object
   `@ inner`: JSValue

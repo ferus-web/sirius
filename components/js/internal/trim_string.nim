@@ -1,9 +1,9 @@
 ## TrimString( string, where )
 
 import std/[strutils]
-import bali/runtime/vm/prelude
-import bali/runtime/types
-import bali/runtime/abstract/[coercible, to_string]
+import components/js/runtime/vm/prelude
+import components/js/runtime/types
+import components/js/runtime/abstract/[coercible, to_string]
 
 type TrimMode* {.pure.} = enum
   Left

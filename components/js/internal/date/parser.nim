@@ -2,10 +2,17 @@
 ## Mostly based off of Ladybird/LibJS's implementation
 
 import std/[logging, options, strutils, times]
-import bali/internal/[generic_lexer, trim_string, sugar]
+import components/js/internal/[generic_lexer, trim_string]
+import pkg/shakar
 
 proc parseSimplifiedISO8601*(date: string): Option[float] =
   ## 21.4.3.2 Date.parse ( string ), https://tc39.es/ecma262/#sec-date.parse
+
+  template `&|`[T](opt: Option[T], def: T): T =
+    if *opt:
+      &opt
+    else:
+      def
 
   # TODO: Make this function less complex. The static analyzer shouts at us when it sees this function.
   var lexer = newGenericLexer(date)

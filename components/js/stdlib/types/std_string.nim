@@ -3,12 +3,14 @@
 ## Author(s):
 ## Trayambak Rai (xtrayambak at disroot dot org)
 import std/[tables, strutils, hashes, unicode]
-import bali/runtime/[arguments, bridge, wrapping, atom_helpers, types, construction]
-import bali/runtime/abstract/[coercible, to_number, to_string]
-import bali/stdlib/errors, bali/stdlib/types/std_string_type
-import bali/internal/[trim_string, sugar]
-import bali/runtime/vm/atom
-import pkg/ferrite/utf16view
+import
+  components/js/runtime/[arguments, bridge, wrapping, atom_helpers, types, construction]
+import components/js/runtime/abstract/[coercible, to_number, to_string]
+import components/js/stdlib/errors, components/js/stdlib/types/std_string_type
+import components/js/internal/[trim_string]
+import components/js/runtime/vm/atom
+import components/unicode/utf16view
+import pkg/shakar
 
 proc generateStdIr*(runtime: Runtime) =
   runtime.registerType(prototype = JSString, name = "String")
@@ -32,7 +34,7 @@ proc generateStdIr*(runtime: Runtime) =
 
     var atom = runtime.createObjFromType(JSString)
     atom["@internal"] = str(runtime, strVal)
-    atom["length"] = integer(runtime, newUtf16View(strVal).codeunitLen().int)
+    atom["length"] = integer(runtime, newUtf16View(strVal).size.int)
     ret atom
 
   runtime.defineConstructor("String", stringConstructor)
@@ -266,7 +268,7 @@ proc generateStdIr*(runtime: Runtime) =
         str = newUtf16View(strVal)
 
         # 3. Let len be the length of S.
-        stringLength = int(str.codeunitLen - 1)
+        stringLength = int(str.size - 1)
 
         # 4. Let intStart be ? ToIntegerOrInfinity(start).
         start = runtime.ToNumber(&runtime.argument(1)).int()

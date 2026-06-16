@@ -1,7 +1,7 @@
 ## CSS parser implementation using Stylus
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, importutils, strformat, strutils, sugar]
+import std/[options, importutils, strformat, strutils]
 import pkg/stylus/[parser, shared, tokenizer], pkg/[results, shakar]
 import components/style/types
 

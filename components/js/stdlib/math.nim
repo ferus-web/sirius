@@ -3,10 +3,10 @@
 ## Copyright (C) 2024-2025 Trayambak Rai (xtrayambak at disroot dot org)
 
 import std/[importutils, tables, math, options, logging]
-import bali/runtime/vm/prelude
-import bali/runtime/[arguments, types, bridge]
-import bali/runtime/abstract/[to_number]
-import bali/internal/sugar
+import components/js/runtime/vm/prelude
+import components/js/runtime/[arguments, types, bridge]
+import components/js/runtime/abstract/[to_number]
+import pkg/shakar
 import pkg/[librng, librng/generator]
 
 privateAccess(RNG)

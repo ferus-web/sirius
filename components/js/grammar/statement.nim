@@ -1,7 +1,7 @@
 import std/[hashes, options]
-import bali/runtime/vm/atom
-import bali/runtime/normalize
-import bali/internal/sugar
+import components/js/runtime/vm/atom
+import components/js/runtime/normalize
+import pkg/shakar
 
 type
   StatementKind* = enum

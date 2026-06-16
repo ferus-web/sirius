@@ -1,11 +1,11 @@
 ## JSON methods
 
 import std/[json, options, logging, tables]
-import bali/internal/sugar
-import bali/runtime/[arguments, types, bridge, construction]
-import bali/runtime/abstract/coercion
-import bali/stdlib/errors
-import bali/runtime/vm/atom
+import pkg/shakar
+import components/js/runtime/[arguments, types, bridge, construction]
+import components/js/runtime/abstract/coercion
+import components/js/stdlib/errors
+import components/js/runtime/vm/atom
 import jsony
 
 proc convertJsonNodeToAtom*(runtime: Runtime, node: JsonNode): JSValue =

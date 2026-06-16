@@ -55,16 +55,19 @@ func validate_utf8_with_errors*(buf: ptr char, size: uint64): SIMDUTFResult
 func autodetect_encoding*(input: ptr char, size: uint64): EncodingType
 
 func base64_to_binary*(
-  input: cstring,
+  input: cstring | ptr char,
   size: uint64,
   output: ptr char,
   options: set[Base64Options],
   lastChunkOptions: LastChunkHandlingOptions,
 )
 func base64_length_from_binary*(length: uint64, options: set[Base64Options]): uint64
+func maximal_binary_length_from_base64*(
+  input: cstring | ptr char, length: uint64
+): uint64
 
 func base64_to_binary_safe*(
-  input: cstring,
+  input: cstring | ptr char,
   length: uint64,
   output: ptr char,
   outlen: ptr uint64,
@@ -72,6 +75,26 @@ func base64_to_binary_safe*(
   lastChunkOptions: LastChunkHandlingOptions,
   decodeUpToBadChar: bool,
 ): SIMDUTFResult
-{.pop.}
+
+func binary_to_base64*(
+  input: cstring | ptr char,
+  length: uint64,
+  output: ptr char,
+  options: set[Base64Options],
+): uint64
+
+func utf16_length_from_utf8*(input: cstring | ptr char, length: uint64): uint64
+func convert_utf8_to_utf16*(
+  input: cstring | ptr char, length: uint64, output: ptr uint16
+): uint64
+
+func validate_utf16*(buf: ptr uint16, size: uint64): bool
+func validate_utf16le*(buf: ptr uint16, size: uint64): bool
+func validate_utf16be*(buf: ptr uint16, size: uint64): bool
+
+func count_utf8*(input: ptr char | cstring, length: uint64): uint64
+func count_utf16*(input: ptr uint16, length: uint64): uint64
+func count_utf16le*(input: ptr uint16, length: uint64): uint64
+func count_utf16be*(input: ptr uint16, length: uint64): uint64
 
 {.pop.}

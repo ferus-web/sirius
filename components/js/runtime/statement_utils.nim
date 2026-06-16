@@ -1,5 +1,5 @@
 import std/[tables, strutils]
-import bali/grammar/statement
+import components/js/grammar/statement
 
 proc getValueDefinitions*(body: Scope): seq[string] =
   ## Get all the identifiers that `body` defines

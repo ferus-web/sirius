@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 import std/posix
-import pkg/bali/platform/libc
+import components/js/platform/libc
 
 const DefaultAllocatorBufferSize* =
   when defined(amd64) or defined(aarch64) or defined(riscv64):

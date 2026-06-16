@@ -2,9 +2,9 @@
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
 
 #!fmt: off
-import pkg/bali/grammar/[statement],
-       pkg/bali/runtime/vm/atom,
-       pkg/bali/runtime/optimize/[side_effects],
+import components/js/grammar/[statement],
+       components/js/runtime/vm/atom,
+       components/js/runtime/optimize/[side_effects],
        pkg/shakar
 #!fmt: on
 

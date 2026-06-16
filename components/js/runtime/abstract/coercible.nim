@@ -1,6 +1,6 @@
-import bali/runtime/vm/prelude
-import bali/runtime/types
-import bali/stdlib/errors
+import components/js/runtime/vm/prelude
+import components/js/runtime/types
+import components/js/stdlib/errors
 
 proc RequireObjectCoercible*(runtime: Runtime, value: JSValue): JSValue {.inline.} =
   if value.kind == Null:

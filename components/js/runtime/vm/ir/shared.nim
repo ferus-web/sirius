@@ -2,7 +2,7 @@
 ##
 
 import std/hashes
-import pkg/bali/runtime/vm/[atom, shared]
+import components/js/runtime/vm/[atom, shared]
 
 type
   Register* = enum

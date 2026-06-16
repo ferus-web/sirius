@@ -14,7 +14,7 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 import std/[options, sets]
-import pkg/bali/runtime/compiler/madhyasthal/[ir, pipeline]
+import components/js/runtime/compiler/madhyasthal/[ir, pipeline]
 import pkg/shakar
 
 func inferLocallyAllocatedNumericOperandValue*(

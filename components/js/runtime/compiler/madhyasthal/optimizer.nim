@@ -1,5 +1,5 @@
 import
-  pkg/bali/runtime/compiler/madhyasthal/[
+  components/js/runtime/compiler/madhyasthal/[
     pipeline,
 
     # All optimization passes

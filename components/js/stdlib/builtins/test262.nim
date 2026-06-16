@@ -2,12 +2,12 @@
 ##
 
 import std/[math, options, logging, terminal, hashes]
-import bali/runtime/vm/prelude
-import bali/runtime/[bridge]
-import bali/runtime/abstract/[equating, to_string]
-import bali/runtime/[arguments, types]
-import bali/stdlib/errors_common
-import bali/internal/sugar
+import components/js/runtime/vm/prelude
+import components/js/runtime/[bridge]
+import components/js/runtime/abstract/[equating, to_string]
+import components/js/runtime/[arguments, types]
+import components/js/stdlib/errors_common
+import pkg/shakar
 
 proc test262Error*(runtime: Runtime, msg: string) =
   runtime.vm[].throw(jsException(msg))

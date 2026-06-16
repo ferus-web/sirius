@@ -10,6 +10,8 @@ mkShell {
     libxkbcommon
     fontconfig
     simdutf
+    gmp
+    boehmgc
     libGL
   ];
 
@@ -19,6 +21,8 @@ mkShell {
     fontconfig.dev
     simdutf
     libGL.dev
+    gmp.dev
+    boehmgc.dev
     vulkan-loader.dev
     libxkbcommon.dev
   ];

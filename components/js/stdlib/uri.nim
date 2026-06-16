@@ -4,13 +4,12 @@
 
 import std/[options, logging]
 import
-  pkg/bali/internal/sugar,
-  pkg/bali/runtime/[arguments, types, atom_helpers, bridge, construction],
-  pkg/bali/runtime/abstract/coercion,
-  pkg/bali/stdlib/errors,
-  pkg/bali/stdlib/types/std_string_type,
-  pkg/bali/runtime/vm/atom
-import pkg/[results, url]
+  components/js/runtime/[arguments, types, atom_helpers, bridge, construction],
+  components/js/runtime/abstract/coercion,
+  components/js/stdlib/errors,
+  components/js/stdlib/types/std_string_type,
+  components/js/runtime/vm/atom
+import pkg/[results, shakar, url]
 
 type JSURL = object
   host*: string

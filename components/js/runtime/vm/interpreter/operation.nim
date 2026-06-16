@@ -1,5 +1,5 @@
 import std/[options, tables, strutils]
-import pkg/bali/runtime/vm/[atom, shared], pkg/bali/runtime/vm/heap/manager
+import components/js/runtime/vm/[atom, shared], components/js/runtime/vm/heap/manager
 import pkg/shakar
 
 const MirageOperationJitThreshold* {.intdefine.} = 8
@@ -50,7 +50,8 @@ proc consume*(
       else: Null
 
   if not *position and operation.rawArgs.len > 1:
-    operation.rawArgs = deepCopy(operation.rawArgs[1 ..< operation.rawArgs.len])
+    operation.rawArgs = operation.rawArgs[1 ..< operation.rawArgs.len]
+      # NOTE: This was deepCopy'd earlier.
 
   if rawType != kind and raw.kind != tkIdent and enforce:
     raise newException(ValueError, expects & ", got " & $rawType & " instead.")

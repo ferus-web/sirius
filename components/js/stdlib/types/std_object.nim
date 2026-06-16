@@ -3,7 +3,7 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 
-import pkg/bali/runtime/[bridge, types], pkg/bali/runtime/vm/atom
+import components/js/runtime/[bridge, types], components/js/runtime/vm/atom
 
 type JSObject* = object
 

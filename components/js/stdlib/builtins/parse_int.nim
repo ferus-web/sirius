@@ -2,9 +2,10 @@
 ##
 
 import std/[strutils, math, options, logging]
-import bali/runtime/vm/prelude
-import bali/runtime/[arguments, types, bridge, construction]
-import bali/internal/[sugar, trim_string]
+import components/js/runtime/vm/prelude
+import components/js/runtime/[arguments, types, bridge, construction]
+import components/js/internal/[trim_string]
+import pkg/shakar
 
 template parseIntFunctionSubstitution*() =
   if runtime.vm.registers.callArgs.len < 1:

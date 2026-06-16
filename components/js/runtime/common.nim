@@ -3,15 +3,15 @@
 ## Copyright (C) 2025 Trayambak Rai
 import std/[strutils, logging, tables, sugar]
 import
-  pkg/bali/runtime/[atom_helpers, atom_obj_variant, types, construction],
-  pkg/bali/runtime/niche/lowering,
-  pkg/bali/runtime/vm/prelude,
-  pkg/bali/runtime/vm/ir/generator,
-  pkg/bali/runtime/vm/heap/manager,
-  pkg/bali/runtime/vm/atom,
-  pkg/bali/runtime/abstract/[to_string, equating],
-  pkg/bali/stdlib/prelude
-import pkg/bali/grammar/prelude
+  components/js/runtime/[atom_helpers, atom_obj_variant, types, construction],
+  components/js/runtime/niche/lowering,
+  components/js/runtime/vm/prelude,
+  components/js/runtime/vm/ir/generator,
+  components/js/runtime/vm/heap/manager,
+  components/js/runtime/vm/atom,
+  components/js/runtime/abstract/[to_string, equating],
+  components/js/stdlib/prelude
+import components/js/grammar/prelude
 import pkg/shakar
 
 proc typeRegistrationFinalizer*(runtime: Runtime) {.gcsafe.} =

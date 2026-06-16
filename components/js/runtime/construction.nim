@@ -3,8 +3,8 @@
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 
 #!fmt: off
-import pkg/bali/runtime/vm/atom,
-       pkg/bali/runtime/types
+import components/js/runtime/vm/atom,
+       components/js/runtime/types
 #!fmt: on
 
 {.push inline, sideEffect.}

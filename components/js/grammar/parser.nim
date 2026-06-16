@@ -3,8 +3,8 @@
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[options, strutils, tables, sequtils]
-import bali/grammar/[token, tokenizer, ast, errors, statement]
-import pkg/bali/runtime/vm/atom
+import components/js/grammar/[token, tokenizer, ast, errors, statement]
+import components/js/runtime/vm/atom
 import pkg/[results, pretty, yaml, shakar]
 
 {.push warning[UnreachableCode]: off.}

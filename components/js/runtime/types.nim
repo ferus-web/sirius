@@ -2,12 +2,12 @@
 ##
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak at disroot dot org)
 
-import std/[options, hashes, logging, tables, sugar]
-import pkg/bali/runtime/vm/ir/generator
-import pkg/bali/runtime/vm/prelude
-import pkg/bali/grammar/prelude
-import pkg/bali/runtime/[atom_obj_variant, atom_helpers, normalize]
-import pkg/bali/runtime/vm/heap/manager
+import std/[options, hashes, logging, sugar, tables]
+import components/js/runtime/vm/ir/generator
+import components/js/runtime/vm/prelude
+import components/js/grammar/prelude
+import components/js/runtime/[atom_obj_variant, atom_helpers, normalize]
+import components/js/runtime/vm/heap/manager
 import pkg/[shakar, librng]
 
 type

@@ -1,9 +1,9 @@
 ## Slot logic
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
 import std/hashes
-import bali/internal/sugar
-import bali/stdlib/errors
-import bali/runtime/vm/atom, bali/runtime/[atom_helpers, types]
+import pkg/shakar
+import components/js/stdlib/errors
+import components/js/runtime/vm/atom, components/js/runtime/[atom_helpers, types]
 
 proc RequireInternalSlot*[T](
     runtime: Runtime, obj: JSValue, internalSlot: typedesc[T]

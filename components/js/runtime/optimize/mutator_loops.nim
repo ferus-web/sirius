@@ -12,9 +12,9 @@
 ##   var i = 9999
 
 import std/[logging]
-import bali/runtime/vm/atom
-import bali/grammar/prelude
-import bali/runtime/[statement_utils, types]
+import components/js/runtime/vm/atom
+import components/js/grammar/prelude
+import components/js/runtime/[statement_utils, types]
 
 proc optimizeAwayStateMutatorLoop*(
     runtime: Runtime, fn: Function, stmt: Statement

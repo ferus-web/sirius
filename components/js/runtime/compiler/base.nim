@@ -1,4 +1,4 @@
-import pkg/bali/runtime/vm/interpreter/types
+import components/js/runtime/vm/interpreter/types
 
 const hasJITSupport* = defined(amd64) and defined(unix)
 

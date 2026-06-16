@@ -1,12 +1,13 @@
 ## Arbitrary-precision integers
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
 import std/[options]
-import bali/runtime/[arguments, atom_helpers, types, wrapping, bridge, construction]
-import bali/runtime/abstract/coercion
-import bali/stdlib/errors
-import bali/internal/[sugar, trim_string]
-import bali/runtime/vm/atom
-import pkg/gmp
+import
+  components/js/runtime/[arguments, atom_helpers, types, wrapping, bridge, construction]
+import components/js/runtime/abstract/coercion
+import components/js/stdlib/errors
+import components/js/internal/[trim_string]
+import components/js/runtime/vm/atom
+import pkg/[gmp, shakar]
 
 type JSBigInt* = object
   `@ value`*: JSValue

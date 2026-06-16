@@ -1,10 +1,10 @@
 ## Set type implementation
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
 import std/[options]
-import bali/runtime/[arguments, atom_helpers, types, wrapping, bridge, construction]
-import bali/runtime/abstract/[coercion, equating, slots]
-import bali/internal/sugar
-import bali/runtime/vm/atom
+import components/js/runtime/[arguments, atom_helpers, types, wrapping, bridge, construction]
+import components/js/runtime/abstract/[coercion, equating, slots]
+import pkg/shakar
+import components/js/runtime/vm/atom
 
 type JSSet* = object
   `@ internal`*: JSValue ## Sequence MAtom

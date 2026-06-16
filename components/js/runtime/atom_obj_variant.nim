@@ -1,8 +1,8 @@
 ## Atom-or-function variant type
 
 import std/options
-import bali/internal/sugar
-import bali/runtime/vm/atom
+import pkg/shakar
+import components/js/runtime/vm/atom
 
 type AtomOrFunction*[F] = object
   fn: Option[F]

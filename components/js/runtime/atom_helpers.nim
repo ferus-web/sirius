@@ -1,7 +1,7 @@
 ## Atom functions
 
 import std/[options, tables]
-import bali/runtime/vm/atom, bali/runtime/vm/heap/manager
+import components/js/runtime/vm/atom, components/js/runtime/vm/heap/manager
 
 {.push warning[UnreachableCode]: off, inline.}
 

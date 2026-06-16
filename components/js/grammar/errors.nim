@@ -1,4 +1,4 @@
-import bali/grammar/tokenizer
+import components/js/grammar/tokenizer
 
 type
   ParseErrorKind* = enum

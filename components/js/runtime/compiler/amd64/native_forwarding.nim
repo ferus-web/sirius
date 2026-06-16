@@ -2,7 +2,7 @@
 ## These are often called by JIT'd code segments to "forward" work.
 ##
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
-import pkg/bali/runtime/vm/atom
+import components/js/runtime/vm/atom
 import pkg/shakar
 
 proc getRawFloat*(atom: JSValue): float64 {.cdecl.} =

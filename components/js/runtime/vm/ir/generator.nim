@@ -3,19 +3,19 @@
 ## 
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[sequtils]
-import bali/runtime/vm/shared
-import bali/runtime/vm/[atom]
-import bali/runtime/vm/ir/[emitter, shared]
+import components/js/runtime/vm/shared
+import components/js/runtime/vm/[atom]
+import components/js/runtime/vm/ir/[emitter, shared]
 import pkg/shakar
 
-func newModule*(gen: var IRGenerator, name: string) {.inline, quirky.} =
+func newModule*(gen: var IRGenerator, name: string) {.inline.} =
   ## Create a new module/function/clause definition. 
   ## The name allotted to this module must be unique.
   gen.cachedModule = nil
   gen.modules.add(CodeModule(name: name, operations: newSeqOfCap[IROperation](8)))
   gen.currModule = name
 
-proc addOp*(gen: var IRGenerator, operation: IROperation): uint {.inline, quirky.} =
+proc addOp*(gen: var IRGenerator, operation: IROperation): uint {.inline.} =
   ## Add an operation to the current clause's operation list.
   ## You shouldn't have to use this directly.
 
@@ -35,7 +35,6 @@ proc addOp*(gen: var IRGenerator, operation: IROperation): uint {.inline, quirky
 
   unreachable
 
-{.push quirky.}
 proc loadInt*[V: SomeInteger](
     gen: var IRGenerator, position: uint, value: V
 ): uint {.inline, discardable.} =
@@ -111,14 +110,13 @@ proc loadStr*(
     gen.addOp(
       IROperation(
         opCode: LoadStr,
-        arguments:
-          @[
-            stackInteger position,
-            when value is string:
-              stackStr value
-            else:
-              value,
-          ],
+        arguments: @[
+          stackInteger position,
+          when value is string:
+            stackStr value
+          else:
+            value,
+        ],
       )
     )
   else:
@@ -427,7 +425,5 @@ proc emit*(gen: IRGenerator, destination: File) {.inline, sideEffect.} =
 func newIRGenerator*(name: string): IRGenerator {.inline.} =
   ## Initialize a new IR generation helper.
   IRGenerator(name: name, modules: newSeq[CodeModule]())
-
-{.pop.}
 
 export shared, Ops

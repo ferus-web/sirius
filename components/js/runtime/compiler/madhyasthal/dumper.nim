@@ -1,7 +1,7 @@
 ## IR -> human-readable string conversion routine(s)
 ##
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak at disroot dot org)
-import pkg/bali/runtime/compiler/madhyasthal/ir
+import components/js/runtime/compiler/madhyasthal/ir
 
 func dumpInst*(buffer: var string, inst: ir.Inst) =
   buffer &= '('

@@ -1,14 +1,13 @@
 ## Small wrapper over ICU's `TimeZone` class
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
-import std/[logging]
-import pkg/icu4nim
+#[ import pkg/icu4nim
 
 when defined(baliStaticallyLinkLibICU):
-  {.passC: "-static".}
+  {.passC: "-static".} ]#
 
+# TODO: Should we link in ICU? It's a massive library and it'll require us to switch to the C++ backend...
 proc getCurrentTimeZone*(): string {.gcsafe.} =
-  debug "getCurrentTimeZone: returning system timezone"
-  var status = ZeroError
+  #[ var status = ZeroError
 
   var tz = detectHostTimeZone()
   if tz == nil:
@@ -27,10 +26,9 @@ proc getCurrentTimeZone*(): string {.gcsafe.} =
   if status != ZeroError:
     warn "getCurrentTimeZone: ICU returned error code: " & $status
     warn "getCurrentTimeZone: returning \"UTC\" as timezone."
-    return "UTC"
+    return "UTC" ]#
 
-  # cachedSystemTimeZone = some($timeZoneName)
-  $timeZoneName
+  "UTC"
 
 #[ proc clearSystemTimeZoneCache*() {.sideEffect.} =
   debug "timezone: cleared system timezone cache"

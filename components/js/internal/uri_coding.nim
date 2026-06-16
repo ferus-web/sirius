@@ -3,7 +3,8 @@
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 ## https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf
 import std/[strutils]
-import pkg/bali/internal/[str_padding], pkg/ferrite/utf16view
+import components/js/internal/[str_padding]
+import components/unicode/utf16view
 
 proc encode*(uri: string, extraUnescaped: set[char] = {}): string =
   ## 19.2.6.5 Encode ( string, extraUnescaped )

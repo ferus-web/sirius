@@ -7,7 +7,7 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai
 import std/[logging]
-import pkg/bali/runtime/vm/heap/[boehm, bump_allocator]
+import components/js/runtime/vm/heap/[boehm, bump_allocator]
 
 type
   AllocationFailed* = object of Defect

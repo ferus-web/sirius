@@ -14,8 +14,8 @@
 ## end
 
 import std/[logging]
-import bali/grammar/prelude
-import bali/runtime/[types]
+import components/js/grammar/prelude
+import components/js/runtime/[types]
 
 type AllocationEliminatorResult* = object
   placeBefore*: Scope ## All statements here are to be placed outside the loop

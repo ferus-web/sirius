@@ -3,16 +3,12 @@
 ##
 
 import std/[options, logging]
-import bali/runtime/[arguments, types, bridge, construction]
-import bali/runtime/abstract/coercion
-import bali/stdlib/errors
-import bali/internal/sugar
+import components/js/runtime/[arguments, types, bridge, construction]
+import components/js/runtime/abstract/coercion
+import components/js/stdlib/errors
+import pkg/shakar
 
-when not defined(baliUseStdBase64):
-  import simdutf/base64
-else:
-  import std/base64
-  type Base64DecodeError = ValueError
+import components/impure/simdutf
 
 proc generateStdIr*(runtime: Runtime) =
   info "builtins.base64: generating IR interfaces"
@@ -26,19 +22,31 @@ proc generateStdIr*(runtime: Runtime) =
         typeError(runtime, "atob: At least 1 argument required, but only 0 passed")
         return
 
-      template decodeError() =
-        warn "atob: failed to decode string: " & exc.msg
-        typeError(runtime, "atob: String contains an invalid character")
-        return
-
       let
         value = runtime.RequireObjectCoercible(&runtime.argument(1))
         strVal = runtime.ToString(value)
 
-      try:
-        ret str(runtime, decode(strVal))
-      except Base64DecodeError as exc:
-        decodeError,
+      var buffer = newString(
+        simdutf.base64LengthFromBinary(
+          cast[uint64](strVal.len), {Base64Options.DefaultAcceptGarbage}
+        )
+      )
+      var emitted = cast[uint64](buffer.len)
+
+      let res = simdutf.base64ToBinarySafe(
+        strVal[0].addr,
+        length = cast[uint64](strVal.len),
+        output = buffer[0].addr,
+        outlen = emitted.addr,
+        options = {Base64Options.DefaultAcceptGarbage},
+        lastChunkOptions = LastChunkHandlingOptions.Loose,
+        decodeUpToBadChar = false,
+      )
+
+      if res.error == ErrorCode.Success:
+        ret str(runtime, ensureMove(buffer))
+      else:
+        runtime.typeError("atob: String contains an invalid character"),
   )
 
   # btoa
@@ -55,7 +63,18 @@ proc generateStdIr*(runtime: Runtime) =
           )
         )
         str = runtime.ToString(value)
+      var buffer = newString(
+        simdutf.maximalBinaryLengthFromBase64(str[0].addr, cast[uint64](str.len))
+      )
 
-      ret str(runtime, encode(str))
+      buffer.setLen(
+        simdutf.binaryToBase64(
+          str[0].addr,
+          cast[uint64](str.len),
+          buffer[0].addr,
+          {Base64Options.DefaultAcceptGarbage},
+        )
+      )
+      ret str(runtime, ensureMove(buffer))
     ,
   )

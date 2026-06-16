@@ -1,9 +1,9 @@
 ## Constant values (like NaN, undefined, null, etc.)
 
 import std/[logging]
-import bali/runtime/vm/ir/generator
-import bali/runtime/vm/[atom, prelude]
-import bali/runtime/types
+import components/js/runtime/vm/ir/generator
+import components/js/runtime/vm/[atom, prelude]
+import components/js/runtime/types
 
 proc generateStdIr*(runtime: Runtime) =
   if runtime.constantsGenerated:

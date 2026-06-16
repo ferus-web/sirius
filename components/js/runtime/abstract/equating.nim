@@ -1,12 +1,12 @@
 ## Equation functions
 ## Loose (==) and Strict (===)
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
-import pkg/[bali/runtime/vm/atom, gmp/gmp]
-import pkg/ferrite/utf16view
-import bali/runtime/[atom_helpers, types, bridge, construction]
-import bali/runtime/abstract/[coercion]
-import bali/internal/sugar
-import bali/stdlib/types/[std_bigint, std_string_type]
+import components/js/runtime/vm/atom
+import components/unicode/utf16view
+import components/js/runtime/[atom_helpers, types, bridge, construction]
+import components/js/runtime/abstract/[coercion]
+import pkg/[gmp/gmp, shakar]
+import components/js/stdlib/types/[std_bigint, std_string_type]
 
 proc equateNumbers*(runtime: Runtime, x, y: JSValue): bool =
   runtime.ToNumber(x) == runtime.ToNumber(y)
@@ -35,15 +35,7 @@ proc equateSameValueNonNumber*(runtime: Runtime, x, y: JSValue): bool =
     if xVal.codePointLen != yVal.codePointLen:
       return false
 
-    let
-      xData = xVal.data()
-      yData = yVal.data()
-
-    for i in 0 ..< xData.len:
-      if xData[i] != yData[i]:
-        return false
-
-    return true
+    return xVal == yVal
 
   # 5. If x is a Boolean, then
   if x.kind == Boolean:
@@ -87,15 +79,7 @@ proc isLooselyEqual*(runtime: Runtime, x, y: JSValue): bool =
     if xVal.codePointLen != yVal.codePointLen:
       return false
 
-    let
-      xData = xVal.data()
-      yData = yVal.data()
-
-    for i in 0 ..< xData.len:
-      if xData[i] != yData[i]:
-        return false
-
-    return true
+    return xVal == yVal
 
   # If x is undefined and y is null, return true.
   if x.isUndefined and y.isNull:

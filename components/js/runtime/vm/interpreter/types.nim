@@ -3,7 +3,7 @@
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/options
-import pkg/bali/runtime/vm/interpreter/operation
+import components/js/runtime/vm/interpreter/operation
 
 type
   FieldAccess* = object

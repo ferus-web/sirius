@@ -1,8 +1,8 @@
 import std/[logging, options, strutils]
-import bali/runtime/vm/atom
-import bali/runtime/vm/interpreter/interpreter
-import bali/runtime/[types]
-import bali/stdlib/errors
+import components/js/runtime/vm/atom
+import components/js/runtime/vm/interpreter/interpreter
+import components/js/runtime/[types]
+import components/js/stdlib/errors
 
 proc argument*(
     runtime: Runtime, position: Natural, required: bool = false, message: string = ""

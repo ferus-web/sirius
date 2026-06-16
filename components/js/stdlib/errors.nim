@@ -1,9 +1,9 @@
 ## Implementation of `throw` in MIR bytecode
 
-import pkg/bali/runtime/vm/prelude
-import bali/grammar/errors
-import bali/runtime/types
-import bali/stdlib/errors_common
+import components/js/runtime/vm/prelude
+import components/js/grammar/errors
+import components/js/runtime/types
+import components/js/stdlib/errors_common
 
 proc typeError*(runtime: Runtime, message: string, exitCode: int = 1) {.inline.} =
   ## Meant for other Bali stdlib methods to use.

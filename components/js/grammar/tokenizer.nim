@@ -1,8 +1,8 @@
 ## JavaScript tokenizer
 
 import std/[math, options, strutils, tables]
-import bali/grammar/token
-import bali/internal/sugar
+import components/js/grammar/token
+import pkg/shakar
 import results
 
 type
@@ -89,6 +89,13 @@ func charToDecimalDigit*(c: char): Option[uint32] {.inline.} =
     return some(uint32(cast[uint8](c) - (uint8) '0'))
 
   none(uint32)
+
+func unpack*[T](opt: Option[T], dest: var T): bool {.inline.} =
+  if *opt:
+    dest = &opt
+    true
+  else:
+    false
 
 func consumeNumeric*(tokenizer: var Tokenizer, negative: bool = false): Token =
   if not tokenizer.hasAtleast(1):
@@ -325,7 +332,7 @@ func consumeString*(tokenizer: var Tokenizer): Token =
           continue
         else:
           malformed = true
-          malformationReason = @escaped
+          malformationReason = escaped.error()
       else:
         ignoreNextQuote = true
         tokenizer.advance()

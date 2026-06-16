@@ -2,11 +2,16 @@
 ##
 ## Copyright (C) 2025 Trayambak Rai
 
+# TODO: Move these to `components::impure` eventually?
+
 when defined(posix):
   import std/posix
 
   proc free*(p: pointer): void {.importc, header: "<stdlib.h>".}
   proc malloc*(size: uint64): pointer {.importc, header: "<stdlib.h>".}
+  proc posix_malign*(
+    address: ptr pointer, alignment: int64, size: uint64
+  ): int32 {.importc: "posix_memalign", header: "<stdlib.h>".}
 
   export posix
 

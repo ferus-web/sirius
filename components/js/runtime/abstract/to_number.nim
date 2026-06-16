@@ -1,9 +1,9 @@
 import std/[logging, math, options]
-import bali/runtime/vm/prelude
-import bali/internal/sugar
-import bali/runtime/[atom_helpers, types]
-import bali/runtime/abstract/to_primitive
-import bali/internal/[trim_string, parse_number]
+import components/js/runtime/vm/prelude
+import pkg/shakar
+import components/js/runtime/[atom_helpers, types]
+import components/js/runtime/abstract/to_primitive
+import components/js/internal/[trim_string, parse_number]
 
 proc StringToNumber*(runtime: Runtime, value: JSValue): float =
   assert value.kind == String, "StringToNumber() was passed a " & $value.kind

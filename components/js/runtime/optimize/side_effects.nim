@@ -2,7 +2,7 @@
 ## 
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
 import std/options
-import pkg/bali/grammar/[statement], pkg/shakar
+import components/js/grammar/[statement], pkg/shakar
 
 proc hasSideEffects*(stmt: Statement): bool =
   case stmt.kind

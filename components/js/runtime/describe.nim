@@ -1,8 +1,8 @@
 import std/[strutils, terminal]
-import bali/runtime/vm/atom
-import bali/runtime/[bridge, arguments, types]
-import bali/internal/sugar
-import bali/stdlib/prelude
+import components/js/runtime/vm/atom
+import components/js/runtime/[bridge, arguments, types]
+import pkg/shakar
+import components/js/stdlib/prelude
 
 proc generateDescribeFnCode*(runtime: Runtime) =
   runtime.defineFn(

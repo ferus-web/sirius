@@ -1,19 +1,19 @@
 ## Bali runtime (MIR emitter)
 
 import std/[options, hashes, logging, strutils, tables, importutils]
-import bali/runtime/vm/ir/generator
-import bali/runtime/vm/prelude
-import bali/grammar/prelude
-import bali/internal/sugar
+import components/js/runtime/vm/ir/generator
+import components/js/runtime/vm/prelude
+import components/js/grammar/prelude
+import pkg/shakar
 import
-  bali/runtime/[
+  components/js/runtime/[
     normalize, types, atom_helpers, arguments, statement_utils, bridge, describe,
     construction,
   ]
-import bali/runtime/optimize/[mutator_loops, redundant_loop_allocations]
-import bali/runtime/vm/heap/boehm
-import bali/runtime/abstract/equating
-import bali/stdlib/prelude
+import components/js/runtime/optimize/[mutator_loops, redundant_loop_allocations]
+import components/js/runtime/vm/heap/boehm
+import components/js/runtime/abstract/equating
+import components/js/stdlib/prelude
 
 privateAccess(PulsarInterpreter)
 privateAccess(Runtime)
@@ -275,7 +275,7 @@ proc genCreateImmutVal(
   debug "emitter: generate IR for creating immutable value with identifier: " &
     stmt.imIdentifier
 
-  let idx = runtime.loadIRAtom(deepCopy(stmt.imAtom.unwrap))
+  let idx = runtime.loadIRAtom(stmt.imAtom.unwrap) # NOTE: This was deepCopy'd earlier.
 
   if not internal:
     if fn.name == "outer":
@@ -363,7 +363,8 @@ proc genCall(
 
     let indexed = runtime.index(nam, defaultParams(fn))
 
-    if indexed == runtime.index("undefined", defaultParams(fn), willHandleResolveFail = true):
+    if indexed ==
+        runtime.index("undefined", defaultParams(fn), willHandleResolveFail = true):
       runtime.ir.call(nam)
     else:
       runtime.ir.invoke(indexed)
@@ -1421,7 +1422,8 @@ proc generateInternalIR*(runtime: Runtime) =
   runtime.vm[].registerBuiltin(
     "BALI_ICTOR",
     proc(op: Operation) =
-      let typ = deepCopy(&runtime.argument(1))
+      let typ = &runtime.argument(1)
+        # NOTE: This was deepCopy'd before. _SURELY_ nothing will go wrong, right?
       let ctor = typ.tagged("Construct")
 
       runtime.vm.registers.callArgs.delete(0)

@@ -1,5 +1,5 @@
 import std/[options]
-import components/ast/grammar/[statement, errors]
+import components/js/grammar/[statement, errors]
 
 type
   Test262Negativity* = object

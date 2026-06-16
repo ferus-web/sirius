@@ -1,7 +1,7 @@
 import std/[importutils, strutils]
-import bali/runtime/vm/prelude
-import bali/runtime/types
-import bali/internal/sugar
+import components/js/runtime/vm/prelude
+import components/js/runtime/types
+import pkg/shakar
 
 privateAccess(PulsarInterpreter)
 
