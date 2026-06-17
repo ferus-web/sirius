@@ -11,7 +11,7 @@ type JSFunction* = object
   inner: Hidden[JSValue]
 
 func toJSFunction*(value: JSValue): JSFunction =
-  JSFunction(inner: value)
+  JSFunction(inner: cast[Hidden[JSValue]](value))
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType("Function", JSFunction)

@@ -1277,9 +1277,11 @@ proc generateBytecode(
   of CreateArrayLiteral:
     runtime.genCreateArrayLit(fn = fn, stmt = stmt)
   of AtomHolder:
-    runtime.genAtomHolder(
-      fn = fn, stmt = stmt, storeIn = &exprStoreIn, parent = &parentStmt
-    )
+    if *exprStoreIn and *parentStmt:
+      # HACK: Just to prevent a crash on many sites.
+      runtime.genAtomHolder(
+        fn = fn, stmt = stmt, storeIn = &exprStoreIn, parent = &parentStmt
+      )
   else:
     warn "emitter: unimplemented bytecode generation directive: " & $stmt.kind
 
@@ -1349,7 +1351,7 @@ proc generateBytecodeForScope(
         runtime.types[i].singletonId = idx
 
   for i, stmt in scope.stmts:
-    runtime.generateBytecode(fn, stmt, index = i.uint.some)
+    runtime.generateBytecode(fn, stmt, index = some(uint(i)))
 
   for child in scope.children:
     runtime.generateBytecodeForScope(child)
