@@ -11,7 +11,10 @@ import
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
-  components/net/core
+  components/net/core,
+  components/scripting/types,
+  components/js/grammar/prelude,
+  components/js/runtime/prelude
 
 logScope:
   topics = "webview/core"
@@ -111,8 +114,9 @@ proc resolveURLSegment*(
 
   # Otherwise, if the parsing error was not related to relativity, return nothing.
   # The segment is likely malformed.
-  if absoluteByDefault.error() notin
-      {ParseError.RelativeUrlWithoutBase, ParseError.MissingSchemeNonRelativeUrl}:
+  if absoluteByDefault.error() notin {
+    url.ParseError.RelativeUrlWithoutBase, url.ParseError.MissingSchemeNonRelativeUrl
+  }:
     error "Cannot resolve URL segment",
       segment = segment, fault = absoluteByDefault.error()
     return absoluteByDefault
@@ -159,6 +163,118 @@ proc reflow(view: WebView) =
     vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
   )
 
+proc insertStyle(view: WebView, text: string) =
+  # HACK: yeah... we don't do stuff like this.
+  view.style &= text
+
+proc finishStyle(view: WebView) =
+  if view.opts.disableStyling:
+    warn "Styling is explicitly disabled. All styles will be derived from the user agent."
+    return
+
+  view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style))))
+
+proc handleHTMLLinkElement(
+    view: WebView, element: dom.Element, factory: dom.MAtomFactory
+) =
+  let
+    rel = element.getAttr(factory, "rel")
+    href = element.getAttr(factory, "href")
+
+  if (!rel or !href) or &rel != "stylesheet":
+    return
+
+  let relURL = view.resolveURLSegment(&href)
+
+  info "Found external stylesheet", href = relURL
+  discard view.loader.getAsyncStream(
+    &relURL,
+    finalize = proc(resp: Response, err: TransportError) =
+      if resp.code == 200:
+        let style = resp.body.stream.readAll()
+        if not view.opts.disableExternalStylesheets:
+          view.stylesheet &= parseStylesheet(newParser(newParserInput(style)))
+          view.reflow()
+    ,
+  )
+
+proc fetchHTMLImageResource(
+    view: WebView, element: tags.HTMLImageElement, factory: dom.MAtomFactory
+) =
+  if view.opts.disableImageLoading:
+    return
+
+  let
+    srcRaw = element.getAttr(factory, "src")
+    src = view.resolveURLSegment(&srcRaw)
+
+  element.src = srcRaw
+  element.width = element.getUintAttr(factory, "width")
+  element.height = element.getUintAttr(factory, "height")
+
+  let dataUrlOpt = parseDataURL(&srcRaw)
+
+  if !dataUrlOpt:
+    discard view.loader.getAsyncStream(
+      &src,
+      finalize = proc(resp: Response, err: TransportError) =
+        if err.kind != TransportErrorKind.None:
+          error "Failed to fetch image", src = src, err = err.kind
+          return
+
+        debug "Fetched image", src = &src, size = resp.body.stream.data.len
+        try:
+          view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
+        except pixie.PixieError as exc:
+          error "Failed to decode image, it will not be shown!",
+            err = exc.msg, src = &src, size = resp.body.stream.data.len
+          view.imageCache[&srcRaw] = view.failedPlaceholderImage
+
+        view.reflow(),
+    )
+  else:
+    let dataUrl = &dataUrlOpt
+
+    try:
+      let decodedData = dataUrl.decodeBase64()
+
+      if *decodedData:
+        view.imageCache[&srcRaw] = decodeImage(&decodedData)
+      else:
+        warn "Image element has data URL, but its content could not be decoded as base64."
+    except pixie.PixieError as exc:
+      error "Failed to decode image, it will not be shown!",
+        err = exc.msg, src = &srcRaw
+      view.imageCache[&srcRaw] = view.failedPlaceholderImage
+
+proc executeScript(view: WebView, element: tags.HTMLScriptElement) =
+  var codeBuffer: string # TODO: Prealloc somehow?
+  for child in element.childList:
+    if child of dom.Text:
+      codeBuffer &= Text(child).data
+
+  let parser = newParser(ensureMove(codeBuffer))
+  element.script = Script(ast: parser.parse(), baseURL: view.target)
+  element.script.rt = newRuntime(
+    file = "<inline-script>", # TODO: We can probably use more descriptive names?
+    ast = element.script.ast,
+    opts = InterpreterOpts(
+      test262: false,
+      repl: false,
+      dumpBytecode: false,
+      insertDebugHooks: true,
+      codegen: CodegenOpts(
+        elideLoops: false,
+        loopAllocationEliminator: false,
+        aggressivelyFreeRetvals: false,
+        deadCodeElimination: false,
+        jitCompiler: false,
+      ),
+      jit: JITOpts(),
+    ),
+  )
+  element.script.rt.run()
+
 proc loadHTMLStream(view: WebView, stream: Stream) =
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
@@ -167,83 +283,17 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
     stream,
     callbacks = MiniDOMBuilderCallbacks(
       insertStyle: proc(text: string) =
-        # HACK: yeah... we don't do stuff like this.
-        view.style &= text,
+        view.insertStyle(text),
       finishStyle: proc() =
-        if view.opts.disableStyling:
-          warn "Styling is explicitly disabled. All styles will be derived from the user agent."
-          return
-
-        view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style)))),
+        view.finishStyle(),
       handleLinkElement: proc(element: dom.Element, factory: dom.MAtomFactory) =
-        let
-          rel = element.getAttr(factory, "rel")
-          href = element.getAttr(factory, "href")
-
-        if (!rel or !href) or &rel != "stylesheet":
-          return
-
-        let relURL = view.resolveURLSegment(&href)
-
-        info "Found external stylesheet", href = relURL
-        discard view.loader.getAsyncStream(
-          &relURL,
-          finalize = proc(resp: Response, err: TransportError) =
-            if resp.code == 200:
-              let style = resp.body.stream.readAll()
-              if not view.opts.disableExternalStylesheets:
-                view.stylesheet &= parseStylesheet(newParser(newParserInput(style)))
-                view.reflow()
-          ,
-        ),
+        view.handleHTMLLinkElement(element, factory),
       fetchImageResource: proc(
           element: tags.HTMLImageElement, factory: dom.MAtomFactory
       ) =
-        if view.opts.disableImageLoading:
-          return
-
-        let
-          srcRaw = element.getAttr(factory, "src")
-          src = view.resolveURLSegment(&srcRaw)
-
-        element.src = srcRaw
-        element.width = element.getUintAttr(factory, "width")
-        element.height = element.getUintAttr(factory, "height")
-
-        let dataUrlOpt = parseDataURL(&srcRaw)
-
-        if !dataUrlOpt:
-          let id = view.loader.getAsyncStream(
-            &src,
-            finalize = proc(resp: Response, err: TransportError) =
-              if err.kind != TransportErrorKind.None:
-                error "Failed to fetch image", src = src, err = err.kind
-                return
-
-              debug "Fetched image", src = &src, size = resp.body.stream.data.len
-              try:
-                view.imageCache[&srcRaw] = decodeImage(resp.body.stream.readAll())
-              except pixie.PixieError as exc:
-                error "Failed to decode image, it will not be shown!",
-                  err = exc.msg, src = &src, size = resp.body.stream.data.len
-                view.imageCache[&srcRaw] = view.failedPlaceholderImage
-
-              view.reflow(),
-          )
-        else:
-          let dataUrl = &dataUrlOpt
-
-          try:
-            let decodedData = dataUrl.decodeBase64()
-
-            if *decodedData:
-              view.imageCache[&srcRaw] = decodeImage(&decodedData)
-            else:
-              warn "Image element has data URL, but its content could not be decoded as base64."
-          except pixie.PixieError as exc:
-            error "Failed to decode image, it will not be shown!",
-              err = exc.msg, src = &srcRaw
-            view.imageCache[&srcRaw] = view.failedPlaceholderImage,
+        view.fetchHTMLImageResource(element, factory),
+      executeScript: proc(element: tags.HTMLScriptElement) =
+        view.executeScript(element),
     ),
   )
   userAgent.close()

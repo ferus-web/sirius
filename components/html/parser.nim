@@ -16,10 +16,12 @@ type
 
     handleLinkElement*: proc(element: Element, factory: MAtomFactory)
     fetchImageResource*: proc(element: HTMLImageElement, factory: MAtomFactory)
+    executeScript*: proc(element: HTMLScriptElement)
 
   MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
     document*: Document
     factory*: MAtomFactory
+    pendingScript*: HTMLScriptElement
 
     callbacks*: MiniDOMBuilderCallbacks
 
@@ -113,6 +115,8 @@ proc createElement(
         HTMLImageElement()
       of TAG_A:
         HTMLAnchorElement()
+      of TAG_SCRIPT:
+        HTMLScriptElement()
       else:
         Element()
     else:
@@ -139,6 +143,9 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
       builder.callbacks.finishStyle()
     of TAG_A:
       HTMLAnchorElement(element).href = element.getAttr(builder.factory, "href")
+    of TAG_SCRIPT:
+      # surely we can rely on the WebView to handle this :P
+      builder.callbacks.executeScript(HTMLScriptElement(element))
     else:
       discard
 
@@ -365,23 +372,32 @@ proc newMiniDOMBuilder*(
     MiniDOMBuilder(document: document, factory: factory, callbacks: callbacks)
   return builder
 
-proc parseFromStream(parser: var HTML5Parser[Node, MAtom], inputStream: Stream) =
+proc parseFromStream(
+    parser: var HTML5Parser[Node, MAtom], builder: MiniDOMBuilder, inputStream: Stream
+) =
   var buffer {.noinit.}: array[4096, char]
   while true:
     let n = inputStream.readData(addr buffer[0], buffer.len)
     if n == 0:
       break
-    # res can be PRES_CONTINUE or PRES_SCRIPTING. PRES_STOP is only returned
-    # on charset switching, and minidom does not support that.
-    var res = parser.parseChunk(buffer.toOpenArray(0, n - 1))
-    # Important: we must repeat parseChunk with the same contents for the script
-    # end tag result, with reprocess = true.
-    #
-    # (This is only relevant for calls where scripting = true; with scripting =
-    # false, PRES_SCRIPT would never be returned.)
-    var ip = 0
-    while res == PRES_SCRIPT and (ip += parser.getInsertionPoint(); ip != n):
+
+    var
+      res = parser.parseChunk(buffer.toOpenArray(0, n - 1))
+      ip = 0
+
+    while res == PRES_SCRIPT:
+      let script = builder.pendingScript
+      builder.pendingScript = nil
+
+      if script != nil:
+        builder.callbacks.executeScript(script)
+
+      ip = parser.getInsertionPoint()
+      if ip == n:
+        break
+
       res = parser.parseChunk(buffer.toOpenArray(ip, n - 1))
+
   parser.finish()
 
 proc parseHTML*(
@@ -399,7 +415,7 @@ proc parseHTML*(
   ## documentation.
   let builder = newMiniDOMBuilder(factory, callbacks)
   var parser = initHTML5Parser(builder, opts)
-  parser.parseFromStream(inputStream)
+  parser.parseFromStream(builder, inputStream)
   return builder.document
 
 proc parseHTMLFragment*(
@@ -449,7 +465,7 @@ proc parseHTMLFragment*(
   opts.openElementsInit = @[(Node(root), htmlAtom)]
   opts.pushInTemplate = element.tagType == TAG_TEMPLATE
   var parser = initHTML5Parser(builder, opts)
-  parser.parseFromStream(inputStream)
+  parser.parseFromStream(builder, inputStream)
   return root.childList
 
 proc parseHTMLFragment*(
@@ -465,7 +481,7 @@ proc parseHTMLFragment*(
   let inputStream = newStringStream(s)
   let opts = HTML5ParserOpts[Node, MAtom](
     isIframeSrcdoc: false,
-    scripting: false,
+    scripting: true,
     pushInTemplate: element.tagType == TAG_TEMPLATE,
   )
   return parseHTMLFragment(inputStream, element, opts, callbacks = callbacks)
