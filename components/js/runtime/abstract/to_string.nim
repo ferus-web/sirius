@@ -9,7 +9,7 @@ import pkg/gmp
 proc ToString*(runtime: Runtime, value: JSValue): string {.gcsafe.} =
   ## 7.1.17 ToString ( argument )
   ## The abstract operation ToString takes argument argument (an ECMAScript language value) and returns either a normal completion containing a String or a throw completion. It converts argument to a value of type String. It performs the following steps when called
-  debug "runtime: toString(): " & value.crush()
+  # debug "runtime: toString(): " & value.crush()
 
   case value.kind
   of String: # 1. If argument is a String, return argument.
@@ -29,21 +29,20 @@ proc ToString*(runtime: Runtime, value: JSValue): string {.gcsafe.} =
     let primValue = runtime.ToPrimitive(value, some(String))
 
     # 12. Return ? ToString(primValue).
-    return runtime.ToString(primValue)
+    if primValue != nil:
+      return runtime.ToString(primValue)
   of Null, Ident:
     debug "runtime: toString(): atom is null."
     return "null" # 4. If argument is null, return "null".
   of Boolean:
     debug "runtime: toString(): atom is a boolean."
-    return
-      $(&value.getBool())
-        # 5. If argument is true, return "true"
-        # 6. If argument is false, return "false".
+    return $(&value.getBool())
+      # 5. If argument is true, return "true"
+      # 6. If argument is false, return "false".
   of Integer:
     debug "runtime: toString(): atom is a number (int)."
-    return
-      $(&value.getInt())
-        # 7. If argument is a Number, return Number::toString(argument, 10).
+    return $(&value.getInt())
+      # 7. If argument is a Number, return Number::toString(argument, 10).
   of BigInteger:
     debug "runtime: toString(): atom is a bigint"
     return $value.bigint
