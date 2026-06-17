@@ -3,6 +3,9 @@
 import std/[options, tables]
 import components/js/runtime/vm/atom, components/js/runtime/vm/heap/manager
 
+type Hidden*[T: ref object | ptr object] = distinct T
+  ## Hidden state that you do not wish for JavaScript code to access.
+
 {.push warning[UnreachableCode]: off, inline.}
 
 func isUndefined*(atom: MAtom | JSValue): bool =
@@ -36,6 +39,19 @@ proc `[]=`*(atom: JSValue, name: string, value: sink JSValue) =
   else:
     atom.objValues[atom.objFields[name]] = ensureMove(value)
 
+proc setHiddenField*(atom: JSValue, name: string, value: sink JSValue) =
+  if atom.kind != Object:
+    raise newException(ValueError, $atom.kind & " does not have field access methods")
+
+  atom.objValues &= ensureMove(value)
+  atom.objHiddenFields[name] = atom.objValues.len - 1
+
+proc getHiddenField*(atom: JSValue, name: string): Option[JSValue] =
+  if name notin atom.objHiddenFields:
+    return none(JSValue)
+
+  some(atom.objValues[atom.objHiddenFields[name]])
+
 proc createField*(atom: JSValue, field: string, heap: HeapManager) =
   atom[field] = undefined(heap)
 
@@ -43,10 +59,9 @@ proc contains*(atom: JSValue, name: string): bool =
   atom.objFields.contains(name)
 
 proc tagged*(atom: JSValue, tag: string): Option[JSValue] =
-  if atom.contains('@' & tag):
-    return some atom['@' & tag]
+  getHiddenField(atom, tag)
 
 proc tag*(atom: JSValue, tag: string, value: JSValue) =
-  atom['@' & tag] = value
+  atom.setHiddenField(tag, value)
 
 {.pop.}

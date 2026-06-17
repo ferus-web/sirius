@@ -165,7 +165,11 @@ proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
     if member.isAtom():
       let idx = atom.objValues.len
       atom.objValues &= undefined(runtime.heapManager)
-      atom.objFields[name] = idx
+
+      if member.hidden:
+        atom.objHiddenFields[name] = idx
+      else:
+        atom.objFields[name] = idx
 
   for name, protoFn in typ.prototypeFunctions:
     capture name, protoFn:

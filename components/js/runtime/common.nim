@@ -29,7 +29,10 @@ proc typeRegistrationFinalizer*(runtime: Runtime) {.gcsafe.} =
               value.fn()(),
           )
       else:
-        jsObj[name] = value.atom()
+        if value.hidden:
+          jsObj.setHiddenField(name, value.atom())
+        else:
+          jsObj[name] = value.atom()
 
     if typ.constructor != nil:
       let fn = nativeCallable(runtime.heapManager, typ.constructor)

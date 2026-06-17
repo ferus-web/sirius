@@ -7,6 +7,7 @@ import components/js/runtime/vm/atom
 type AtomOrFunction*[F] = object
   fn: Option[F]
   atom: Option[JSValue]
+  hidden: bool
 
 {.push inline.}
 func `fn=`*[F](af: var AtomOrFunction[F], fn: F) =
@@ -45,9 +46,12 @@ func atom*[F](af: AtomOrFunction[F]): JSValue =
   assert(*af.atom, "atom() called but variant contains no atom.")
   &af.atom
 
+func hidden*[F](af: AtomOrFunction[F]): bool =
+  af.hidden
+
 func initAtomOrFunction*[F](fn: F): AtomOrFunction[F] =
   AtomOrFunction[F](fn: some(fn))
 
-func initAtomOrFunction*[F](atom: JSValue): AtomOrFunction[F] =
-  AtomOrFunction[F](atom: some(atom))
+func initAtomOrFunction*[F](atom: JSValue, hidden: bool = false): AtomOrFunction[F] =
+  AtomOrFunction[F](atom: some(atom), hidden: hidden)
 {.pop.}

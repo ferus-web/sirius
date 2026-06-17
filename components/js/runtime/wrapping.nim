@@ -30,6 +30,10 @@ proc wrap*[T: not JSValue](runtime: Runtime, val: openArray[T]): JSValue =
 
   vec
 
+proc wrap*[T: ref object | ptr object](runtime: Runtime, hidden: Hidden[T]): JSValue =
+  # just store these as 64 bit signed ints
+  integer(runtime.heapManager, cast[int64](hidden))
+
 func wrap*[V: JSValue | MAtom](runtime: Runtime, atom: V): V {.inline.} =
   atom
 
@@ -60,4 +64,4 @@ template `[]`*[T: not JSValue](atom: JSValue, name: string, value: T) =
   atom[name] = runtime.wrap(value)
 
 proc tag*[T](runtime: Runtime, atom: JSValue, tag: string, value: T) =
-  atom['@' & tag] = runtime.wrap(atom)
+  atom.setHiddenField(runtime.wrap(atom))

@@ -4,7 +4,8 @@
 import std/[math, strformat, times, logging, options]
 import pkg/shakar
 import components/js/runtime/vm/atom
-import components/js/runtime/[atom_helpers, arguments, types, bridge, construction, wrapping]
+import
+  components/js/runtime/[atom_helpers, arguments, types, bridge, construction, wrapping]
 import components/js/runtime/abstract/[coercion, slots]
 import components/js/internal/date/[utils, constants, parser]
 import components/js/internal/timezone
@@ -17,8 +18,8 @@ import components/js/internal/timezone
 ## The exact moment of midnight at the beginning of 1 January 1970 UTC is represented by the time value +0𝔽.
 
 type JSDate* = object
-  `@ epoch`*: float
-  `@ invalid`*: bool = false
+  epoch*: Hidden[JSValue]
+  invalid*: Hidden[JSValue]
 
 proc parseDateString(runtime: Runtime, dateString: string): float =
   if dateString.len < 1:

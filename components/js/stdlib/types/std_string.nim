@@ -33,7 +33,7 @@ proc generateStdIr*(runtime: Runtime) =
       ret argument
 
     var atom = runtime.createObjFromType(JSString)
-    atom["@internal"] = str(runtime, strVal)
+    atom.tag("internal", str(runtime, strVal))
     atom["length"] = integer(runtime, newUtf16View(strVal).size.int)
     ret atom
 

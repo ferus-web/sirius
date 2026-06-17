@@ -34,6 +34,9 @@ type
     cachedCpLength: Option[uint64]
 
 proc `=destroy`*(view: UTF16View) =
+  if view.data == nil:
+    return
+
   deallocShared(view.data)
 
 proc newUtf16View*(str: ptr char, size: uint64): UTF16View {.raises: [].} =

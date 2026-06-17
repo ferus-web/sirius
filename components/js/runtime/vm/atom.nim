@@ -42,6 +42,7 @@ type
       state*: bool
     of Object:
       objFields*: Table[string, int]
+      objHiddenFields*: Table[string, int]
       objValues*: seq[JSValue]
     of Undefined: discard
     of Float:

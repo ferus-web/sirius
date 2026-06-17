@@ -258,7 +258,10 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
     when fatom is JSValue:
       jsType.members[fname] = initAtomOrFunction[NativeFunction](undefined(runtime))
     else:
-      jsType.members[fname] = initAtomOrFunction[NativeFunction](runtime.wrap(fatom))
+      # assert not (fatom is Hidden), $prototype
+      jsType.members[fname] = initAtomOrFunction[NativeFunction](
+        runtime.wrap(fatom), hidden = fatom is Hidden
+      )
 
   runtime.types[index] = ensureMove(jsType)
   let typIdx = runtime.types.len - 1

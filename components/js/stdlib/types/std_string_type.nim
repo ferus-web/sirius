@@ -8,10 +8,7 @@ import
 import pkg/shakar
 
 type JSString* = object
-  `@ internal`*: string
-
-func value*(str: JSString): string {.inline.} =
-  str.`@ internal`
+  internal*: Hidden[JSValue]
 
 proc newJSString*(runtime: Runtime, native: string): JSValue =
   ## Given a native string, turn it into a `JSString` allocated on the heap.

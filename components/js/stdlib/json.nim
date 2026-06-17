@@ -1,12 +1,11 @@
 ## JSON methods
 
 import std/[json, options, logging, tables]
-import pkg/shakar
+import pkg/[jsony, shakar]
 import components/js/runtime/[arguments, types, bridge, construction]
 import components/js/runtime/abstract/coercion
 import components/js/stdlib/errors
 import components/js/runtime/vm/atom
-import jsony
 
 proc convertJsonNodeToAtom*(runtime: Runtime, node: JsonNode): JSValue =
   if node.kind == JInt:
