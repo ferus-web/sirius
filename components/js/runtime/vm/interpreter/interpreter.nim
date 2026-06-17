@@ -237,56 +237,26 @@ proc generateTraceback*(
         break
     else:
       let operation = &op
+      let targetIdx = operation.index.int
 
-      var
-        sourceLine: string
-        codeLine: uint
-
-      let opIndex = operation.index
-      var
-        minRange = opIndex.int
-        maxRange = 0
+      var sourceLine: string
+      var codeLine: uint
+      var closestIdx = -1
 
       for opIdx, sourceInfo in interpreter.sourceMap[cls.name]:
         let idx = opIdx.int
-        if minRange == -1:
-          minRange = idx
-          continue
-
-        if maxRange < idx:
-          maxRange = idx
-          continue
-
-        if minRange > idx:
-          minRange = idx
-          continue
-
-      for opIdx, sourceInfo in interpreter.sourceMap[cls.name]:
-        let opIdx = opIdx.int
-        if opIdx == minRange or opIdx == maxRange:
+        if idx <= targetIdx and idx > closestIdx:
+          closestIdx = idx
           sourceLine = sourceInfo.message
           codeLine = sourceInfo.line
-          break
 
-        if opIdx > maxRange:
-          continue
-
-        if opIdx < minRange:
-          continue
-
-        sourceLine = sourceInfo.message
-        codeLine = sourceInfo.line
-        break
-
-      msg &= "\n\tFunction <" & currTrace.exception.clause & ">, line " & $(
-        codeLine + 1
-      )
+      msg &= "\n\tFunction <" & currTrace.exception.clause & ">, line " & $codeLine
 
       if *currTrace.next:
         currTrace = &currTrace.next
       else:
-        if sourceLine.len < 1:
-          sourceLine = "<failed to find mapped source, report this as a bug>"
+        if closestIdx == -1 or sourceLine.len < 1:
+          sourceLine = "<failed to find mapped source?>"
 
         msg &= "\n\t\t" & sourceLine
         msg &= "\n\t\t" & repeat('^', sourceLine.len - 1)
