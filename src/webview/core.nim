@@ -14,7 +14,8 @@ import
   components/net/core,
   components/scripting/types,
   components/js/grammar/prelude,
-  components/js/runtime/prelude
+  components/js/runtime/prelude,
+  components/js/runtime/vm/interpreter/interpreter
 
 logScope:
   topics = "webview/core"
@@ -273,6 +274,23 @@ proc executeScript(view: WebView, element: tags.HTMLScriptElement) =
       jit: JITOpts(),
     ),
   )
+  element.script.rt.deathCallback = proc(vm: PulsarInterpreter) =
+    error "Script execution error"
+    debugEcho &"  pc: {vm.currIndex}; memspace: {vm.stack.len}; exccount: {vm.errors.len}"
+    debugEcho &"  halt: {vm.halt}; trace: 0x{cast[uint64](vm.trace):X}"
+
+    debugEcho "  registers:"
+    if *vm.registers.retVal:
+      debugEcho &" > retval: 0x{cast[uint64](&vm.registers.retval):X}"
+
+    if *vm.registers.error:
+      debugEcho &" > error: 0x{cast[uint64](&vm.registers.error):X}"
+
+    debugEcho &" > callargs: ["
+    for arg in vm.registers.callArgs:
+      debugEcho &"    0x{cast[uint64](arg):X} ({(if arg != nil: $arg.kind else: \"\")})"
+    debugEcho "  ]"
+
   element.script.rt.run()
 
 proc loadHTMLStream(view: WebView, stream: Stream) =
