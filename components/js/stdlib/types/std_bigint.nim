@@ -10,7 +10,7 @@ import components/js/runtime/vm/atom
 import pkg/[gmp, shakar]
 
 type JSBigInt* = object
-  `@ value`*: JSValue
+  value*: Hidden[JSValue]
 
 proc stringToBigInt*(runtime: Runtime, str: JSValue): JSValue =
   # 7.1.14 StringToBigInt ( str )

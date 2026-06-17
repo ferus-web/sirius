@@ -10,7 +10,7 @@ import pkg/[gmp, shakar]
 import components/js/runtime/vm/atom
 
 type JSNumber* = object
-  `@ value`*: JSValue
+  value*: Hidden[JSValue]
 
 proc thisNumberValue*(runtime: Runtime, value: JSValue): JSValue =
   ## 21.1.3.7.1 ThisNumberValue ( value )

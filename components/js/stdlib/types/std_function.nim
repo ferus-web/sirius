@@ -8,10 +8,10 @@ import
 import pkg/shakar
 
 type JSFunction* = object
-  `@ inner`: JSValue
+  inner: Hidden[JSValue]
 
 func toJSFunction*(value: JSValue): JSFunction =
-  JSFunction(`@ inner`: value)
+  JSFunction(inner: value)
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType("Function", JSFunction)

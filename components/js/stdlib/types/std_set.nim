@@ -1,13 +1,14 @@
 ## Set type implementation
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
 import std/[options]
-import components/js/runtime/[arguments, atom_helpers, types, wrapping, bridge, construction]
+import
+  components/js/runtime/[arguments, atom_helpers, types, wrapping, bridge, construction]
 import components/js/runtime/abstract/[coercion, equating, slots]
 import pkg/shakar
 import components/js/runtime/vm/atom
 
 type JSSet* = object
-  `@ internal`*: JSValue ## Sequence MAtom
+  internal*: Hidden[JSValue] ## Sequence MAtom
 
 proc generateStdIR*(runtime: Runtime) =
   runtime.registerType("Set", JSSet)
