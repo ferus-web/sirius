@@ -52,9 +52,9 @@ proc expand*(
           runtime.generateBytecode(
             fn,
             arg.expr,
+            parentStmt = some(stmt),
             internal = true,
             exprStoreIn = some($i),
-            parentStmt = some(stmt),
           )
     of ConstructObject:
       debug "niche: expand ConstructObject statement"
@@ -1164,22 +1164,36 @@ proc genCompoundAsgn(runtime: Runtime, fn: Function, stmt: Statement) =
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
 
-proc genDefineFunction(runtime: Runtime, fn: Function, stmt: Statement) =
+proc genDefineFunction(
+    runtime: Runtime, fn: Function, stmt, parent: Statement, storeIn: Option[string]
+) =
   debug "emitter: generate bytecode for define-function"
 
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
 
-  let moduleName = runtime.ir.currModule
-  runtime.generateBytecodeForScope(Scope(stmt.defunFn))
+  let
+    moduleName = runtime.ir.currModule
+    fn = stmt.defunFn
+    name =
+      if fn.name.len < 1:
+        "@anon" & $(runtime.addrIdx - 1)
+      else:
+        fn.name
+
+  fn.name = name
+  runtime.generateBytecodeForScope(Scope(fn))
 
   runtime.ir.cachedModule = nil
   runtime.ir.currModule = moduleName
 
-  runtime.markLocal(fn, stmt.defunFn.name)
-  runtime.ir.loadBytecodeCallable(
-    runtime.addrIdx - 1, normalizeIRName(stmt.defunFn.name)
-  )
+  runtime.markLocal(fn, name)
+  runtime.ir.loadBytecodeCallable(runtime.addrIdx - 1, normalizeIRName(name))
+
+  if *storeIn:
+    runtime.ir.copyAtom(
+      runtime.addrIdx - 1, runtime.index(&storeIn, internalIndex(parent))
+    )
 
 proc genCreateArrayLit(runtime: Runtime, fn: Function, stmt: Statement) =
   let pos = runtime.addrIdx
@@ -1273,7 +1287,9 @@ proc generateBytecode(
   of CompoundAssignment:
     runtime.genCompoundAsgn(fn = fn, stmt = stmt)
   of DefineFunction:
-    runtime.genDefineFunction(fn = fn, stmt = stmt)
+    runtime.genDefineFunction(
+      fn = fn, stmt = stmt, parent = &parentStmt, storeIn = exprStoreIn
+    )
   of CreateArrayLiteral:
     runtime.genCreateArrayLit(fn = fn, stmt = stmt)
   of AtomHolder:
