@@ -981,8 +981,8 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
       if !fnOpt:
         parser.error Other, "unexpected end of input"
 
-      var fn = &fnOpt
-      print fn
+      args.pushImmExpr(defineFunction(&fnOpt, limitedTo = none(Scope)))
+        # TODO: Do specify which scope this is limited to.
     else:
       parser.error UnexpectedToken, $token.kind
 
