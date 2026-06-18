@@ -146,8 +146,8 @@ proc bodyWriteCb(
       warn "BodyWriterContext is NULL? Ignoring."
       result = csize_t(total)
     else:
-      debug "Write into body buffer",
-        kind = body.kind, total = total, size = size, nitems = nitems
+      # debug "Write into body buffer",
+      #  kind = body.kind, total = total, size = size, nitems = nitems
       case body.kind
       of BodyWriterKind.SyncString:
         let start = body.str[].len

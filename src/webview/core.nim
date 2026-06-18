@@ -276,7 +276,8 @@ proc executeScript(view: WebView, element: tags.HTMLScriptElement) =
   )
   element.script.rt.deathCallback = proc(vm: PulsarInterpreter) =
     error "Script execution error"
-    debugEcho &"  pc: {vm.currIndex}; memspace: {vm.stack.len}; exccount: {vm.errors.len}"
+    debugEcho &"{element.script.rt.ir.name} on {element.script.baseURL}"
+    debugEcho &"  pc: {vm.currIndex}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"
     debugEcho &"  halt: {vm.halt}; trace: 0x{cast[uint64](vm.trace):X}"
 
     debugEcho "  registers:"
@@ -286,10 +287,10 @@ proc executeScript(view: WebView, element: tags.HTMLScriptElement) =
     if *vm.registers.error:
       debugEcho &" > error: 0x{cast[uint64](&vm.registers.error):X}"
 
-    debugEcho &" > callargs: ["
+    stdout.write &" > callargs: ["
     for arg in vm.registers.callArgs:
-      debugEcho &"    0x{cast[uint64](arg):X} ({(if arg != nil: $arg.kind else: \"\")})"
-    debugEcho "  ]"
+      stdout.write &"\n    0x{cast[uint64](arg):X} ({(if arg != nil: $arg.kind else: \"\")})  \n"
+    debugEcho "]"
 
   element.script.rt.run()
 

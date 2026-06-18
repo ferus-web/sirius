@@ -148,7 +148,7 @@ proc newRuntime*(
   Runtime(
     ast: ast,
     clauses: @[],
-    ir: newIRGenerator("bali"),
+    ir: newIRGenerator(file),
     vm: newPulsarInterpreter(@[]),
     heapManager: initHeapManager(),
     opts: opts,
