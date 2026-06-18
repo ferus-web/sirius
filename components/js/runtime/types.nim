@@ -204,8 +204,10 @@ proc markInternal*(
 ) =
   var toRm: seq[int]
   for i, value in runtime.values:
-    if value.kind == vkInternal and value.identifier == ident:
-      toRm &= i
+    {.cast(gcsafe).}:
+      if value.kind == vkInternal and value.identifier == ident and
+          hash(stmt) == value.ownerStmt:
+        toRm &= i
 
   for rm in toRm:
     runtime.values.del(rm)
