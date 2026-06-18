@@ -729,20 +729,27 @@ proc parseFunction(
   let nameOpt = name
   var name: Option[string]
 
-  if !nameOpt:
-    while not parser.tokenizer.eof:
-      let tok = parser.tokenizer.next()
-      case tok.kind
-      of TokenKind.Identifier:
-        name = some(tok.ident)
-        break
-      else:
-        discard
+  var prevTokenizer = parser.tokenizer
+  while not parser.tokenizer.eof:
+    let tok = parser.tokenizer.next()
+    case tok.kind
+    of TokenKind.Identifier:
+      name = some(tok.ident)
+    of TokenKind.Whitespace:
+      continue
+    else:
+      discard
 
-    if not *name:
-      parser.error Other, "function statement requires a name"
-  else:
+    break
+
+  if !name and *nameOpt:
+    # If we found no name and an override was specified, simply use that,
+    # and revert back all the tokens we just ate up.
     name = nameOpt
+    parser.tokenizer = ensureMove(prevTokenizer)
+
+  if not *name:
+    parser.error Other, "function statement requires a name"
 
   var
     metLParen = false
@@ -964,6 +971,18 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
         discard
           args.pop() # We should remove the last argument, it was accidentally added in.
         args.pushImmExpr(&access)
+    of TokenKind.Function:
+      if token.containsUnicodeEsc:
+        parser.error Other, "keyword `function` cannot contain unicode escape(s)"
+
+      let fnOpt = parser.parseFunction(name = some(newString(0)))
+        # TODO: Support for parsing true anonymous functions. The loigic is there.
+
+      if !fnOpt:
+        parser.error Other, "unexpected end of input"
+
+      var fn = &fnOpt
+      print fn
     else:
       parser.error UnexpectedToken, $token.kind
 
