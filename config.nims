@@ -1,8 +1,10 @@
-when defined(NeoPkgVersion) or defined(UseNeoDeps):
-  ## Neo lockfile config
+## Neo lockfile config
 
-  --noNimblePath
-  when withDir(thisDir(), system.fileExists("neo.paths")):
-    include "neo.paths"
+--noNimblePath
+when withDir(thisDir(), system.fileExists("neo.paths")):
+  include "neo.paths"
 
-  ## End of Neo lockfile config
+## End of Neo lockfile config
+
+include "vendor.paths"
+
