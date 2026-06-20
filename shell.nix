@@ -13,6 +13,15 @@ mkShell {
     gmp
     boehmgc
     libGL
+    harfbuzz
+    fribidi
+
+    # TODO: Fix figdraw's hard dependency on these
+    libX11
+    libxcb
+    libxcursor
+    libxkbcommon
+    libxrender
   ];
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [
@@ -23,7 +32,14 @@ mkShell {
     libGL.dev
     gmp.dev
     boehmgc.dev
+    harfbuzz.dev
+    fribidi.dev
     vulkan-loader.dev
+    libxkbcommon.dev
+    libX11.dev
+    libxcb.dev
+    libxcursor.dev
+    libxrender.dev
     libxkbcommon.dev
   ];
 }

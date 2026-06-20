@@ -5,7 +5,7 @@ import std/[options, streams, strformat, strutils, sequtils, tables]
 import ./[hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
-  components/gfx/[core, init, font_loader],
+  components/gfx/[core, init, painter, font_loader],
   components/dom/[dom, tags],
   components/html/[parser, dom_utils, data_parser],
   components/style/[parser, matching],
@@ -27,6 +27,7 @@ proc waitForRendererInit(webview: WebView) =
   while true:
     let event = &webview.app.flushQueue()
     if event.kind == EventKind.WindowResized:
+      webview.renderCtx = newRenderingContext(webview.app, vec2(event.windowSize))
       break # The OpenGL context is (probably) ready.
     elif event.kind == EventKind.RedrawRequested:
       # We should respond to these with a requeue.
@@ -46,12 +47,10 @@ proc initWebView*(opts: WebViewOpts): WebView =
   webview.failedPlaceholderImage.fill(rgb(255, 0, 0))
 
   webview.app.initialize()
-  webview.app.createWindow(ivec2(1024, 768), Renderer.GLES)
+  webview.app.createWindow(ivec2(1024, 768), Renderer.Vulkan)
   waitForRendererInit(webview)
 
-  webview.renderCtx = newRenderingContext(vec2(webview.app.windowSize))
-
-  webview.fontProvider = initFontProvider(getLoaderImplementation(webview.renderCtx.vg))
+  webview.fontProvider = initFontProvider(getLoaderImplementation())
   webview.assetProvider = initAssetProvider(
     AssetProviderImplementation(
       openAssetStream: proc(name: string): Option[FileStream] =
@@ -462,10 +461,10 @@ proc loop*(view: WebView): int =
     let event = &eventOpt
     case event.kind
     of EventKind.RedrawRequested:
-      view.renderCtx.drawFrame()
-      view.app.queueRedraw()
+      view.renderCtx.drawTree()
     of EventKind.WindowResized:
       handleWindowResize(view, event.windowSize)
+      view.renderCtx.drawTree()
       # print view.renderCtx.tree
     of EventKind.KeyPressed, EventKind.KeyRepeated:
       let keysym = view.app.xkbState.getOneSym(event.key.code + 8)

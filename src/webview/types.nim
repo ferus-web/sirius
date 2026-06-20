@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[deques, options, streams, tables]
 import pkg/surfer/app
-import pkg/[chronicles, nanovg, pixie, url, vmath]
+import pkg/[chronicles, pixie, url, vmath]
 import
   components/gfx/types,
   components/dom/dom,

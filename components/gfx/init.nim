@@ -1,12 +1,23 @@
-import pkg/[chronicles, nanovg, vmath], pkg/surfer/backend/wayland/bindings/[egl, gles2]
-import ./types
+import
+  pkg/[chronicles, vmath],
+  pkg/surfer/app,
+  pkg/figdraw/[commons, fignodes, figrender],
+  pkg/figdraw/common/fonttypes,
+  pkg/figdraw/windowing/surfershim
+import components/gfx/[painter, types]
 
 logScope:
   topics = "gfx/init"
 
-proc newRenderingContext*(renderSize: vmath.Vec2): RenderingContext =
+proc newRenderingContext*(app: App, renderSize: vmath.Vec2): RenderingContext =
   debug "Creating new rendering context"
-  nvgInit(eglGetProcAddress)
+  let ctx = RenderingContext(
+    fig: newFigRenderer(atlasSize = 2048, backendState = SurferRenderBackend()),
+    renderSize: renderSize,
+  )
 
-  debug "Initialized NanoVG, creating NVGContext"
-  RenderingContext(vg: nvgCreateContext(), renderSize: renderSize)
+  surfershim.setupBackend(ctx.fig, app)
+  drawTree(ctx)
+    # We also need to push through an initial frame to start off the event chain
+
+  ctx

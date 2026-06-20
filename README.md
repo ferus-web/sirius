@@ -17,7 +17,7 @@ The base was written in a day, so don't expect anything grandiose.
 - [X] Initial user agent
 - [ ] Inline styles
 - [X] Network content fetching
-- [X] Vulkan/OpenGL/Metal based renderers using FigDraw
+- [X] Vulkan (OpenGL/Metal eventually?) based renderers using FigDraw
 * [X] HarfBuzz for text shaping
 - [ ] Content caching
 - [ ] Forms support

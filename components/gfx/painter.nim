@@ -2,14 +2,19 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[monotimes, tables, times, options]
-import pkg/[nanovg, shakar, vmath], pkg/nanovg/wrapper
+import
+  pkg/[shakar, vmath],
+  pkg/figdraw/[commons, fignodes, figrender],
+  pkg/figdraw/common/fonttypes,
+  pkg/figdraw/vulkan/vulkan_context,
+  pkg/figdraw/windowing/surfershim
 import
   components/css/types,
   components/gfx/types,
   components/layout/[output_manager, types],
   components/os/fonts
 
-proc drawNodeTextUnderline(ctx: RenderingContext, node: LayoutNode) =
+#[ proc drawNodeTextUnderline(ctx: RenderingContext, node: LayoutNode) =
   let posX = node.absolutePos.x + ctx.viewerPosition.x
   var yLevel = node.absolutePos.y + ctx.viewerPosition.y
 
@@ -140,7 +145,46 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
       ctx.vg.stroke()
 
   for child in node.children:
-    draw(ctx, child)
+    draw(ctx, child) ]#
+
+proc invalidate*(ctx: RenderingContext) =
+  ## Force the display list to be rebuilt.
+  ctx.displayList = nil
+
+proc presentDisplayList(ctx: RenderingContext) =
+  ctx.fig.renderFrame(
+    nodes = ctx.displayList, frameSize = vec2(ctx.renderSize), clearMain = true
+  )
+
+proc buildDisplayList(ctx: RenderingContext) =
+  ctx.displayList = Renders()
+  if ctx.tree == nil:
+    # HACK: If the tree isn't present yet, just draw a white background.
+    discard ctx.displayList.addRoot(
+      0.ZLevel,
+      Fig(
+        kind: nkRectangle,
+        zlevel: 0.ZLevel,
+        screenBox: rect(0, 0, ctx.renderSize.x, ctx.renderSize.y),
+        fill: fill(rgba(255, 255, 255, 255)),
+      ),
+    )
+    return
+
+  # HACK: We don't have something like the Initial Containing Block right now,
+  # so we can just paint the initial background as whatever <html> has. That
+  # element should inherit <body>'s color if not specified for itself.
+  let root = ctx.displayList.addRoot(
+    0.ZLevel,
+    Fig(
+      kind: nkRectangle,
+      zlevel: 0.ZLevel,
+      screenBox: rect(0, 0, ctx.renderSize.x, ctx.renderSize.y),
+      fill: fill(ctx.tree.backgroundColor),
+    ),
+  )
+
+  # draw(ctx, ctx.tree)
 
 proc drawTree*(ctx: RenderingContext) =
   let currTime = getMonoTime()
@@ -153,19 +197,12 @@ proc drawTree*(ctx: RenderingContext) =
 
   ctx.viewerPosition.y += -ctx.scrollVelocity
 
-  # HACK: We don't have something like the Initial Containing Block right now,
-  # so we can just paint the initial background as whatever <html> has. That
-  # element should inherit <body>'s color if not specified for itself.
-  ctx.vg.beginPath()
-  ctx.vg.rect(0, 0, ctx.renderSize.x, ctx.renderSize.y)
-  ctx.vg.fillColor(
-    rgba(
-      ctx.tree.backgroundColor.r, ctx.tree.backgroundColor.g,
-      ctx.tree.backgroundColor.b, ctx.tree.backgroundColor.a,
-    )
-  )
-  ctx.vg.fill()
+  if ctx.displayList == nil:
+    buildDisplayList(ctx)
 
-  draw(ctx, ctx.tree)
+  echo ctx.renderSize
+  ctx.fig.beginFrame()
+  presentDisplayList(ctx)
+  ctx.fig.endFrame()
 
   ctx.lastRender = currTime
