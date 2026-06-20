@@ -2,5 +2,6 @@
 !*.*
 !*/
 !LICENSE
+!vendor/*
 
 neo.paths
