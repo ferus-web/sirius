@@ -200,7 +200,6 @@ proc drawTree*(ctx: RenderingContext) =
   if ctx.displayList == nil:
     buildDisplayList(ctx)
 
-  echo ctx.renderSize
   ctx.fig.beginFrame()
   presentDisplayList(ctx)
   ctx.fig.endFrame()

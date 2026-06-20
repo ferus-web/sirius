@@ -28,6 +28,7 @@ proc waitForRendererInit(webview: WebView) =
     let event = &webview.app.flushQueue()
     if event.kind == EventKind.WindowResized:
       webview.renderCtx = newRenderingContext(webview.app, vec2(event.windowSize))
+      webview.app.queueRedraw()
       break # The OpenGL context is (probably) ready.
     elif event.kind == EventKind.RedrawRequested:
       # We should respond to these with a requeue.
@@ -162,6 +163,8 @@ proc reflow(view: WebView) =
   view.renderCtx.tree.computeLayout(
     vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
   )
+
+  view.renderCtx.invalidate()
 
 proc insertStyle(view: WebView, text: string) =
   # HACK: yeah... we don't do stuff like this.
