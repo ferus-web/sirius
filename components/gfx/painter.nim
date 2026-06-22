@@ -251,9 +251,10 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
       ),
     )
 
-    if node.textDecoration.line != TextDecorationLine.None:
+    if node.textDecoration.line notin {
+      TextDecorationLine.None, TextDecorationLine.Blink
+    }:
       var yLevel = posY
-      var drawDeco = true
 
       case node.textDecoration.line
       of TextDecorationLine.Underline:
@@ -263,25 +264,23 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
       of TextDecorationLine.LineThrough:
         yLevel += height * 0.5'f32
       of TextDecorationLine.Blink, TextDecorationLine.None:
-        drawDeco = false
+        unreachable
 
-      if drawDeco:
-        discard ctx.displayList.addChild(
-          ZLevel(0),
-          currentIdx,
-          Fig(
-            kind: nkRectangle,
-            parent: currentIdx,
-            zlevel: 0.ZLevel,
-            screenBox: rect(posX, yLevel, width, 2'f32),
-            fill: fill(node.color),
-          ),
-        )
+      discard ctx.displayList.addChild(
+        ZLevel(0),
+        currentIdx,
+        Fig(
+          kind: nkRectangle,
+          parent: currentIdx,
+          zlevel: 0.ZLevel,
+          screenBox: rect(posX, yLevel, width, 2'f32),
+          fill: fill(node.color),
+        ),
+      )
 
   for childNode in node.children:
     buildFigNodes(ctx, childNode, currentIdx)
 
-import strformat
 proc invalidate*(ctx: RenderingContext) =
   ## Force the display list to be rebuilt.
   ctx.displayList = nil
@@ -289,7 +288,6 @@ proc invalidate*(ctx: RenderingContext) =
   ctx.transformNode.reset()
 
   for name, img in ctx.imageCache:
-    echo &"load {name} ({cast[int64](imgId(name))})"
     loadImage(imgId(name), img)
 
 proc presentDisplayList(ctx: RenderingContext) =

@@ -161,7 +161,7 @@ proc reflow(view: WebView) =
 
   view.renderCtx.tree = view.tree.clone()
   view.renderCtx.tree.computeLayout(
-    vec2(0, 0), float32(view.app.windowSize.x), view.outputManager
+    vec2(0, 0), float32(view.app.windowSize.x), view.outputManager, view.fontProvider
   )
 
   view.renderCtx.imageCache = view.imageCache
@@ -447,10 +447,7 @@ proc handleFocusedElement(view: WebView, clicked: bool = false) =
 
 proc handleWindowResize(view: WebView, viewportSize: IVec2) =
   view.renderCtx.resize(vec2(viewportSize))
-  view.renderCtx.tree = view.tree.clone()
-  view.renderCtx.tree.computeLayout(
-    vec2(0, 0), float32(viewportSize.x), view.outputManager
-  )
+  view.reflow()
 
 proc loop*(view: WebView): int =
   info "Entering main loop"
@@ -482,6 +479,7 @@ proc loop*(view: WebView): int =
         view.renderCtx.viewerPosition.x -= 5
       elif keysym == XKB_Key_Tab:
         view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
+        view.reflow()
     of EventKind.CursorMove:
       view.cursor = event.cursor.pos
       let lastFocused = view.focusedElement

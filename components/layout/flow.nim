@@ -6,7 +6,8 @@ import
   components/style/types,
   components/css/types,
   components/dom/[dom, tags],
-  components/layout/[output_manager, types]
+  components/layout/[output_manager, types],
+  components/os/fonts
 import pkg/[bumpy, chronicles, shakar, vmath]
 
 logScope:
@@ -61,11 +62,13 @@ func processTextContent(text: var string, whitespaceBehaviour: Whitespace) =
     # TODO: Implement other behaviors in other components!
     discard
 
+# TODO: Should probably move all of these arguments into a singular `FlowContext` or a more generic `LayoutEngine` eventually
 proc computeLayout*(
     node: LayoutNode,
     parent: vmath.Vec2,
     availableWidth: float32,
     outputManager: OutputManager,
+    fontProvider: FontProvider,
     parentExplicitHeight: Option[float32] = none(float32),
 ) =
   node.absolutePos = parent
@@ -190,7 +193,9 @@ proc computeLayout*(
           node.absolutePos.x + bounds.left + marginLeft,
           node.absolutePos.y + currentY + marginTop,
         )
-        computeLayout(child, fPos, floatWidth, outputManager, explicitHeight)
+        computeLayout(
+          child, fPos, floatWidth, outputManager, fontProvider, explicitHeight
+        )
 
         if child.floatMode == FloatMode.Left:
           child.absolutePos.x = node.absolutePos.x + bounds.left + marginLeft
@@ -222,7 +227,9 @@ proc computeLayout*(
         node.absolutePos.x + borderWidth + padLeft + marginLeft,
         node.absolutePos.y + currentY + marginTop,
       )
-      computeLayout(child, cpos, childAvailableWidth, outputManager, explicitHeight)
+      computeLayout(
+        child, cpos, childAvailableWidth, outputManager, fontProvider, explicitHeight
+      )
       currentY += marginTop + child.dimensions.y + marginBottom
 
     node.dimensions.y = currentY + padBottom + borderWidth
@@ -311,6 +318,7 @@ proc computeLayout*(
           vec2(node.absolutePos.x + cursor.x, node.absolutePos.y + cursor.y),
           bounds.right - cursor.x,
           outputManager,
+          fontProvider,
           explicitHeight,
         )
 
@@ -337,6 +345,7 @@ proc computeLayout*(
           blockPos,
           bounds.right - bounds.left - marginLeft,
           outputManager,
+          fontProvider,
           explicitHeight,
         )
 
