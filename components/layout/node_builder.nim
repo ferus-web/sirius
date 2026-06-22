@@ -1,7 +1,7 @@
 ## Routines for turning the DOM and computed styles into a layout tree
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, sequtils, strformat, strutils, tables]
+import std/[hashes, options, sequtils, strformat, strutils, tables]
 import
   components/css/[level1, text, text_decoration, types],
   components/dom/[dom, tags],
@@ -503,7 +503,8 @@ proc createLayoutNode*(
   if node of tags.HTMLImageElement:
     let imageElement = HTMLImageElement(node)
     if *imageElement.src:
-      layoutNode.imageContent = imageCache.getOrDefault(&imageElement.src)
+      layoutNode.imageContent = hash(&imageElement.src)
+      layoutNode.imageBuffer = imageCache.getOrDefault(&imageElement.src)
 
   if node in style:
     # If we have a style for the DOM node, we can apply it to the layout node

@@ -1,7 +1,7 @@
 ## Types for the layout engine
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/options
+import std/[hashes, options]
 import pkg/[chroma, pixie, vmath]
 import
   components/dom/dom, components/style/types, components/os/fonts, components/css/types
@@ -39,7 +39,8 @@ type
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
-    imageContent*: pixie.Image ## Any image content
+    imageContent*: Hash
+    imageBuffer*: pixie.Image
 
     relativePos*, absolutePos*: vmath.Vec2
     dimensions*: vmath.Vec2
@@ -65,6 +66,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.style = node.style
   result.content = node.content
   result.imageContent = node.imageContent
+  result.imageBuffer = node.imageBuffer
   result.lineHeight = node.lineHeight
   result.padding = node.padding
   result.textDecoration = node.textDecoration

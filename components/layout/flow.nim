@@ -1,7 +1,7 @@
 ## Flow layout implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, tables]
+import std/[hashes, options, tables]
 import
   components/style/types,
   components/css/types,
@@ -76,8 +76,8 @@ proc computeLayout*(
 
   if isImage:
     let element = HTMLImageElement(node.domNode)
-    if node.imageContent != nil:
-      let img = node.imageContent
+    if node.imageContent != Hash(0) and node.imageBuffer != nil:
+      let img = node.imageBuffer
       var
         intrinsicWidth = float32(img.width)
         intrinsicHeight = float32(img.height)
@@ -281,7 +281,7 @@ proc computeLayout*(
 
         processTextContent(child.content, node.whitespace)
         child.dimensions =
-          vec2(float32(child.content.len) * (fontSize * 0.55'f32), fontSize)
+          vec2(float32(child.content.len) * (fontSize * 0.65'f32), fontSize)
 
         var bounds = getLineBounds(cursor.y)
         if cursor.x < bounds.left:

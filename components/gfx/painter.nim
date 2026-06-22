@@ -1,11 +1,11 @@
 ## Painter implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[monotimes, tables, times, options]
+import std/[hashes, monotimes, tables, times, options]
 import
-  pkg/[shakar, vmath],
+  pkg/[pixie, shakar, vmath],
   pkg/figdraw/[commons, fignodes, figrender],
-  pkg/figdraw/common/fonttypes,
+  pkg/figdraw/common/[typefaces, fonttypes],
   pkg/figdraw/vulkan/vulkan_context,
   pkg/figdraw/windowing/surfershim
 import
@@ -147,9 +147,150 @@ proc draw(ctx: RenderingContext, node: LayoutNode) =
   for child in node.children:
     draw(ctx, child) ]#
 
+proc textLayout(
+    box: Rect,
+    spans: openArray[(FontStyle, string)],
+    hAlign = Left,
+    vAlign = Top,
+    wrap = true,
+): GlyphArrangement =
+  typeset(
+    rect(0, 0, box.w, box.h),
+    spans,
+    hAlign = hAlign,
+    vAlign = vAlign,
+    minContent = false,
+    wrap = wrap,
+  )
+
+proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) =
+  if node == nil:
+    return
+
+  let
+    posX = node.absolutePos.x + ctx.viewerPosition.x
+    posY = node.absolutePos.y + ctx.viewerPosition.y
+    width = node.dimensions.x
+    height = node.dimensions.y
+    nodeScreenBox = rect(posX, posY, width, height)
+
+  var containerFig = Fig(
+    kind: nkRectangle, parent: parentIdx, zlevel: 0.ZLevel, screenBox: nodeScreenBox
+  )
+
+  if node.backgroundColor.a > 0:
+    containerFig.fill = fill(node.backgroundColor)
+
+  if *node.border.style and &node.border.style == BorderStyle.Solid:
+    let bColor =
+      if *node.border.color:
+        &node.border.color
+      else:
+        node.color
+    let bWidth =
+      if *node.border.width:
+        ctx.outputManager.computePixels(&node.border.width)
+      else:
+        1.0'f32
+    containerFig.stroke = RenderStroke(weight: bWidth, fill: fill(bColor))
+
+  # Push the layout node container to the flat display list and grab its new Handle ID
+  let currentIdx = ctx.displayList.addChild(ZLevel(0), parentIdx, containerFig)
+
+  case node.display
+  of DisplayMode.Block, DisplayMode.Inline:
+    if ctx.paintDebugBounds:
+      discard ctx.displayList.addChild(
+        ZLevel(0),
+        currentIdx,
+        Fig(
+          kind: nkRectangle,
+          parent: currentIdx,
+          zlevel: 0.ZLevel,
+          screenBox: nodeScreenBox,
+          stroke: RenderStroke(weight: 1'f32, fill: fill(rgba(255, 0, 0, 255))),
+        ),
+      )
+
+    if node.imageContent != Hash(0):
+      discard ctx.displayList.addChild(
+        ZLevel(0),
+        currentIdx,
+        Fig(
+          kind: nkImage,
+          parent: currentIdx,
+          zlevel: 0.ZLevel,
+          screenBox: nodeScreenBox,
+          image: ImageStyle(
+            id: cast[ImageId](node.imageContent), fill: fill(rgba(255, 255, 255, 255))
+          ),
+        ),
+      )
+  of DisplayMode.Anonymous:
+    let fSize = ctx.outputManager.computePixels(&node.fontSize)
+    let fStyle = FontStyle(
+      font: FigFont(typefaceId: cast[TypefaceId](node.fontFamily.impl), size: fSize),
+      color: fill(node.color),
+    )
+
+    discard ctx.displayList.addChild(
+      ZLevel(0),
+      currentIdx,
+      Fig(
+        kind: nkText,
+        parent: currentIdx,
+        zlevel: 0.ZLevel,
+        screenBox: nodeScreenBox,
+        textLayout: textLayout(
+          box = rect(0, 0, width, height),
+          spans = [(fStyle, node.content)],
+          hAlign = Left,
+          vAlign = Top,
+          wrap = true,
+        ),
+      ),
+    )
+
+    if node.textDecoration.line != TextDecorationLine.None:
+      var yLevel = posY
+      var drawDeco = true
+
+      case node.textDecoration.line
+      of TextDecorationLine.Underline:
+        yLevel += height
+      of TextDecorationLine.Overline:
+        discard
+      of TextDecorationLine.LineThrough:
+        yLevel += height * 0.5'f32
+      of TextDecorationLine.Blink, TextDecorationLine.None:
+        drawDeco = false
+
+      if drawDeco:
+        discard ctx.displayList.addChild(
+          ZLevel(0),
+          currentIdx,
+          Fig(
+            kind: nkRectangle,
+            parent: currentIdx,
+            zlevel: 0.ZLevel,
+            screenBox: rect(posX, yLevel, width, 2'f32),
+            fill: fill(node.color),
+          ),
+        )
+
+  for childNode in node.children:
+    buildFigNodes(ctx, childNode, currentIdx)
+
+import strformat
 proc invalidate*(ctx: RenderingContext) =
   ## Force the display list to be rebuilt.
   ctx.displayList = nil
+  ctx.rootNode.reset()
+  ctx.transformNode.reset()
+
+  for name, img in ctx.imageCache:
+    echo &"load {name} ({cast[int64](imgId(name))})"
+    loadImage(imgId(name), img)
 
 proc presentDisplayList(ctx: RenderingContext) =
   ctx.fig.renderFrame(
@@ -160,7 +301,7 @@ proc buildDisplayList(ctx: RenderingContext) =
   ctx.displayList = Renders()
   if ctx.tree == nil:
     # HACK: If the tree isn't present yet, just draw a white background.
-    discard ctx.displayList.addRoot(
+    ctx.rootNode = ctx.displayList.addRoot(
       0.ZLevel,
       Fig(
         kind: nkRectangle,
@@ -169,12 +310,18 @@ proc buildDisplayList(ctx: RenderingContext) =
         fill: fill(rgba(255, 255, 255, 255)),
       ),
     )
+
+    ctx.transformNode = ctx.displayList.addChild(
+      0.ZLevel,
+      ctx.rootNode,
+      Fig(kind: nkTransform, transform: TransformStyle(translation: vec2(0, 0))),
+    )
     return
 
   # HACK: We don't have something like the Initial Containing Block right now,
   # so we can just paint the initial background as whatever <html> has. That
   # element should inherit <body>'s color if not specified for itself.
-  let root = ctx.displayList.addRoot(
+  ctx.rootNode = ctx.displayList.addRoot(
     0.ZLevel,
     Fig(
       kind: nkRectangle,
@@ -184,6 +331,13 @@ proc buildDisplayList(ctx: RenderingContext) =
     ),
   )
 
+  ctx.transformNode = ctx.displayList.addChild(
+    0.ZLevel,
+    ctx.rootNode,
+    Fig(kind: nkTransform, transform: TransformStyle(translation: vec2(0, 0))),
+  )
+
+  buildFigNodes(ctx, ctx.tree, ctx.transformNode)
   # draw(ctx, ctx.tree)
 
 proc drawTree*(ctx: RenderingContext) =
@@ -203,5 +357,8 @@ proc drawTree*(ctx: RenderingContext) =
   ctx.fig.beginFrame()
   presentDisplayList(ctx)
   ctx.fig.endFrame()
+
+  ctx.displayList.layers[ZLevel(0)].nodes[cast[int16](ctx.transformNode)].transform.translation =
+    ctx.viewerPosition # HACK: This works, but is it sane? I don't think so.
 
   ctx.lastRender = currTime

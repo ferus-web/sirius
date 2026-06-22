@@ -12,6 +12,7 @@ type RenderingContext* = ref object
   tree*: LayoutNode
 
   displayList*: fignodes.Renders
+  rootNode*, transformNode*: FigIdx
 
   outputManager*: OutputManager
   fontProvider*: FontProvider
@@ -21,7 +22,5 @@ type RenderingContext* = ref object
 
   lastRender*: monotimes.MonoTime
 
-  # imageTextures*: Table[pointer, nanovg.Image]
-  # HACK: Very nasty hack to map pixie images to GPU framebuffers
-  # (key is pixie::Image, which is a RC-backed pointer)
+  imageCache*: TableRef[string, pixie.Image]
   paintDebugBounds*: bool

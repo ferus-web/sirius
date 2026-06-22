@@ -12,7 +12,7 @@ type
   Font* = object
     name*: string
     impl*: int64
-      ## Implementation-specific tracking, just so we don't directly depend on NanoVG here.
+      ## Implementation-specific tracking, just so we don't directly depend on any backend here.
 
   LoaderImplementation* = object ## Font-loading implementation vtable
     loadFont*: proc(name, path: string): Option[Font]
