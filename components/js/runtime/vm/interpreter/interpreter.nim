@@ -727,6 +727,7 @@ proc opWriteField(interpreter: var PulsarInterpreter, op: ptr Operation) =
     fieldIndex = some(atom.objValues.len - 1)
 
   atom.objValues[&fieldIndex] = &sourceAtom
+  atom.objFields[fieldName] = &fieldIndex
 
   interpreter.addAtom(atom, oatomIndex)
   inc interpreter.currIndex
