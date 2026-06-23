@@ -732,7 +732,8 @@ proc genCopyValMut(runtime: Runtime, fn: Function, stmt: Statement) =
   debug "emitter: generate IR for copying value to a mutable address with source: " &
     stmt.cpMutSourceIdent & " and destination: " & stmt.cpMutDestIdent
 
-  let preExistingDestIndex = runtime.index(stmt.cpMutDestIdent, defaultParams(fn))
+  let preExistingDestIndex =
+    runtime.index(stmt.cpMutDestIdent, defaultParams(fn), willHandleResolveFail = true)
 
   if preExistingDestIndex == runtime.index("undefined", defaultParams(fn)):
     runtime.generateBytecode(
