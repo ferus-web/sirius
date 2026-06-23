@@ -252,7 +252,9 @@ proc computeLayout*(
         let bounds = getLineBounds(cursor.y)
         let floatWidth = bounds.right - bounds.left - marginLeft - marginRight
 
-        computeLayout(child, vec2(0, 0), floatWidth, outputManager, explicitHeight)
+        computeLayout(
+          child, vec2(0, 0), floatWidth, outputManager, fontProvider, explicitHeight
+        )
 
         if child.floatMode == FloatMode.Left:
           child.absolutePos.x = node.absolutePos.x + bounds.left + marginLeft
