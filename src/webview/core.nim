@@ -224,6 +224,8 @@ proc fetchHTMLImageResource(
       finalize = proc(resp: Response, err: TransportError) =
         if err.kind != TransportErrorKind.None:
           error "Failed to fetch image", src = src, err = err.kind
+          view.imageCache[&srcRaw] = view.failedPlaceholderImage
+          view.reflow()
           return
 
         debug "Fetched image", src = &src, size = resp.body.stream.data.len
@@ -280,7 +282,7 @@ proc executeScript(view: WebView, element: tags.HTMLScriptElement) =
   element.script.rt.deathCallback = proc(vm: PulsarInterpreter) =
     error "Script execution error"
     debugEcho &"{element.script.rt.ir.name} on {element.script.baseURL}"
-    debugEcho &"  pc: {vm.currIndex}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"
+    debugEcho &"  pc: {vm.currIndex}; jit: {vm.runningCompiled}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"
     debugEcho &"  halt: {vm.halt}; trace: 0x{cast[uint64](vm.trace):X}"
 
     debugEcho "  registers:"

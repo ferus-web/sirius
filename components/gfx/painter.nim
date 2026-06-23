@@ -212,7 +212,7 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
         ),
       )
 
-    if node.imageContent != Hash(0):
+    if node.imageContent != Hash(0) and node.imageBuffer != nil:
       discard ctx.displayList.addChild(
         ZLevel(0),
         currentIdx,
