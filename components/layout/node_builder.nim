@@ -481,7 +481,7 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       else:
         discard
     else:
-      warn "Unhandled style property", name = attr
+      discard # warn "Unhandled style property", name = attr
 
 proc createLayoutNode*(
     node: dom.Node,
