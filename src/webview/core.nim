@@ -427,6 +427,10 @@ proc loop*(view: WebView): int =
     case event.kind
     of EventKind.RedrawRequested:
       view.renderCtx.drawTree()
+
+      if view.dom.edited:
+        view.reflow()
+        view.dom.edited = false
     of EventKind.WindowResized:
       handleWindowResize(view, event.windowSize)
       view.renderCtx.drawTree()

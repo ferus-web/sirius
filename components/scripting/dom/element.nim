@@ -8,7 +8,7 @@ import
   components/js/runtime/abstract/[coercible, to_number, to_string],
   components/dom/dom,
   components/html/dom_utils
-import pkg/shakar, pretty, tables
+import pkg/shakar
 
 type JSElement* = object
   internal*: Hidden[dom.Element]
@@ -19,12 +19,17 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
     internal: hidden(element),
     textContent: FieldAccessor(
       getter: proc(this: JSValue) =
-        print this
         ret cast[dom.Element](&getInt(&this.tagged("internal"))).textContent
       ,
       setter: proc(this: JSValue, value: JSValue) =
-        assert off, "textContent setter"
-      ,
+        let element = cast[dom.Element](&getInt(&this.tagged("internal")))
+        element.childList.setLen(1)
+
+        let textData = runtime.ToString(value)
+        if textData.len > 0:
+          element.childList[0] = Text(data: textData)
+
+        element.document.edited = true,
     ),
   )
 

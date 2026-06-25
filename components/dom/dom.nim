@@ -41,6 +41,7 @@ type
 
   Document* = ref object of Node
     factory*: MAtomFactory
+    edited*: bool
 
   Text* = ref object of CharacterData
 
