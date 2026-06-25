@@ -152,6 +152,28 @@ proc getMethods*(
 
   raise newException(KeyError, "No such type with proto hash: " & $proto & " exists!")
 
+proc setupAtom*(runtime: Runtime, typ: JSType, value: JSValue) =
+  ## Set up all properties and methods for a value off of a provided type.
+  for name, member in typ.members:
+    if member.isAtom():
+      let idx = value.objValues.len
+      value.objValues &= undefined(runtime.heapManager)
+
+      if member.hidden:
+        value.objHiddenFields[name] = idx
+      else:
+        value.objFields[name] = idx
+
+  for name, protoFn in typ.prototypeFunctions:
+    capture name, protoFn:
+      value[name] = nativeCallable(
+        runtime.heapManager,
+        proc() =
+          typ.prototypeFunctions[name](value),
+      )
+
+  value.tag("bali_object_type", integer(runtime.heapManager, typ.proto.int))
+
 proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
   ## Create an atom (object) based off of a provided type.
   ## All fields of the provided `typ` are initialized in the object with `undefined`.
@@ -159,29 +181,10 @@ proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
   ## in determining what type this object belongs to. It also attaches all the prototype functions needed.
   ##
   ## **This value will be allocated via Bali's internal garbage collector. Don't unnecessarily call this or else you might trigger a GC collection sweep.**
-  var atom = obj(runtime.heapManager)
+  let atom = obj(runtime.heapManager)
+  setupAtom(runtime, typ, atom)
 
-  for name, member in typ.members:
-    if member.isAtom():
-      let idx = atom.objValues.len
-      atom.objValues &= undefined(runtime.heapManager)
-
-      if member.hidden:
-        atom.objHiddenFields[name] = idx
-      else:
-        atom.objFields[name] = idx
-
-  for name, protoFn in typ.prototypeFunctions:
-    capture name, protoFn:
-      atom[name] = nativeCallable(
-        runtime.heapManager,
-        proc() =
-          typ.prototypeFunctions[name](atom),
-      )
-
-  atom.tag("bali_object_type", integer(runtime.heapManager, typ.proto.int))
-
-  ensureMove(atom)
+  atom
 
 proc createObjFromType*[T](runtime: Runtime, typ: typedesc[T]): JSValue =
   for etyp in runtime.types:
@@ -318,7 +321,8 @@ proc index*(
     if not willHandleResolveFail:
       runtime.ir.throwReferenceError(ident)
 
-    return 0'u
+    assert(ident != "undefined")
+    return runtime.index("undefined", params)
 
   &resolved
 

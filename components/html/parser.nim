@@ -16,7 +16,7 @@ type
 
     handleLinkElement*: proc(element: Element, factory: MAtomFactory)
     fetchImageResource*: proc(element: HTMLImageElement, factory: MAtomFactory)
-    executeScript*: proc(element: HTMLScriptElement)
+    executeScript*: proc(element: HTMLScriptElement, document: Document)
 
   MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
     document*: Document
@@ -145,7 +145,7 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
       HTMLAnchorElement(element).href = element.getAttr(builder.factory, "href")
     of TAG_SCRIPT:
       # surely we can rely on the WebView to handle this :P
-      builder.callbacks.executeScript(HTMLScriptElement(element))
+      builder.callbacks.executeScript(HTMLScriptElement(element), builder.document)
     else:
       discard
 
@@ -390,7 +390,7 @@ proc parseFromStream(
       builder.pendingScript = nil
 
       if script != nil:
-        builder.callbacks.executeScript(script)
+        builder.callbacks.executeScript(script, builder.document)
 
       ip = parser.getInsertionPoint()
       if ip == n:

@@ -1,0 +1,28 @@
+## Very incomplete bindings for `Element`
+##
+## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+import
+  components/js/runtime/vm/atom,
+  components/js/runtime/atom_helpers,
+  components/js/runtime/[arguments, bridge, construction, types],
+  components/js/runtime/abstract/[coercible, to_number, to_string],
+  components/dom/dom,
+  components/html/dom_utils
+
+type JSElement* = object
+  internal*: Hidden[dom.Element]
+
+  textContent*: string
+
+proc toJSElement*(element: dom.Element): JSElement =
+  JSElement(internal: hidden(element), textContent: element.textContent)
+
+proc generateBindings*(runtime: Runtime) =
+  runtime.registerType(prototype = JSElement, name = "Element")
+  runtime.definePrototypeFn(
+    JSElement,
+    "toString",
+    proc(this: JSValue) =
+      ret "[object Element]"
+    ,
+  )

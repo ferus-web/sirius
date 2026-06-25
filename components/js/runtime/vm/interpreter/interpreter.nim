@@ -1,6 +1,6 @@
 ## Bytecode interpreter implementation
 ##
-## Copyright (C) 2024-2025 Trayambak Rai (xtrayambak at disroot dot org)
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak at disroot dot org)
 
 import std/[math, tables, strutils, options]
 import components/js/runtime/vm/heap/[manager, boehm]

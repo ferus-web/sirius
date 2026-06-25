@@ -12,10 +12,7 @@ import
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
   components/net/core,
-  components/scripting/types,
-  components/js/grammar/prelude,
-  components/js/runtime/prelude,
-  components/js/runtime/vm/interpreter/interpreter
+  components/scripting/[executor, types]
 
 logScope:
   topics = "webview/core"
@@ -253,51 +250,16 @@ proc fetchHTMLImageResource(
         err = exc.msg, src = &srcRaw
       view.imageCache[&srcRaw] = view.failedPlaceholderImage
 
-proc executeScript(view: WebView, element: tags.HTMLScriptElement) =
+proc executeScript(
+    view: WebView, element: tags.HTMLScriptElement, document: dom.Document
+) =
   var codeBuffer: string # TODO: Prealloc somehow?
   for child in element.childList:
     if child of dom.Text:
       codeBuffer &= Text(child).data
 
-  let parser = newParser(ensureMove(codeBuffer))
-  element.script = Script(ast: parser.parse(), baseURL: view.target)
-  element.script.rt = newRuntime(
-    file = "<inline-script>", # TODO: We can probably use more descriptive names?
-    ast = element.script.ast,
-    opts = InterpreterOpts(
-      test262: false,
-      repl: false,
-      dumpBytecode: false,
-      insertDebugHooks: true,
-      codegen: CodegenOpts(
-        elideLoops: false,
-        loopAllocationEliminator: false,
-        aggressivelyFreeRetvals: false,
-        deadCodeElimination: false,
-        jitCompiler: false,
-      ),
-      jit: JITOpts(),
-    ),
-  )
-  element.script.rt.deathCallback = proc(vm: PulsarInterpreter) =
-    error "Script execution error"
-    debugEcho &"{element.script.rt.ir.name} on {element.script.baseURL}"
-    debugEcho &"  pc: {vm.currIndex}; jit: {vm.runningCompiled}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"
-    debugEcho &"  halt: {vm.halt}; trace: 0x{cast[uint64](vm.trace):X}"
-
-    debugEcho "  registers:"
-    if *vm.registers.retVal:
-      debugEcho &" > retval: 0x{cast[uint64](&vm.registers.retval):X}"
-
-    if *vm.registers.error:
-      debugEcho &" > error: 0x{cast[uint64](&vm.registers.error):X}"
-
-    stdout.write &" > callargs: ["
-    for arg in vm.registers.callArgs:
-      stdout.write &"\n    0x{cast[uint64](arg):X} ({(if arg != nil: $arg.kind else: \"\")})  \n"
-    debugEcho "]"
-
-  element.script.rt.run()
+  element.script = Script(baseURL: view.target, document: document)
+  executeScript(element, ensureMove(codeBuffer))
 
 proc loadHTMLStream(view: WebView, stream: Stream) =
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
@@ -316,8 +278,8 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
           element: tags.HTMLImageElement, factory: dom.MAtomFactory
       ) =
         view.fetchHTMLImageResource(element, factory),
-      executeScript: proc(element: tags.HTMLScriptElement) =
-        view.executeScript(element),
+      executeScript: proc(element: tags.HTMLScriptElement, document: dom.Document) =
+        view.executeScript(element, document),
     ),
   )
   userAgent.close()

@@ -40,3 +40,29 @@ func getUintAttr*(
     return some(parseUint(&attr))
   except ValueError:
     return none(uint)
+
+func getElementById*(
+    node: dom.Node, factory: dom.MAtomFactory, id: string
+): Option[dom.Element] =
+  if node of dom.Element and
+      (let value = getAttr(Element(node), factory, "id"); *value and &value == id):
+    return some(Element(node))
+
+  for child in node.childList:
+    let res = getElementById(child, factory, id)
+    if *res:
+      return res
+
+  none(Element)
+
+func textContent*(node: dom.Node): string =
+  # NOTE: I don't think this is compliant yet...
+  var buffer: string # FIXME: Prealloc
+
+  for child in node.childList:
+    if child of dom.Text:
+      buffer &= Text(child).data
+
+    buffer &= child.textContent
+
+  ensureMove(buffer)

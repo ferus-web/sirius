@@ -52,6 +52,13 @@ proc wrap*[T: object](runtime: Runtime, obj: T): JSValue =
 
   mObj
 
+proc wrap*[T: object](runtime: Runtime, dest: JSValue, obj: T) =
+  for name, field in obj.fieldPairs:
+    if field is Hidden:
+      setHiddenField(dest, name, runtime.wrap(field))
+    else:
+      dest[name] = runtime.wrap(field)
+
 proc wrap*(runtime: Runtime, val: seq[JSValue]): JSValue =
   var atoms = newSeq[MAtom](val.len)
 

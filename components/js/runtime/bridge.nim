@@ -12,6 +12,9 @@ privateAccess(Runtime)
 privateAccess(PulsarInterpreter)
 privateAccess(AllocStats)
 
+func hidden*[T: ref object | ptr object](value: T): Hidden[T] {.inline, raises: [].} =
+  cast[Hidden[T]](value)
+
 proc defineFn*[T](
     runtime: Runtime, prototype: typedesc[T], name: string, fn: NativeFunction
 ) =
@@ -293,3 +296,35 @@ proc call*(runtime: Runtime, callable: JSValue, arguments: varargs[JSValue]): JS
     return undefined(runtime.heapManager)
 
   &retVal
+
+proc setGlobal*(runtime: Runtime, name: string, value: JSValue) =
+  ## Set a global in the current context.
+  ##
+  ## **NOTE**: This only works if called _before_ bytecode generation.
+  ## **TODO** (xTrayambak): I should probably implement dynamic identifier binding at runtime
+  let index = runtime.addrIdx
+  runtime.markGlobal(name)
+
+  if cast[uint](runtime.vm.stack.len) <= index:
+    runtime.vm.stack.setLen(index)
+
+  runtime.vm.stack[index] = value
+
+proc setGlobal*[T](runtime: Runtime, name: string, value: sink T): JSValue =
+  var wrapped: JSValue
+
+  # If the object matches the type of any registered type, set up
+  # its fields and stuff.
+  for etyp in runtime.types:
+    if etyp.proto == hash($T):
+      wrapped = createAtom(runtime, etyp)
+
+  if wrapped == nil:
+    raise newException(
+      ValueError, "Cannot set as global, native type has no bindings present!"
+    )
+
+  runtime.wrap(wrapped, value)
+  setGlobal(runtime, name, wrapped)
+
+  wrapped
