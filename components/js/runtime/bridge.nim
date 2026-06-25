@@ -4,8 +4,9 @@ import std/[logging, tables, options, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
-  components/js/runtime/
-    [atom_obj_variant, wrapping, atom_helpers, types, normalize, construction]
+  components/js/runtime/[
+    arguments, atom_obj_variant, wrapping, atom_helpers, types, normalize, construction
+  ]
 import pkg/shakar
 
 privateAccess(Runtime)
@@ -265,6 +266,8 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
   for fname, fatom in prototype().fieldPairs:
     when fatom is JSValue:
       jsType.members[fname] = initAtomOrFunction[NativeFunction](undefined(runtime))
+    elif fatom is FieldAccessor:
+      discard
     else:
       # assert not (fatom is Hidden), $prototype
       jsType.members[fname] = initAtomOrFunction[NativeFunction](
@@ -343,3 +346,22 @@ proc getProperty*(runtime: Runtime, atom: JSValue, name: string): JSValue {.gcsa
     return runtime.call(property.accessor.getter)
 
   atom.objValues[property.index]
+
+proc setFieldAccessor*(
+    runtime: Runtime, atom: JSValue, name: string, accessor: FieldAccessor
+) =
+  atom.objFields[name] = Property(
+    isAccessor: true,
+    accessor: Accessor(
+      getter: nativeCallable(
+        runtime.heapManager,
+        proc() =
+          accessor.getter(atom),
+      ),
+      setter: nativeCallable(
+        runtime.heapManager,
+        proc() =
+          accessor.setter(atom, &runtime.argument(1, required = true)),
+      ),
+    ),
+  )

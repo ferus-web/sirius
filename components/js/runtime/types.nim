@@ -13,6 +13,12 @@ import pkg/[shakar, librng]
 type
   NativeFunction* = proc() {.gcsafe.}
   NativePrototypeFunction* = proc(value: JSValue) {.gcsafe.}
+  NativeGetterFunction* = NativePrototypeFunction
+  NativeSetterFunction* = proc(this: JSValue, value: JSValue) {.gcsafe.}
+
+  FieldAccessor* = ref object
+    getter*: NativeGetterFunction
+    setter*: NativeSetterFunction
 
   ValueKind* = enum
     vkGlobal

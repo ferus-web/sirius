@@ -739,8 +739,11 @@ proc opWriteField(interpreter: var PulsarInterpreter, op: ptr Operation) =
     inc interpreter.currIndex
     return
 
-  atom.objValues[property.index] = &sourceAtom
-  atom.objFields[fieldName] = property
+  if not property.isAccessor:
+    atom.objValues[property.index] = &sourceAtom
+    atom.objFields[fieldName] = property
+  else:
+    assert off
 
   interpreter.addAtom(atom, oatomIndex)
   inc interpreter.currIndex

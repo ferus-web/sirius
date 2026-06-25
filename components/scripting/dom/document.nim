@@ -40,7 +40,7 @@ proc generateBindings*(runtime: Runtime) =
       let target = document.getElementById(document.factory, id)
 
       if *target:
-        ret toJSElement(&target)
+        ret toJSElement(runtime, &target)
       else:
         ret null(runtime)
     ,

@@ -8,14 +8,25 @@ import
   components/js/runtime/abstract/[coercible, to_number, to_string],
   components/dom/dom,
   components/html/dom_utils
+import pkg/shakar, pretty, tables
 
 type JSElement* = object
   internal*: Hidden[dom.Element]
+  textContent*: FieldAccessor
 
-  textContent*: string
-
-proc toJSElement*(element: dom.Element): JSElement =
-  JSElement(internal: hidden(element), textContent: element.textContent)
+proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
+  JSElement(
+    internal: hidden(element),
+    textContent: FieldAccessor(
+      getter: proc(this: JSValue) =
+        print this
+        ret cast[dom.Element](&getInt(&this.tagged("internal"))).textContent
+      ,
+      setter: proc(this: JSValue, value: JSValue) =
+        assert off, "textContent setter"
+      ,
+    ),
+  )
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType(prototype = JSElement, name = "Element")

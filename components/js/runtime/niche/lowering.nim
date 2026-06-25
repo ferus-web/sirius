@@ -1534,7 +1534,13 @@ proc generateInternalIR*(runtime: Runtime) =
         destAtom = runtime.getProperty(destAtom, accesses.identifier)
         checkDestAtom
 
-      destAtom[accesses.identifier] = writeAtom
+      if accesses.identifier in destAtom.objFields and
+          destAtom.objFields[accesses.identifier].isAccessor:
+        let accessors = destAtom.objFields[accesses.identifier].accessor
+        runtime.vm.registers.callArgs = @[writeAtom]
+        runtime.vm[].invoke(accessors.setter)
+      else:
+        destAtom[accesses.identifier] = writeAtom
 
       runtime.vm.stack[destinationAtomIndex] = ensureMove(destAtom)
       ret writeAtom

@@ -45,10 +45,15 @@ proc wrap*[A, B](runtime: Runtime, val: Table[A, B]): JSValue =
   atom
 
 proc wrap*[T: object](runtime: Runtime, obj: T): JSValue =
-  var mObj = atom.obj(runtime.heapManager)
+  let mObj = atom.obj(runtime.heapManager)
 
   for name, field in obj.fieldPairs:
-    mObj[name] = runtime.wrap(field)
+    when field is FieldAccessor:
+      runtime.setFieldAccessor(mObj, name, field)
+    elif field is Hidden:
+      mObj.setHiddenField(name, runtime.wrap(field))
+    else:
+      mObj[name] = runtime.wrap(field)
 
   mObj
 
