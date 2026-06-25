@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak at disroot dot org)
 
-import std/[options, hashes, logging, sugar, tables]
+import std/[deques, monotimes, options, hashes, logging, sugar, tables, times]
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/prelude
 import components/js/grammar/prelude
@@ -91,6 +91,12 @@ type
     Trace
     Warn
 
+  Task* = object
+    callback*: JSValue
+    delay*: Duration
+
+    deadline*: MonoTime
+
   DeathCallback* = proc(vm: PulsarInterpreter) {.gcsafe.}
   ConsoleDelegate* = proc(level: ConsoleLevel, msg: string) {.gcsafe.}
 
@@ -130,6 +136,8 @@ type
     deathCallback*: DeathCallback
     consoleDelegate*: ConsoleDelegate
     rng*: librng.RNG
+
+    macrotaskQueue*: Deque[Task]
 
 {.push warning[UnreachableCode]: off.}
 proc setExperiment*(opts: var ExperimentOpts, name: string, value: bool): bool =

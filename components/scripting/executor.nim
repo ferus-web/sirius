@@ -8,7 +8,7 @@ import
   components/js/grammar/prelude,
   components/js/runtime/prelude,
   components/js/runtime/vm/interpreter/interpreter
-import components/scripting/dom/[document, element]
+import components/scripting/dom/[document, element], components/scripting/timeouts
 import pkg/[chronicles, shakar, url]
 
 logScope:
@@ -24,6 +24,8 @@ proc registerWebBindings(elem: tags.HTMLScriptElement) =
   document.generateGlobal(elem.script.rt, elem.script.document)
 
   element.generateBindings(elem.script.rt)
+
+  timeouts.generateBindings(elem.script.rt)
 
 proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
   let parser = newParser(codeBuffer)

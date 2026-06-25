@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head><title>setTimeout() example</title></head>
+  <body>
+    <p id="greet">Hello task queue!</p>
+    <script>
+	let elem = document.getElementById("greet");
+
+	function randomText() {
+	  let time = new Date();
+	  elem.textContent = time;
+	}
+	
+	randomText();
+	setTimeout(randomText, 1000);
+    </script>
+  </body>
+</html>

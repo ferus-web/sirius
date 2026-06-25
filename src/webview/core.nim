@@ -1,7 +1,7 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, streams, strformat, strutils, sequtils, tables]
+import std/[monotimes, options, streams, strformat, strutils, sequtils, tables]
 import ./[hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
@@ -12,6 +12,7 @@ import
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
   components/net/core,
+  components/js/runtime/bridge,
   components/scripting/[executor, types]
 
 logScope:
@@ -261,6 +262,8 @@ proc executeScript(
   element.script = Script(baseURL: view.target, document: document)
   executeScript(element, ensureMove(codeBuffer))
 
+  view.scripts &= element
+
 proc loadHTMLStream(view: WebView, stream: Stream) =
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
@@ -413,11 +416,25 @@ proc handleWindowResize(view: WebView, viewportSize: IVec2) =
   view.renderCtx.resize(vec2(viewportSize))
   view.reflow()
 
+proc executeOneMacrotask(view: WebView) =
+  let currTime = getMonoTime()
+  for scriptElem in view.scripts:
+    if scriptElem.script.rt.macrotaskQueue.len > 0 and (
+      let front = scriptElem.script.rt.macrotaskQueue.peekFirst().addr
+      front.deadline <= currTime
+    ):
+      scriptElem.script.rt.callNoRetval(front.callback)
+      front.deadline = currTime + front.delay
+
+proc poll*(view: WebView) =
+  view.loader.poll()
+  view.executeOneMacrotask()
+
 proc loop*(view: WebView): int =
   info "Entering main loop"
 
   while not view.app.closureRequested:
-    view.loader.poll()
+    view.poll()
 
     let eventOpt = view.app.flushQueue()
     if !eventOpt:

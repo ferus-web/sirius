@@ -11,7 +11,8 @@ import
   components/style/types,
   components/layout/[output_manager, types],
   components/os/[assets, fonts],
-  components/net/core
+  components/net/core,
+  components/dom/tags
 
 logScope:
   topics = "webview/types"
@@ -41,6 +42,7 @@ type
 
     dom*: Document
     target*: URL
+    scripts*: seq[HTMLScriptElement]
 
     stylesheet*: Stylesheet
     styleMap*: StyleMap
