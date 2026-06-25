@@ -361,7 +361,7 @@ proc genCall(
 
     fillArguments()
 
-    let indexed = runtime.index(nam, defaultParams(fn))
+    let indexed = runtime.index(nam, defaultParams(fn), willHandleResolveFail = true)
 
     if indexed ==
         runtime.index("undefined", defaultParams(fn), willHandleResolveFail = true):
