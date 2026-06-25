@@ -31,7 +31,14 @@ proc convertJsonNodeToAtom*(runtime: Runtime, node: JsonNode): JSValue =
 
     for key, value in node.getFields():
       jObj.objValues &= convertJsonNodeToAtom(runtime, value)
-      jObj.objFields[key] = jObj.objValues.len - 1
+      jObj.objFields[key] = Property(
+        isAccessor: false,
+        index: cast[uint32](jObj.objValues.len) - 1'u32,
+        descriptors: {
+          FieldDescriptor.Writable, FieldDescriptor.Configurable,
+          FieldDescriptor.Enumerable,
+        },
+      )
 
     return jObj
 
@@ -39,7 +46,7 @@ proc convertJsonNodeToAtom*(runtime: Runtime, node: JsonNode): JSValue =
 
 type JSON = object
 
-proc atomToJsonNode*(atom: JSValue): JsonNode =
+proc atomToJsonNode*(runtime: Runtime, atom: JSValue): JsonNode =
   if atom.kind == Integer:
     return newJInt(&atom.getInt())
   elif atom.kind == Float:
@@ -50,14 +57,14 @@ proc atomToJsonNode*(atom: JSValue): JsonNode =
     var arr = newJArray()
 
     for i, _ in atom.sequence:
-      arr &= atom.sequence[i].addr.atomToJsonNode()
+      arr &= atomToJsonNode(runtime, atom.sequence[i].addr)
 
     return arr
   elif atom.kind == Object:
     var jObj = newJObject()
 
-    for key, index in atom.objFields:
-      jObj[key] = atom.objValues[index].atomToJsonNode()
+    for key, _ in atom.objFields:
+      jObj[key] = atomToJsonNode(runtime, getProperty(runtime, atom, key))
 
     return jObj
 
@@ -104,7 +111,7 @@ proc generateStdIR*(runtime: Runtime) =
     proc() =
       let
         atom = &runtime.argument(1)
-        node = atomToJsonNode(atom)
+        node = runtime.atomToJsonNode(atom)
 
       ret str(runtime, pretty node)
     ,

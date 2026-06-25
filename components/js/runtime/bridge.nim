@@ -159,7 +159,11 @@ proc isA*[T: object](runtime: Runtime, atom: JSValue, typ: typedesc[T]): bool =
 
   false
 
-proc getMethod*(runtime: Runtime, v: JSValue, p: string): Option[proc() {.gcsafe.}] =
+proc getProperty*(runtime: Runtime, atom: JSValue, name: string): JSValue {.gcsafe.}
+
+proc getMethod*(
+    runtime: Runtime, v: JSValue, p: string
+): Option[proc() {.gcsafe.}] {.gcsafe.} =
   ## Get a method from the provided object's prototype.
   ## Returns an `Option[proc()]` if a function with the name `p` is found (it is wrapped!),
   ## else it returns an empty `Option`.
@@ -167,17 +171,18 @@ proc getMethod*(runtime: Runtime, v: JSValue, p: string): Option[proc() {.gcsafe
   ## If a `BytecodeCallable` is found, `getMethod` creates its own wrapper function.
   if v.contains(p):
     debug "runtime: getMethod(): value has field: " & p
+    let value = runtime.getProperty(v, p)
 
-    case v[p].kind
+    case value.kind
     of NativeCallable:
       debug "runtime: getMethod(): method is a native callable"
-      return some(v[p].fn)
+      return some(value.fn)
     of BytecodeCallable:
       debug "runtime: getMethod(): method is a bytecode callable; generating wrapper."
       return some(
         proc() =
           runtime.vm.registers.callArgs.add(v)
-          runtime.vm[].call(&getBytecodeClause(v[p]), default(Operation))
+          runtime.vm[].call(&getBytecodeClause(value), default(Operation))
             # FIXME: I don't think giving a bogus operation will allow us to get proper tracebacks...
 
           # If the function returned nothing, just push undefined to that register.
@@ -328,3 +333,13 @@ proc setGlobal*[T](runtime: Runtime, name: string, value: sink T): JSValue =
   setGlobal(runtime, name, wrapped)
 
   wrapped
+
+proc getProperty*(runtime: Runtime, atom: JSValue, name: string): JSValue {.gcsafe.} =
+  if atom.kind != Object:
+    raise newException(ValueError, $atom.kind & " does not have field access methods")
+
+  let property = atom.objFields[name]
+  if property.isAccessor:
+    return runtime.call(property.accessor.getter)
+
+  atom.objValues[property.index]

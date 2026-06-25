@@ -156,13 +156,20 @@ proc setupAtom*(runtime: Runtime, typ: JSType, value: JSValue) =
   ## Set up all properties and methods for a value off of a provided type.
   for name, member in typ.members:
     if member.isAtom():
-      let idx = value.objValues.len
+      let idx = cast[uint32](value.objValues.len)
       value.objValues &= undefined(runtime.heapManager)
 
       if member.hidden:
         value.objHiddenFields[name] = idx
       else:
-        value.objFields[name] = idx
+        value.objFields[name] = Property(
+          isAccessor: false,
+          index: idx,
+          descriptors: {
+            FieldDescriptor.Writable, FieldDescriptor.Enumerable,
+            FieldDescriptor.Configurable,
+          },
+        )
 
   for name, protoFn in typ.prototypeFunctions:
     capture name, protoFn:

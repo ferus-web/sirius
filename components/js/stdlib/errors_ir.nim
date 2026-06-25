@@ -23,19 +23,18 @@ proc generateStdIr*(runtime: Runtime) =
     JSError,
     "toString",
     proc(self: JSValue) =
-      ret self["message"]
+      ret runtime.getProperty(self, "message")
     ,
   )
 
   runtime.vm[].registerBuiltin(
     "BALI_THROWERROR",
     proc(op: Operation) =
-      let atom =
-        &runtime.argument(
-          1,
-          required = true,
-          message = "BUG: BALI_THROWERROR got {nargs} atoms, expected one!",
-        )
+      let atom = &runtime.argument(
+        1,
+        required = true,
+        message = "BUG: BALI_THROWERROR got {nargs} atoms, expected one!",
+      )
 
       var error = runtime.createObjFromType(JSError)
 

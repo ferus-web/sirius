@@ -18,7 +18,8 @@ The base was written in a day, so don't expect anything grandiose.
 - [ ] Inline styles
 - [X] Network content fetching
 - [X] Vulkan (OpenGL/Metal eventually?) based renderers using FigDraw
-* [X] HarfBuzz for text shaping
+- [X] HarfBuzz for text shaping
+- [X] JavaScript execution, *very* early DOM bindings
 - [ ] Content caching
 - [ ] Forms support
 - [ ] CSS Grid Layout

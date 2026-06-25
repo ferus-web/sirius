@@ -1531,7 +1531,7 @@ proc generateInternalIR*(runtime: Runtime) =
         else:
           accesses = accesses.next
 
-        destAtom = destAtom[accesses.identifier]
+        destAtom = runtime.getProperty(destAtom, accesses.identifier)
         checkDestAtom
 
       destAtom[accesses.identifier] = writeAtom

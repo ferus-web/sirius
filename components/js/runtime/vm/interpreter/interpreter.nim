@@ -676,7 +676,13 @@ proc opCreateField(interpreter: var PulsarInterpreter, op: ptr Operation) =
     fieldIndex = (&op.arguments[1].getInt())
     fieldName = &op.arguments[2].getStr()
 
-  atom.objFields[fieldName] = fieldIndex
+  atom.objFields[fieldName] = Property(
+    descriptors: {
+      FieldDescriptor.Writable, FieldDescriptor.Enumerable, FieldDescriptor.Configurable
+    },
+    isAccessor: false,
+    index: cast[uint32](fieldIndex),
+  )
   atom.objValues.add(null(interpreter.heapManager))
 
   interpreter.addAtom(atom, oatomIndex)
@@ -716,18 +722,25 @@ proc opWriteField(interpreter: var PulsarInterpreter, op: ptr Operation) =
 
   var
     atom = &oatomId
-    fieldIndex = none(int)
+    propertyObj = none(Property)
 
   for field, idx in atom.objFields:
     if field == fieldName:
-      fieldIndex = some(idx)
+      propertyObj = some(idx)
 
-  if not *fieldIndex:
+  if not *propertyObj:
     atom.objValues &= undefined(interpreter.heapManager)
-    fieldIndex = some(atom.objValues.len - 1)
+    propertyObj =
+      some(Property(isAccessor: false, index: cast[uint32](atom.objValues.len) - 1'u32))
 
-  atom.objValues[&fieldIndex] = &sourceAtom
-  atom.objFields[fieldName] = &fieldIndex
+  let property = &propertyObj
+  if not property.descriptors.contains(FieldDescriptor.Writable):
+    # TODO: Strict mode would throw a TypeError instead.
+    inc interpreter.currIndex
+    return
+
+  atom.objValues[property.index] = &sourceAtom
+  atom.objFields[fieldName] = property
 
   interpreter.addAtom(atom, oatomIndex)
   inc interpreter.currIndex
@@ -928,7 +941,9 @@ proc opThrowReferenceError*(interpreter: var PulsarInterpreter, op: ptr Operatio
 
   interpreter.referenceErrorHook(binding)
 
-func createFieldAccess(vm: PulsarInterpreter, values: seq[string]): ptr FieldAccess =
+func createFieldAccess(
+    vm: var PulsarInterpreter, values: seq[string]
+): ptr FieldAccess =
   template newFieldAccess(): ptr FieldAccess =
     cast[ptr FieldAccess](vm.heapManager.allocate(uint8(sizeof(FieldAccess))))
 
@@ -946,15 +961,24 @@ func createFieldAccess(vm: PulsarInterpreter, values: seq[string]): ptr FieldAcc
 
   top
 
-proc findField(heap: HeapManager, atom: JSValue, accesses: ptr FieldAccess): JSValue =
+proc findField(
+    vm: var PulsarInterpreter, atom: JSValue, accesses: ptr FieldAccess
+): JSValue =
   let field = $accesses.field
   if field in atom.objFields:
     if accesses.next == nil:
-      return atom.objValues[atom.objFields[field]]
+      let prop = atom.objFields[field]
+
+      if prop.isAccessor:
+        vm.invoke(prop.accessor.getter)
+        if *vm.registers.retval:
+          return &vm.registers.retval
+      else:
+        return atom.objValues[prop.index]
     else:
-      return findField(heap, atom, accesses.next)
-  else:
-    return undefined(heap)
+      return findField(vm, atom, accesses.next)
+
+  undefined(vm.heapManager)
 
 proc opResolveField(interpreter: var PulsarInterpreter, op: ptr Operation) =
   let
@@ -983,10 +1007,8 @@ proc opResolveField(interpreter: var PulsarInterpreter, op: ptr Operation) =
     return
 
   interpreter.addAtom(
-    findField(
-      interpreter.heapManager,
-      atom,
-      createFieldAccess(interpreter, ensureMove(accessesFrags)),
+    interpreter.findField(
+      atom, createFieldAccess(interpreter, ensureMove(accessesFrags))
     ),
     storeAt,
   )
@@ -1278,15 +1300,22 @@ proc tryInitializeJIT(interp: ptr PulsarInterpreter) =
       let alreadyExists = field in atom.objFields
       let index =
         if alreadyExists:
-          atom.objFields[field]
+          atom.objFields[field].index
         else:
-          atom.objValues.len
+          cast[uint32](atom.objValues.len)
 
       if alreadyExists:
         atom.objValues[index] = &vm.get(source)
       else:
         atom.objValues &= &vm.get(source)
-        atom.objFields[field] = index
+        atom.objFields[field] = Property(
+          descriptors: {
+            FieldDescriptor.Writable, FieldDescriptor.Configurable,
+            FieldDescriptor.Enumerable,
+          },
+          isAccessor: false,
+          index: index,
+        )
 
       vm.stack[position] = atom,
     addRetval: proc(vm: var PulsarInterpreter, value: JSValue) {.cdecl.} =
@@ -1329,7 +1358,14 @@ proc tryInitializeJIT(interp: ptr PulsarInterpreter) =
       jitd "callback", "getProperty(field: " & $field & ')'
       let field = $field
       if value.contains(field):
-        return value[field]
+        let prop = value.objFields[field]
+        if prop.isAccessor:
+          vm.invoke(prop.accessor.getter)
+
+          if *vm.registers.retval:
+            return &vm.registers.retval
+        else:
+          return value.objValues[prop.index]
 
       undefined(vm.heapManager),
     equate: proc(vm: var PulsarInterpreter, a, b: JSValue): bool {.cdecl.} =

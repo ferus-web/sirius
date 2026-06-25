@@ -23,10 +23,24 @@ type
   AtomOverflowError* = object of CatchableError
   SequenceError* = object of CatchableError
 
-  AtomMode* {.pure, size: sizeof(uint8).} = enum
-    Default = 0
-    ReadOnly = 1
-    WriteOnly = 2
+  FieldDescriptor* {.pure, size: sizeof(uint8).} = enum
+    Writable = 0
+    Enumerable
+    Configurable
+
+  Accessor* = object
+    getter*, setter*: JSValue
+
+  FieldIndex = uint32
+    # If you somehow have more than 2^32 - 1 entries, you should probably never be allowed to touch a computer again.
+
+  Property* = object
+    descriptors*: set[FieldDescriptor]
+    case isAccessor*: bool
+    of true:
+      accessor*: Accessor
+    of false:
+      index*: FieldIndex
 
   MAtom* = object
     case kind*: MAtomKind
@@ -41,8 +55,9 @@ type
     of Boolean:
       state*: bool
     of Object:
-      objFields*: Table[string, int]
-      objHiddenFields*: Table[string, int]
+      objFields*: Table[string, Property]
+      objHiddenFields*: Table[string, FieldIndex]
+
       objValues*: seq[JSValue]
     of Undefined: discard
     of Float:
@@ -339,7 +354,7 @@ proc bigint*(
 
 proc obj*(heap: HeapManager): JSValue {.inline, cdecl.} =
   var mem = newJSValue(heap, Object)
-  mem.objFields = initTable[string, int]()
+  mem.objFields = initTable[string, Property]()
   mem.objValues = newSeq[JSValue]()
 
   ensureMove(mem)
