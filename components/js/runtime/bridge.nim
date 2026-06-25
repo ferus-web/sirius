@@ -352,6 +352,8 @@ proc setFieldAccessor*(
 ) =
   atom.objFields[name] = Property(
     isAccessor: true,
+    descriptors: {FieldDescriptor.Writable},
+      # HACK: Could we possibly have pragmas like {.writable.}, {.enumerable.}, {.configurable.} so the type data itself can specify this?
     accessor: Accessor(
       getter: nativeCallable(
         runtime.heapManager,
