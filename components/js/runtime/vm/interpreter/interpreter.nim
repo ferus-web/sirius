@@ -975,6 +975,8 @@ proc findField(
 
       if prop.isAccessor:
         vm.invoke(prop.accessor.getter)
+        dec vm.currIndex
+          # Otherwise, we'd end up skipping an instruction right below this.
         if *vm.registers.retval:
           return &vm.registers.retval
       else:

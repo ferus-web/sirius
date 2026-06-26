@@ -103,7 +103,7 @@ proc run*(runtime: Runtime) {.gcsafe.} =
 
   if runtime.opts.dumpBytecode:
     echo runtime.ir.emit()
-    quit(0)
+    # quit(0)
 
   # We have to attach an "equation hook" since the VM itself has no way
   # of equating values in a standards-compliant way.
