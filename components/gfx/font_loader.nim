@@ -3,8 +3,8 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, tables]
 import components/os/fonts as osfonts
-import pkg/[chronicles, pixie, vmath]
-import pkg/figdraw/common/[fonttypes, typefaces]
+import pkg/[chronicles, vmath]
+import pkg/figdraw/common/[fonttypes, fontutils, typefaces]
 
 logScope:
   topics = "gfx/font_loader"
@@ -24,12 +24,21 @@ proc getLoaderImplementation*(): LoaderImplementation =
         error "Failed to load font!", name = name, path = path
         none(osfonts.Font),
     measureTextBounds: proc(
-        font: osfonts.Font, size: float32, text: string
-    ): vmath.Vec2 =
-      # XXX: Should we really be plugging into pixie?
-      # Hopefully it's accurate enough for now, it's probably better than the 0.65'f32 hack anyways
-      let font = newFont(typefaceTable[cast[TypefaceId](font.impl)])
-      font.size = size
-
-      typeset(font, text).layoutBounds(),
+        font: osfonts.Font, availableSize: Vec2, fontSize: float32, text: string
+    ): GlyphArrangement {.closure.} =
+      typeset(
+        rect(0, 0, availableSize.x, availableSize.y),
+        [
+          (
+            FontStyle(
+              font: FigFont(typefaceId: cast[TypefaceId](font.impl), size: fontSize)
+            ),
+            text,
+          )
+        ],
+        hAlign = Left, # TODO: Probably should do something about these
+        vAlign = Top, # same as above
+        wrap = true,
+        minContent = false,
+      ),
   )

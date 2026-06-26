@@ -2,7 +2,7 @@
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[hashes, options]
-import pkg/[chroma, pixie, vmath]
+import pkg/[chroma, pixie, vmath], pkg/figdraw/common/fonttypes
 import
   components/dom/dom, components/style/types, components/os/fonts, components/css/types
 
@@ -41,6 +41,7 @@ type
     content*: string ## Any text content
     imageContent*: Hash
     imageBuffer*: pixie.Image
+    arrangement*: fonttypes.GlyphArrangement
 
     relativePos*, absolutePos*: vmath.Vec2
     dimensions*: vmath.Vec2
@@ -76,6 +77,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.floatMode = node.floatMode
   result.border = node.border
 
+  result.arrangement = node.arrangement
   result.relativePos = node.relativePos
   result.absolutePos = node.absolutePos
   result.dimensions = node.dimensions

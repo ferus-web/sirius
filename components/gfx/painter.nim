@@ -36,8 +36,8 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
     return
 
   let
-    posX = node.absolutePos.x + ctx.viewerPosition.x
-    posY = node.absolutePos.y + ctx.viewerPosition.y
+    posX = node.absolutePos.x
+    posY = node.absolutePos.y
     width = node.dimensions.x
     height = node.dimensions.y
     nodeScreenBox = rect(posX, posY, width, height)
@@ -119,11 +119,9 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
         ),
       )
   of DisplayMode.Anonymous:
-    let fSize = ctx.outputManager.computePixels(&node.fontSize)
-    let fStyle = FontStyle(
-      font: FigFont(typefaceId: cast[TypefaceId](node.fontFamily.impl), size: fSize),
-      color: fill(node.color),
-    )
+    var arrangement = node.arrangement
+    for i, _ in arrangement.spanColors:
+      arrangement.spanColors[i] = fill(node.color)
 
     discard ctx.displayList.addChild(
       ZLevel(0),
@@ -131,15 +129,9 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
       Fig(
         kind: nkText,
         parent: currentIdx,
-        zlevel: 0.ZLevel,
+        zlevel: ZLevel(0),
         screenBox: nodeScreenBox,
-        textLayout: textLayout(
-          box = rect(0, 0, width, height),
-          spans = [(fStyle, node.content)],
-          hAlign = Left,
-          vAlign = Top,
-          wrap = true,
-        ),
+        textLayout: ensureMove(arrangement),
       ),
     )
 
@@ -150,6 +142,7 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
 
       case node.textDecoration.line
       of TextDecorationLine.Underline:
+        echo height
         yLevel += height
       of TextDecorationLine.Overline:
         discard
@@ -192,7 +185,7 @@ proc buildDisplayList(ctx: RenderingContext) =
   if ctx.tree == nil:
     # HACK: If the tree isn't present yet, just draw a white background.
     ctx.rootNode = ctx.displayList.addRoot(
-      0.ZLevel,
+      ZLevel(0),
       Fig(
         kind: nkRectangle,
         zlevel: 0.ZLevel,

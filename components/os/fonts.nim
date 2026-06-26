@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, tables]
 import components/impure/fontconfig
-import pkg/[chronicles, shakar, vmath]
+import pkg/[chronicles, shakar, vmath], pkg/figdraw/common/fonttypes
 
 logScope:
   topics = "os/fonts"
@@ -16,7 +16,9 @@ type
 
   LoaderImplementation* = object ## Font-loading implementation vtable
     loadFont*: proc(name, path: string): Option[Font]
-    measureTextBounds*: proc(font: Font, size: float32, text: string): vmath.Vec2
+    measureTextBounds*: proc(
+      font: Font, availableSize: Vec2, fontSize: float32, text: string
+    ): GlyphArrangement
 
   FontProviderObj = object
     fcConfig*: ptr FcConfig

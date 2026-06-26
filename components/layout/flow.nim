@@ -322,8 +322,14 @@ proc computeLayout*(
           lineHeight = resolveLineHeight(child.lineHeight, fontSize, outputManager)
 
         processTextContent(child.content, node.whitespace)
+        # child.dimensions =
+        #  vec2(float32(child.content.len) * (fontSize * 0.65'f32), fontSize)
+
+        child.arrangement = fontProvider.loader.measureTextBounds(
+          child.fontFamily, vec2(innerAvailableWidth, fontSize), fontSize, child.content
+        )
         child.dimensions =
-          vec2(float32(child.content.len) * (fontSize * 0.65'f32), fontSize)
+          vec2(child.arrangement.bounding.w, child.arrangement.bounding.h)
 
         var bounds = getLineBounds(cursor.y)
         if cursor.x < bounds.left:
