@@ -16,3 +16,6 @@ type
 
   HTMLScriptElement* = ref object of dom.Element
     script*: Script
+
+  HTMLInputElement* = ref object of dom.Element
+    inputBuffer*: string

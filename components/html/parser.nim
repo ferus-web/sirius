@@ -117,6 +117,8 @@ proc createElement(
         HTMLAnchorElement()
       of TAG_SCRIPT:
         HTMLScriptElement()
+      of TAG_INPUT:
+        HTMLInputElement()
       else:
         Element()
     else:

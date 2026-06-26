@@ -77,6 +77,10 @@ proc computeLayout*(
     node.domNode != nil and node.domNode of tags.HTMLImageElement and
     Element(node.domNode).tagType() == TAG_IMG
 
+  let isInput =
+    node.domNode != nil and node.domNode of tags.HTMLInputElement and
+    Element(node.domNode).tagType() == TAG_INPUT
+
   if isImage:
     let element = HTMLImageElement(node.domNode)
     if node.imageContent != Hash(0) and node.imageBuffer != nil:
@@ -107,6 +111,35 @@ proc computeLayout*(
     if node.display == DisplayMode.Block and node.dimensions.x > availableWidth:
       let ratio = availableWidth / node.dimensions.x
       node.dimensions = vec2(availableWidth, node.dimensions.y * ratio)
+    return
+
+  if isInput:
+    let element = HTMLInputElement(node.domNode)
+
+    let fSize = computePixels(outputManager, &node.fontSize, fontSize = 16'f32)
+
+    let
+      intrinsicWidth =
+        if !node.width:
+          20.0'f32 * (fSize * 0.65'f32)
+        else:
+          outputManager.computePixels(&node.width, relativeBase = availableWidth)
+      intrinsicHeight =
+        if !node.height:
+          fSize * 1.2'f32
+        else:
+          outputManager.computePixels(
+            &node.height, relativeBase = &parentExplicitHeight
+          )
+
+    if node.dimensions.x == 0'f32:
+      node.dimensions.x = intrinsicWidth
+    if node.dimensions.y == 0'f32:
+      node.dimensions.y = intrinsicHeight
+
+    if node.display == DisplayMode.Block and node.dimensions.x > availableWidth:
+      node.dimensions.x = availableWidth
+
     return
 
   let

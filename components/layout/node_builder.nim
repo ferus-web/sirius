@@ -491,7 +491,7 @@ proc createLayoutNode*(
 ): LayoutNode =
   let layoutNode = LayoutNode(domNode: node)
 
-  if node of dom.Text:
+  if not (node of tags.HTMLInputElement) and node of dom.Text:
     let textData = Text(node).data
     if textData.len < 1 or isEmptyOrWhitespace(textData):
       return

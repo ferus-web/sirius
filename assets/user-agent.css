@@ -7,7 +7,7 @@
 */
 
 /* FIXME: empty selectors are discarded entirely! */
-html { --sirius-noop: quirky(); }
+html { }
 body {
   margin-left: 8px;
   margin-top: 16px;
@@ -132,4 +132,22 @@ p, h1, h2, h3, h4, h5, h6, strong, b, footer, blockquote, li {
 } /* FIXME: Ideally, this should target all anonymous nodes that have text in them. */
 
 strike { text-decoration: line-through; }
-input { background-color: red; width: 150px; }
+
+button {
+  cursor: pointer;
+  background-color: gray;
+  width: 100%;
+  border: 1px solid gray;
+  padding: 1px 2px;
+  margin: 0em;
+}
+
+input {
+  display: block;
+  cursor: text;
+  background-color: blue;
+  width: 100%;
+  border: 1px solid #767676;
+  padding: 1px 2px;
+  margin: 0em;
+}

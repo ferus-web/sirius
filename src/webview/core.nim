@@ -1,7 +1,7 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[monotimes, options, streams, strformat, strutils, sequtils, tables]
+import std/[monotimes, options, streams, strformat, strutils, sequtils, tables, unicode]
 import ./[hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
@@ -393,14 +393,16 @@ proc handleFocusedDomElement(
 ): bool {.discardable.} =
   applyCursorState(view, layoutNode)
 
-  if clicked and element of tags.HTMLAnchorElement:
-    let anchorElement = HTMLAnchorElement(element)
-    if *anchorElement.href:
-      # TODO: The styling engine needs to support :not so that if an anchor element
-      # doesn't have a href, it should _NOT_ appear as clickable due to `cursor: pointer`
-      # in Sirius' UA stylesheet globally applied to all anchors.
-      loadURL(view, &view.resolveURLSegment(&anchorElement.href))
+  if clicked:
+    if element of tags.HTMLAnchorElement:
+      let anchorElement = HTMLAnchorElement(element)
+      if *anchorElement.href:
+        # TODO: The styling engine needs to support :not so that if an anchor element
+        # doesn't have a href, it should _NOT_ appear as clickable due to `cursor: pointer`
+        # in Sirius' UA stylesheet globally applied to all anchors.
+        loadURL(view, &view.resolveURLSegment(&anchorElement.href))
 
+    view.keyboardFocusedElement = some(element)
     return true
 
 proc handleFocusedElement(view: WebView, clicked: bool = false) =
@@ -430,6 +432,35 @@ proc poll*(view: WebView) =
   view.loader.poll()
   view.executeOneMacrotask()
 
+proc handleKeyboardEvent(view: WebView, event: Event) =
+  let keysym = view.app.xkbState.getOneSym(event.key.code + 8)
+  if *view.keyboardFocusedElement:
+    let element = &view.keyboardFocusedElement
+    if element of HTMLInputElement:
+      let inputElement = HTMLInputElement(element)
+      if keysym == XKB_Key_Backspace:
+        if inputElement.inputBuffer.len > 0:
+          inputElement.inputBuffer =
+            inputElement.inputBuffer[0 ..< inputElement.inputBuffer.len - 1]
+
+          view.reflow()
+        return
+
+      inputElement.inputBuffer &= Rune(view.app.xkbState.getUtf32(event.key.code + 8))
+      view.reflow()
+
+  if keysym == XKB_Key_Down or keysym == XKB_KEY_Page_Down:
+    view.renderCtx.viewerPosition.y -= 5
+  elif keysym == XKB_Key_Up or keysym == XKB_KEY_Page_Up:
+    view.renderCtx.viewerPosition.y += 5
+  elif keysym == XKB_Key_Left:
+    view.renderCtx.viewerPosition.x += 5
+  elif keysym == XKB_Key_Right:
+    view.renderCtx.viewerPosition.x -= 5
+  elif keysym == XKB_Key_Tab:
+    view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
+    view.reflow()
+
 proc loop*(view: WebView): int =
   info "Entering main loop"
 
@@ -453,18 +484,7 @@ proc loop*(view: WebView): int =
       view.renderCtx.drawTree()
       # print view.renderCtx.tree
     of EventKind.KeyPressed, EventKind.KeyRepeated:
-      let keysym = view.app.xkbState.getOneSym(event.key.code + 8)
-      if keysym == XKB_Key_Down or keysym == XKB_KEY_Page_Down:
-        view.renderCtx.viewerPosition.y -= 5
-      elif keysym == XKB_Key_Up or keysym == XKB_KEY_Page_Up:
-        view.renderCtx.viewerPosition.y += 5
-      elif keysym == XKB_Key_Left:
-        view.renderCtx.viewerPosition.x += 5
-      elif keysym == XKB_Key_Right:
-        view.renderCtx.viewerPosition.x -= 5
-      elif keysym == XKB_Key_Tab:
-        view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
-        view.reflow()
+      handleKeyboardEvent(view, event)
     of EventKind.CursorMove:
       view.cursor = event.cursor.pos
       let lastFocused = view.focusedElement

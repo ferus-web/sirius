@@ -56,6 +56,7 @@ type
 
     cursor*: vmath.Vec2
     focusedElement*: Option[LayoutNode]
+    keyboardFocusedElement*: Option[dom.Element]
 
     imageCache*: TableRef[string, pixie.Image]
     failedPlaceholderImage*: pixie.Image
