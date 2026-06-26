@@ -22,10 +22,10 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
     internal: hidden(element),
     textContent: FieldAccessor(
       getter: proc(this: JSValue) =
-        ret cast[dom.Element](&getInt(&this.tagged("internal"))).textContent
+        ret textContent(&this.getPrivateObject(dom.Element))
       ,
       setter: proc(this: JSValue, value: JSValue) =
-        let element = cast[dom.Element](&getInt(&this.tagged("internal")))
+        let element = &this.getPrivateObject(dom.Element)
         element.childList.setLen(1)
 
         let textData = runtime.ToString(value)

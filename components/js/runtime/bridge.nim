@@ -347,6 +347,22 @@ proc getProperty*(runtime: Runtime, atom: JSValue, name: string): JSValue {.gcsa
 
   atom.objValues[property.index]
 
+proc getPrivateObject*[T: ref object | ptr object](
+    atom: JSValue, typ: typedesc[T], field: string = "internal"
+): Option[T] =
+  ## Get an implementation-specific hidden field from an object, which is a pointer to an object on the heap.
+  ##
+  ## **Note**: This implements all basic sanity checks and will return an empty optional if it cannot get the hidden field, but it obviously cannot do much if the hidden field is somehow mutated by the guest JS code to an arbitrary address, though that should _never_ happen in normal cases.
+  let value = getHiddenField(atom, field)
+  if !value:
+    return none(T)
+
+  let dataPtr = &value
+  if dataPtr.kind != Integer:
+    return none(T)
+
+  some(cast[T](&getInt(dataPtr)))
+
 proc setFieldAccessor*(
     runtime: Runtime, atom: JSValue, name: string, accessor: FieldAccessor
 ) =

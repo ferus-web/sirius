@@ -35,9 +35,9 @@ proc generateBindings*(runtime: Runtime) =
         )
       )
 
-      # TODO: Proper type for turning these from int64's to heap allocated structs. This is sloppy!!!
-      let document = cast[dom.Document](&getInt(&this.tagged("internal")))
-      let target = document.getElementById(document.factory, id)
+      let
+        document = &this.getPrivateObject(dom.Document)
+        target = document.getElementById(document.factory, id)
 
       if *target:
         ret toJSElement(runtime, &target)
