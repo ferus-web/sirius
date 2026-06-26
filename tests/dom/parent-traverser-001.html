@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head><title>I am a small baby deer where is mama</title></head>
+  <body>
+    <p id="greet">Hello DOM!</p>
+    <script>
+	function print(elem) {
+	  console.log(elem.localName, elem.textContent);
+	  print(elem.parentElement)
+	}
+
+	print(document.getElementById("greet"))
+    </script>
+  </body>
+</html>

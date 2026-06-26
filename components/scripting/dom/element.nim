@@ -5,7 +5,7 @@ import std/strutils
 import
   components/js/runtime/vm/atom,
   components/js/runtime/atom_helpers,
-  components/js/runtime/[arguments, bridge, construction, types],
+  components/js/runtime/[arguments, bridge, construction, types, wrapping],
   components/js/runtime/abstract/[coercible, to_number, to_string],
   components/dom/dom,
   components/html/dom_utils
@@ -13,7 +13,8 @@ import pkg/shakar
 
 type JSElement* = object
   internal*: Hidden[dom.Element]
-  textContent*, parentElement*: FieldAccessor
+  textContent*: FieldAccessor
+  parentElement*: JSValue
 
   localName*, tagName*: string
 
@@ -33,6 +34,12 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
           element.childList[0] = Text(data: textData, parentNode: element)
 
         element.document.edited = true,
+    ),
+    parentElement: (
+      if element.parentNode != nil and element.parentNode of dom.Element:
+        runtime.wrap(toJSElement(runtime, Element(element.parentNode)))
+      else:
+        null(runtime)
     ),
     localName: element.document.factory.atomToStr(element.localName),
     tagName: toUpperAscii(element.document.factory.atomToStr(element.localName)),
