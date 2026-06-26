@@ -78,15 +78,6 @@ func toValidUTF8(s: string): string =
 proc localNameStr*(element: Element): string =
   return element.document.factory.atomToStr(element.localName)
 
-iterator attrsStr*(element: Element): tuple[name, value: string] =
-  let factory = element.document.factory
-  for attr in element.attrs:
-    var name = ""
-    if attr.prefix != NO_PREFIX:
-      name &= $attr.prefix & ':'
-    name &= factory.atomToStr(attr.name)
-    yield (name, attr.value)
-
 # htmlparseriface implementation
 proc strToAtomImpl(builder: MiniDOMBuilder, s: string): MAtom =
   return builder.factory.strToAtom(s)

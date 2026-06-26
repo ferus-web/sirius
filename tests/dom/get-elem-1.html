@@ -6,8 +6,11 @@
     <script>
 	let elem = document.getElementById("greet");
 	console.log(elem.textContent)
+	console.log("localName: ", elem.localName)
+	console.log("tagName: ", elem.tagName)
 
 	elem.textContent = "Hello, JavaScript!"
+	console.log(elem.textContent)
     </script>
   </body>
 </html>

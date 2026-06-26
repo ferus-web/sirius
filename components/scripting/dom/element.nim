@@ -1,6 +1,7 @@
 ## Very incomplete bindings for `Element`
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+import std/strutils
 import
   components/js/runtime/vm/atom,
   components/js/runtime/atom_helpers,
@@ -12,7 +13,9 @@ import pkg/shakar
 
 type JSElement* = object
   internal*: Hidden[dom.Element]
-  textContent*: FieldAccessor
+  textContent*, parentElement*: FieldAccessor
+
+  localName*, tagName*: string
 
 proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
   JSElement(
@@ -31,6 +34,8 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
 
         element.document.edited = true,
     ),
+    localName: element.document.factory.atomToStr(element.localName),
+    tagName: toUpperAscii(element.document.factory.atomToStr(element.localName)),
   )
 
 proc generateBindings*(runtime: Runtime) =
