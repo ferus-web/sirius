@@ -30,7 +30,7 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
 
         let textData = runtime.ToString(value)
         if textData.len > 0:
-          element.childList[0] = Text(data: textData)
+          element.childList[0] = Text(data: textData, parentNode: element)
 
         element.document.edited = true,
     ),
