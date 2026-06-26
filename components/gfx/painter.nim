@@ -142,7 +142,6 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
 
       case node.textDecoration.line
       of TextDecorationLine.Underline:
-        echo height
         yLevel += height
       of TextDecorationLine.Overline:
         discard
