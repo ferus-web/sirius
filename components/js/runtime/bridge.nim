@@ -1,6 +1,6 @@
 ## A neat JavaScript <-> Nim bridge.
 
-import std/[logging, tables, options, strutils, hashes, importutils]
+import std/[logging, tables, options, strformat, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
@@ -358,11 +358,19 @@ proc setFieldAccessor*(
       getter: nativeCallable(
         runtime.heapManager,
         proc() =
+          assert(
+            accessor != nil and accessor.getter != nil,
+            &"bridge: Invariant: Getter (or FieldAccessor) for property `{name}` of object 0x{cast[uint64](atom):X} is not defined. Did you forget to write an implementation for it?",
+          )
           accessor.getter(atom),
       ),
       setter: nativeCallable(
         runtime.heapManager,
         proc() =
+          assert(
+            accessor != nil and accessor.setter != nil,
+            &"bridge: Invariant: Setter (or FieldAccessor) for property `{name}` of object 0x{cast[uint64](atom):X} is not defined. Did you forget to write an implementation for it?",
+          )
           accessor.setter(atom, &runtime.argument(1, required = true)),
       ),
     ),
