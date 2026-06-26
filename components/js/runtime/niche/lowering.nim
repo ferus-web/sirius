@@ -1199,7 +1199,8 @@ proc genDefineFunction(
 proc genCreateArrayLit(runtime: Runtime, fn: Function, stmt: Statement) =
   let pos = runtime.addrIdx
   runtime.ir.loadList(pos)
-  runtime.markLocal(fn, &stmt.storeIn)
+  if *stmt.storeIn:
+    runtime.markLocal(fn, &stmt.storeIn)
 
   for child in stmt.calChildren:
     case child.kind
