@@ -1,5 +1,5 @@
 import std/options
-import components/dom/dom
+import components/dom/dom, components/html/meta
 import components/scripting/types
 
 type
@@ -19,3 +19,8 @@ type
 
   HTMLInputElement* = ref object of dom.Element
     inputBuffer*: string
+
+  HTMLMetaElement* = ref object of dom.Element
+    httpEquiv*: Option[HTTPEquiv]
+    name*: Option[MetadataName]
+    content*, media*: Option[string]

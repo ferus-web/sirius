@@ -3,8 +3,9 @@
 ## https://git.sr.ht/~bptato/chame/tree/master/item/chame/minidom.nim
 
 import std/[algorithm, hashes, options, sets, streams, tables]
-import pkg/chame/[htmlparser, tags]
-import components/dom/prelude, components/html/dom_utils, components/impure/simdutf
+import pkg/chame/[htmlparser, tags], pkg/shakar
+import
+  components/dom/prelude, components/html/[dom_utils, meta], components/impure/simdutf
 
 export tags
 
@@ -17,6 +18,8 @@ type
     handleLinkElement*: proc(element: Element, factory: MAtomFactory)
     fetchImageResource*: proc(element: HTMLImageElement, factory: MAtomFactory)
     executeScript*: proc(element: HTMLScriptElement, document: Document)
+
+    handleMetaElement*: proc(element: HTMLMetaElement)
 
   MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
     document*: Document
@@ -110,6 +113,8 @@ proc createElement(
         HTMLScriptElement()
       of TAG_INPUT:
         HTMLInputElement()
+      of TAG_META:
+        HTMLMetaElement()
       else:
         Element()
     else:
@@ -139,6 +144,21 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
     of TAG_SCRIPT:
       # surely we can rely on the WebView to handle this :P
       builder.callbacks.executeScript(HTMLScriptElement(element), builder.document)
+    of TAG_META:
+      let meta = HTMLMetaElement(element)
+      if (let attr = element.getAttr(builder.factory, "http-equiv"); *attr):
+        meta.httpEquiv = parseHttpEquiv(&attr)
+
+      if (let attr = element.getAttr(builder.factory, "name"); *attr):
+        meta.name = parseMetadataName(&attr)
+
+      if (let attr = element.getAttr(builder.factory, "content"); *attr):
+        meta.content = attr
+
+      if (let attr = element.getAttr(builder.factory, "media"); *attr):
+        meta.media = attr
+
+      builder.callbacks.handleMetaElement(meta)
     else:
       discard
 

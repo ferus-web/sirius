@@ -7,7 +7,7 @@ import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/su
 import
   components/gfx/[core, init, painter, font_loader],
   components/dom/[dom, tags],
-  components/html/[parser, dom_utils, data_parser],
+  components/html/[parser, dom_utils, data_parser, meta],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
@@ -264,6 +264,25 @@ proc executeScript(
 
   view.scripts &= element
 
+proc loadUrl(view: WebView, url: URL)
+
+proc handleHTMLMetaElement(view: WebView, element: HTMLMetaElement) =
+  if !element.httpEquiv:
+    return # TODO: We should probably handle other metadata tags too..
+
+  let httpEquiv = &element.httpEquiv
+  case httpEquiv
+  of HTTPEquiv.Refresh:
+    let dataOpt = parseRefreshData(&element.content)
+    if !dataOpt:
+      warn "Cannot handle Refresh metadata, failed to parse metadata content",
+        message = dataOpt.error()
+      return
+
+    let data = &dataOpt
+  else:
+    warn "Ignoring unhandled http-equiv for <meta> tag", value = httpEquiv
+
 proc loadHTMLStream(view: WebView, stream: Stream) =
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
@@ -283,6 +302,8 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         view.fetchHTMLImageResource(element, factory),
       executeScript: proc(element: tags.HTMLScriptElement, document: dom.Document) =
         view.executeScript(element, document),
+      handleMetaElement: proc(element: tags.HTMLMetaElement) =
+        view.handleHTMLMetaElement(element),
     ),
   )
   userAgent.close()
@@ -316,7 +337,6 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
   loadHTMLStream(view, newStringStream(ensureMove(errorTemplate)))
 
 proc loadUrl(view: WebView, url: URL) =
-  echo "loadURL " & $url
   view.target = url
   view.app.setCursorShape(Shape.Wait)
 
