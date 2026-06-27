@@ -30,23 +30,25 @@ proc registerWebBindings(elem: tags.HTMLScriptElement) =
 proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
   let parser = newParser(codeBuffer)
   element.script.ast = parser.parse()
-  element.script.rt = newRuntime(
-    file = "<inline-script>", # TODO: We can probably use more descriptive names?
-    ast = element.script.ast,
-    opts = InterpreterOpts(
-      test262: false,
-      repl: false,
-      dumpBytecode: false,
-      insertDebugHooks: true,
-      codegen: CodegenOpts(
-        elideLoops: false,
-        loopAllocationEliminator: false,
-        aggressivelyFreeRetvals: false,
-        deadCodeElimination: false,
-        jitCompiler: false,
-      ),
-      jit: JITOpts(),
+  if element.script.rt == nil:
+    element.script.rt = newRuntime(
+      file = "<inline-script>" # TODO: We can probably use more descriptive names?
+    )
+
+  element.script.rt.ast = element.script.ast
+  element.script.rt.opts = InterpreterOpts(
+    test262: false,
+    repl: false,
+    dumpBytecode: false,
+    insertDebugHooks: true,
+    codegen: CodegenOpts(
+      elideLoops: false,
+      loopAllocationEliminator: false,
+      aggressivelyFreeRetvals: false,
+      deadCodeElimination: false,
+      jitCompiler: false,
     ),
+    jit: JITOpts(),
   )
   element.script.rt.deathCallback = proc(vm: PulsarInterpreter) =
     error "Script execution error"

@@ -23,7 +23,7 @@ type JSURL = object
   source*: string
   hash*: string
 
-proc transposeUrlToObject(runtime: Runtime, parsed: URL, source: string): JSValue =
+proc transposeUrlToObject*(runtime: Runtime, parsed: URL, source: string): JSValue =
   var url = runtime.createObjFromType(JSURL)
 
   if *parsed.hostname:
@@ -46,6 +46,45 @@ proc transposeUrlToObject(runtime: Runtime, parsed: URL, source: string): JSValu
     url["hash"] = runtime.newJSString('#' & &parsed.fragment)
 
   ensureMove(url)
+
+proc toNativeURL*(runtime: Runtime, obj: JSValue): url.URL =
+  var target: URL
+  target.hostname = some(runtime.ToString(runtime.getProperty(obj, "hostname")))
+  target.pathname = runtime.ToString(runtime.getProperty(obj, "pathname"))
+
+  let
+    portOpt = runtime.getProperty(obj, "port")
+    queryOpt = runtime.getProperty(obj, "search")
+    fragOpt = runtime.getProperty(obj, "hash")
+
+  target.nonSpecialScheme = runtime.ToString(runtime.getProperty(obj, "protocol"))
+  if target.scheme == "http":
+    target.schemeType = SchemeType.Http
+  elif target.scheme == "https":
+    target.schemeType = SchemeType.Https
+  elif target.scheme == "ws":
+    target.schemeType = SchemeType.Ws
+  elif target.scheme == "wss":
+    target.schemeType = SchemeType.Wss
+  elif target.scheme == "file":
+    target.schemeType = SchemeType.File
+  elif target.scheme == "ftp":
+    target.schemeType = SchemeType.Ftp
+  else:
+    target.schemeType = SchemeType.NotSpecial
+
+  if not portOpt.isUndefined:
+    target.port = some(uint16(runtime.ToNumber(portOpt)))
+  else:
+    target.port = defaultPort(target.scheme)
+
+  if not queryOpt.isUndefined:
+    target.query = some(runtime.ToString(runtime.getProperty(obj, "search")))
+
+  if not fragOpt.isUndefined:
+    target.fragment = some(runtime.ToString(runtime.getProperty(obj, "hash")))
+
+  ensureMove(target)
 
 proc generateStdIR*(runtime: Runtime) =
   info "url: generating IR interfaces"

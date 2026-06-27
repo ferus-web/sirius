@@ -296,6 +296,15 @@ proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: varargs[JSVal
   runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
   runtime.vm[].run()
 
+proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: seq[JSValue]) =
+  if callable.kind != BytecodeCallable:
+    raise newException(ValueError, "Cannot call value of type " & $callable.kind)
+
+  runtime.vm.registers.callArgs = arguments
+
+  runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
+  runtime.vm[].run()
+
 proc call*(runtime: Runtime, callable: JSValue, arguments: varargs[JSValue]): JSValue =
   runtime.callNoRetval(callable, arguments)
 

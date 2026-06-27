@@ -12,7 +12,9 @@ import
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
   components/net/core,
-  components/js/runtime/bridge,
+  components/js/grammar/prelude,
+  components/js/runtime/[arguments, bridge, common, construction, wrapping],
+  components/js/stdlib/uri,
   components/scripting/[executor, types]
 
 logScope:
@@ -31,6 +33,35 @@ proc waitForRendererInit(webview: WebView) =
     elif event.kind == EventKind.RedrawRequested:
       # We should respond to these with a requeue.
       webview.app.queueRedraw()
+
+proc loadUrl(view: WebView, url: URL)
+
+proc initCoreScript(view: WebView) =
+  proc registerCoreBindings(view: WebView) =
+    view.coreScript.script.rt.defineFn(
+      "loadURL",
+      proc() =
+        {.cast(gcsafe).}:
+          # I'll take my ACM Turing award tomorrow, thank you
+          view.loadURL(
+            view.coreScript.script.rt.toNativeURL(
+              &view.coreScript.script.rt.argument(1, required = true)
+            )
+          ),
+    )
+
+  let stream = &view.assetProvider.openAssetStream("scripts/core.js")
+
+  view.coreScript = HTMLScriptElement(
+    script: Script(
+      baseURL: parseURL("file://assets/scripts/core.js"),
+      document: view.dom,
+      rt: newRuntime(file = "sirius::core", ast = nil),
+    )
+  )
+  view.registerCoreBindings()
+  view.coreScript.executeScript(readAll(stream))
+  stream.close()
 
 proc initWebView*(opts: WebViewOpts): WebView =
   debug "Initialize WebView"
@@ -63,6 +94,8 @@ proc initWebView*(opts: WebViewOpts): WebView =
         some(stream)
     )
   )
+
+  initCoreScript(webview)
 
   webview.renderCtx.outputManager = webview.outputManager
   webview.renderCtx.fontProvider = webview.fontProvider
@@ -264,8 +297,6 @@ proc executeScript(
 
   view.scripts &= element
 
-proc loadUrl(view: WebView, url: URL)
-
 proc handleHTMLMetaElement(view: WebView, element: HTMLMetaElement) =
   if !element.httpEquiv:
     return # TODO: We should probably handle other metadata tags too..
@@ -280,6 +311,13 @@ proc handleHTMLMetaElement(view: WebView, element: HTMLMetaElement) =
       return
 
     let data = &dataOpt
+    view.coreScript.script.rt.callNoRetval(
+      &view.coreScript.script.rt.get("handleRefreshMeta"),
+      @[
+        view.coreScript.script.rt.wrap(data.time),
+        view.coreScript.script.rt.transposeUrlToObject(data.urlRecord, $data.urlRecord),
+      ],
+    )
   else:
     warn "Ignoring unhandled http-equiv for <meta> tag", value = httpEquiv
 
@@ -337,8 +375,10 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
   loadHTMLStream(view, newStringStream(ensureMove(errorTemplate)))
 
 proc loadUrl(view: WebView, url: URL) =
+  info "Loading page", dest = url
+
   view.target = url
-  view.app.setCursorShape(Shape.Wait)
+  view.app.setCursorShape(Shape.Progress)
 
   let (resp, err) = view.loader.net.getStream(url, timeoutMs = 60000)
     # TODO: Timeout should be customizable
@@ -440,6 +480,14 @@ proc handleWindowResize(view: WebView, viewportSize: IVec2) =
 
 proc executeOneMacrotask(view: WebView) =
   let currTime = getMonoTime()
+  if view.coreScript.script.rt.macrotaskQueue.len > 0 and (
+    let front = view.coreScript.script.rt.macrotaskQueue.peekFirst().addr
+    front.deadline <= currTime
+  ):
+    view.coreScript.script.rt.callNoRetval(front.callback)
+    discard view.coreScript.script.rt.macrotaskQueue.popFirst()
+      # For the core script, this is a tiny hack since none of our tasks there need to be repeated.
+
   for scriptElem in view.scripts:
     if scriptElem.script.rt.macrotaskQueue.len > 0 and (
       let front = scriptElem.script.rt.macrotaskQueue.peekFirst().addr

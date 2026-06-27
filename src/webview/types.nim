@@ -6,13 +6,13 @@ import pkg/surfer/app
 import pkg/[chronicles, pixie, url, vmath]
 import
   components/gfx/types,
-  components/dom/dom,
+  components/dom/[dom, tags],
   components/html/parser,
   components/style/types,
   components/layout/[output_manager, types],
   components/os/[assets, fonts],
   components/net/core,
-  components/dom/tags
+  components/js/runtime/prelude as js
 
 logScope:
   topics = "webview/types"
@@ -43,6 +43,7 @@ type
     dom*: Document
     target*: URL
     scripts*: seq[HTMLScriptElement]
+    coreScript*: HTMLScriptElement
 
     stylesheet*: Stylesheet
     styleMap*: StyleMap

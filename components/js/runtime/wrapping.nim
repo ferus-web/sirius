@@ -72,7 +72,7 @@ proc wrap*(runtime: Runtime, val: seq[JSValue]): JSValue =
 
   sequence(runtime.heapManager, ensureMove(atoms))
 
-template `[]`*[T: not JSValue](atom: JSValue, name: string, value: T) =
+template `[]=`*[T: not JSValue](atom: JSValue, name: string, value: T) =
   atom[name] = runtime.wrap(value)
 
 proc tag*[T](runtime: Runtime, atom: JSValue, tag: string, value: T) =
