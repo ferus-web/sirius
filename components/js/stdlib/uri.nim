@@ -75,8 +75,8 @@ proc toNativeURL*(runtime: Runtime, obj: JSValue): url.URL =
 
   if not portOpt.isUndefined:
     target.port = some(uint16(runtime.ToNumber(portOpt)))
-  else:
-    target.port = defaultPort(target.scheme)
+  # else:
+  #  target.port = defaultPort(target.scheme)
 
   if not queryOpt.isUndefined:
     target.query = some(runtime.ToString(runtime.getProperty(obj, "search")))
