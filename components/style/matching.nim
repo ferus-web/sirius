@@ -33,7 +33,7 @@ func getSpecificity*(complex: ComplexSelector): uint =
   return total
 
 func matches*(
-    element: dom.Element, factory: dom.MAtomFactory, selector: Selector
+    element: dom.Element, factory: dom.AtomFactory, selector: Selector
 ): bool =
   case selector.kind
   of skType:
@@ -55,7 +55,7 @@ func matches*(
     return false
 
 func matches*(
-    element: dom.Element, factory: dom.MAtomFactory, selector: CompoundSelector
+    element: dom.Element, factory: dom.AtomFactory, selector: CompoundSelector
 ): bool =
   for sel in selector:
     if not matches(element, factory, sel):
@@ -64,7 +64,7 @@ func matches*(
   true
 
 func matches*(
-    element: dom.Element, factory: dom.MAtomFactory, complex: ComplexSelector
+    element: dom.Element, factory: dom.AtomFactory, complex: ComplexSelector
 ): bool =
   if complex.len == 0:
     return false
@@ -99,7 +99,7 @@ func matches*(
   return checkPath(element, complex.len - 1)
 
 func matches*(
-    element: dom.Element, factory: dom.MAtomFactory, list: SelectorList
+    element: dom.Element, factory: dom.AtomFactory, list: SelectorList
 ): bool =
   for complex in list:
     if matches(element, factory, complex):
@@ -107,7 +107,7 @@ func matches*(
   return false
 
 proc resolveStyling*(
-    root: dom.Node, factory: dom.MAtomFactory, stylesheet: Stylesheet
+    root: dom.Node, factory: dom.AtomFactory, stylesheet: Stylesheet
 ): StyleMap =
   debug "Resolve styling map", numRules = stylesheet.len
   var map: StyleMap

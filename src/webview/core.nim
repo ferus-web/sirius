@@ -210,7 +210,7 @@ proc finishStyle(view: WebView) =
   view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style))))
 
 proc handleHTMLLinkElement(
-    view: WebView, element: dom.Element, factory: dom.MAtomFactory
+    view: WebView, element: dom.Element, factory: dom.AtomFactory
 ) =
   let
     rel = element.getAttr(factory, "rel")
@@ -234,7 +234,7 @@ proc handleHTMLLinkElement(
   )
 
 proc fetchHTMLImageResource(
-    view: WebView, element: tags.HTMLImageElement, factory: dom.MAtomFactory
+    view: WebView, element: tags.HTMLImageElement, factory: dom.AtomFactory
 ) =
   if view.opts.disableImageLoading:
     return
@@ -332,10 +332,10 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         view.insertStyle(text),
       finishStyle: proc() =
         view.finishStyle(),
-      handleLinkElement: proc(element: dom.Element, factory: dom.MAtomFactory) =
+      handleLinkElement: proc(element: dom.Element, factory: dom.AtomFactory) =
         view.handleHTMLLinkElement(element, factory),
       fetchImageResource: proc(
-          element: tags.HTMLImageElement, factory: dom.MAtomFactory
+          element: tags.HTMLImageElement, factory: dom.AtomFactory
       ) =
         view.fetchHTMLImageResource(element, factory),
       executeScript: proc(element: tags.HTMLScriptElement, document: dom.Document) =

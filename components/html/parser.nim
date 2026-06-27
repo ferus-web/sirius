@@ -15,22 +15,22 @@ type
     insertStyle*: proc(text: string)
     finishStyle*: proc()
 
-    handleLinkElement*: proc(element: Element, factory: MAtomFactory)
-    fetchImageResource*: proc(element: HTMLImageElement, factory: MAtomFactory)
+    handleLinkElement*: proc(element: Element, factory: AtomFactory)
+    fetchImageResource*: proc(element: HTMLImageElement, factory: AtomFactory)
     executeScript*: proc(element: HTMLScriptElement, document: Document)
 
     handleMetaElement*: proc(element: HTMLMetaElement)
 
-  MiniDOMBuilder* = ref object of DOMBuilder[Node, MAtom]
+  MiniDOMBuilder* = ref object of DOMBuilder[Node, Atom]
     document*: Document
-    factory*: MAtomFactory
+    factory*: AtomFactory
     pendingScript*: HTMLScriptElement
 
     callbacks*: MiniDOMBuilderCallbacks
 
 type
   DOMBuilderImpl = MiniDOMBuilder
-  AtomImpl = MAtom
+  AtomImpl = Atom
   HandleImpl = Node
 
 include chame/htmlparseriface
@@ -82,13 +82,13 @@ proc localNameStr*(element: Element): string =
   return element.document.factory.atomToStr(element.localName)
 
 # htmlparseriface implementation
-proc strToAtomImpl(builder: MiniDOMBuilder, s: string): MAtom =
+proc strToAtomImpl(builder: MiniDOMBuilder, s: string): Atom =
   return builder.factory.strToAtom(s)
 
-proc tagTypeToAtomImpl(builder: MiniDOMBuilder, tagType: TagType): MAtom =
+proc tagTypeToAtomImpl(builder: MiniDOMBuilder, tagType: TagType): Atom =
   return builder.factory.tagTypeToAtom(tagType)
 
-proc atomToTagTypeImpl(builder: MiniDOMBuilder, atom: MAtom): TagType =
+proc atomToTagTypeImpl(builder: MiniDOMBuilder, atom: Atom): TagType =
   return atom.toTagType()
 
 proc getDocumentImpl(builder: MiniDOMBuilder): Node =
@@ -97,9 +97,7 @@ proc getDocumentImpl(builder: MiniDOMBuilder): Node =
 proc getParentNodeImpl(builder: MiniDOMBuilder, handle: Node): Option[Node] =
   return option(handle.parentNode)
 
-proc createElement(
-    document: Document, localName: MAtom, namespace: Namespace
-): Element =
+proc createElement(document: Document, localName: Atom, namespace: Namespace): Element =
   let element = block:
     if namespace == Namespace.HTML:
       case toTagType(localName)
@@ -168,10 +166,10 @@ proc createHTMLElementImpl(builder: MiniDOMBuilder): Node =
 
 proc createElementForTokenImpl(
     builder: MiniDOMBuilder,
-    localName: MAtom,
+    localName: Atom,
     namespace: Namespace,
     intendedParent: Node,
-    htmlAttrs: Table[MAtom, string],
+    htmlAttrs: Table[Atom, string],
     xmlAttrs: seq[Attribute],
 ): Node =
   let element = builder.document.createElement(localName, namespace)
@@ -184,7 +182,7 @@ proc createElementForTokenImpl(
   )
   return element
 
-proc getLocalNameImpl(builder: MiniDOMBuilder, handle: Node): MAtom =
+proc getLocalNameImpl(builder: MiniDOMBuilder, handle: Node): Atom =
   return Element(handle).localName
 
 proc getNamespaceImpl(builder: MiniDOMBuilder, handle: Node): Namespace =
@@ -357,10 +355,10 @@ proc moveChildrenImpl(builder: MiniDOMBuilder, fromNode, toNode: Node) =
     toNode.insertBefore(child, none(Node))
 
 proc addAttrsIfMissingImpl(
-    builder: MiniDOMBuilder, handle: Node, attrs: Table[MAtom, string]
+    builder: MiniDOMBuilder, handle: Node, attrs: Table[Atom, string]
 ) =
   let element = Element(handle)
-  var oldNames = initHashSet[MAtom]()
+  var oldNames = initHashSet[Atom]()
   for attr in element.attrs:
     oldNames.incl(attr.name)
   for name, value in attrs:
@@ -378,7 +376,7 @@ method setEncodingImpl(
   return SET_ENCODING_CONTINUE
 
 proc newMiniDOMBuilder*(
-    factory: MAtomFactory, callbacks: MiniDOMBuilderCallbacks
+    factory: AtomFactory, callbacks: MiniDOMBuilderCallbacks
 ): MiniDOMBuilder =
   let document = Document(factory: factory)
   let builder =
@@ -386,7 +384,7 @@ proc newMiniDOMBuilder*(
   return builder
 
 proc parseFromStream(
-    parser: var HTML5Parser[Node, MAtom], builder: MiniDOMBuilder, inputStream: Stream
+    parser: var HTML5Parser[Node, Atom], builder: MiniDOMBuilder, inputStream: Stream
 ) =
   var buffer {.noinit.}: array[4096, char]
   while true:
@@ -415,12 +413,12 @@ proc parseFromStream(
 
 proc parseHTML*(
     inputStream: Stream,
-    opts = HTML5ParserOpts[Node, MAtom](),
-    factory = newMAtomFactory(),
+    opts = HTML5ParserOpts[Node, Atom](),
+    factory = newAtomFactory(),
     callbacks: MiniDOMBuilderCallbacks,
 ): Document =
   ## Read, parse and return an HTML document from `inputStream`, using
-  ## parser options `opts` and MAtom factory `factory`.
+  ## parser options `opts` and Atom factory `factory`.
   ##
   ## `inputStream` is not required to be seekable.
   ##
@@ -434,8 +432,8 @@ proc parseHTML*(
 proc parseHTMLFragment*(
     inputStream: Stream,
     element: Element,
-    opts: HTML5ParserOpts[Node, MAtom],
-    factory = newMAtomFactory(),
+    opts: HTML5ParserOpts[Node, Atom],
+    factory = newAtomFactory(),
     callbacks: MiniDOMBuilderCallbacks,
 ): seq[Node] =
   ## Read, parse and return the children of an HTML fragment from `inputStream`,
@@ -492,7 +490,7 @@ proc parseHTMLFragment*(
   ## For details on the HTML fragment parsing algorithm, see
   ## https://html.spec.whatwg.org/multipage/parsing.html#parsing-html-fragments
   let inputStream = newStringStream(s)
-  let opts = HTML5ParserOpts[Node, MAtom](
+  let opts = HTML5ParserOpts[Node, Atom](
     isIframeSrcdoc: false,
     scripting: true,
     pushInTemplate: element.tagType == TAG_TEMPLATE,

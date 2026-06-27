@@ -9,7 +9,7 @@ func hash*(node: dom.Node): hashes.Hash {.inline.} =
   hash(cast[pointer](node))
 
 func getAttr*(
-    element: dom.Element, factory: dom.MAtomFactory, attribKey: string
+    element: dom.Element, factory: dom.AtomFactory, attribKey: string
 ): Option[string] {.inline.} =
   for attr in element.attrs:
     if atomToStr(factory, attr.name) == attribKey:
@@ -18,7 +18,7 @@ func getAttr*(
   none(string)
 
 func getIntAttr*(
-    element: dom.Element, factory: dom.MAtomFactory, attribKey: string
+    element: dom.Element, factory: dom.AtomFactory, attribKey: string
 ): Option[int] =
   let attr = getAttr(element, factory, attribKey)
   if !attr:
@@ -30,7 +30,7 @@ func getIntAttr*(
     return none(int)
 
 func getUintAttr*(
-    element: dom.Element, factory: dom.MAtomFactory, attribKey: string
+    element: dom.Element, factory: dom.AtomFactory, attribKey: string
 ): Option[uint] =
   let attr = getAttr(element, factory, attribKey)
   if !attr:
@@ -42,7 +42,7 @@ func getUintAttr*(
     return none(uint)
 
 func getElementById*(
-    node: dom.Node, factory: dom.MAtomFactory, id: string
+    node: dom.Node, factory: dom.AtomFactory, id: string
 ): Option[dom.Element] =
   if node of dom.Element and
       (let value = getAttr(Element(node), factory, "id"); *value and &value == id):

@@ -8,27 +8,27 @@ export tags
 
 # Atom implementation
 # TODO maybe we should use a better hash map.
-const MAtomFactoryStrMapLength = 1024 # must be a power of 2
+const AtomFactoryStrMapLength = 1024 # must be a power of 2
 static:
-  doAssert (MAtomFactoryStrMapLength and (MAtomFactoryStrMapLength - 1)) == 0
+  doAssert (AtomFactoryStrMapLength and (AtomFactoryStrMapLength - 1)) == 0
 
 type
-  MAtom* = distinct int
+  Atom* = distinct int
 
-  MAtomFactory* = ref object of RootObj
-    strMap: array[MAtomFactoryStrMapLength, seq[MAtom]]
+  AtomFactory* = ref object of RootObj
+    strMap: array[AtomFactoryStrMapLength, seq[Atom]]
     atomMap: seq[string]
 
-func toTagType*(atom: MAtom): TagType {.inline.} =
+func toTagType*(atom: Atom): TagType {.inline.} =
   if int(atom) <= int(high(TagType)):
     return TagType(atom)
   return TAG_UNKNOWN
 
-func cmp*(a, b: MAtom): int {.inline.} =
+func cmp*(a, b: Atom): int {.inline.} =
   return cmp(int(a), int(b))
 
 type
-  Attribute* = ParsedAttr[MAtom]
+  Attribute* = ParsedAttr[Atom]
 
   Node* = ref object of RootObj
     childList*: seq[Node]
@@ -40,7 +40,7 @@ type
   Comment* = ref object of CharacterData
 
   Document* = ref object of Node
-    factory*: MAtomFactory
+    factory*: AtomFactory
 
     edited*: bool
     willDeclarativelyRefresh*: bool
@@ -53,7 +53,7 @@ type
     systemId*: string
 
   Element* = ref object of Node
-    localName*: MAtom
+    localName*: Atom
     namespace*: Namespace
     attrs*: seq[Attribute]
     document*: Document
@@ -61,20 +61,20 @@ type
   DocumentFragment* = ref object of Node
 
 # Mandatory Atom functions
-func `==`*(a, b: MAtom): bool {.borrow.}
-func hash*(atom: MAtom): Hash {.borrow.}
+func `==`*(a, b: Atom): bool {.borrow.}
+func hash*(atom: Atom): Hash {.borrow.}
 
-func strToAtom*(factory: MAtomFactory, s: string): MAtom
+func strToAtom*(factory: AtomFactory, s: string): Atom
 
-proc newMAtomFactory*(): MAtomFactory =
+proc newAtomFactory*(): AtomFactory =
   const minCap = int(TagType.high) + 1
-  let factory = MAtomFactory(atomMap: newSeqOfCap[string](minCap))
+  let factory = AtomFactory(atomMap: newSeqOfCap[string](minCap))
   factory.atomMap.add("") # skip TAG_UNKNOWN
   for tagType in TagType(int(TAG_UNKNOWN) + 1) .. TagType.high:
     discard factory.strToAtom($tagType)
   return factory
 
-func strToAtom*(factory: MAtomFactory, s: string): MAtom =
+func strToAtom*(factory: AtomFactory, s: string): Atom =
   let h = s.hash()
   let i = h and (factory.strMap.len - 1)
   for atom in factory.strMap[i]:
@@ -82,16 +82,16 @@ func strToAtom*(factory: MAtomFactory, s: string): MAtom =
       # Found
       return atom
   # Not found
-  let atom = MAtom(factory.atomMap.len)
+  let atom = Atom(factory.atomMap.len)
   factory.atomMap.add(s)
   factory.strMap[i].add(atom)
   return atom
 
-func tagTypeToAtom*(factory: MAtomFactory, tagType: TagType): MAtom =
+func tagTypeToAtom*(factory: AtomFactory, tagType: TagType): Atom =
   assert tagType != TAG_UNKNOWN
-  return MAtom(tagType)
+  return Atom(tagType)
 
-func atomToStr*(factory: MAtomFactory, atom: MAtom): string =
+func atomToStr*(factory: AtomFactory, atom: Atom): string =
   return factory.atomMap[int(atom)]
 
 func tagType*(element: Element): TagType =
