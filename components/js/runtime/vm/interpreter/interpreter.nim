@@ -1020,6 +1020,14 @@ proc opResolveField(interpreter: var PulsarInterpreter, op: ptr Operation) =
   )
   inc interpreter.currIndex
 
+proc opPassMultipleArguments(interpreter: var PulsarInterpreter, op: ptr Operation) =
+  interpreter.registers.callArgs.setLen(op.arguments.len)
+
+  for i, arg in op.arguments:
+    interpreter.registers.callArgs[i] = &interpreter.get(&getInt(arg))
+
+  inc interpreter.currIndex
+
 {.pop.}
 
 proc execute*(interpreter: var PulsarInterpreter, op: ptr Operation) {.gcsafe.} =
@@ -1031,7 +1039,7 @@ proc execute*(interpreter: var PulsarInterpreter, op: ptr Operation) {.gcsafe.} 
     opResetArgs, opCopyAtom, opMoveAtom, opLoadFloat, opZeroRetval,
     opLoadBytecodeCallable, opExecuteBytecodeCallable, opLoadUndefined,
     opGreaterThanEqualInt, opLesserThanEqualInt, opInvoke, opPower,
-    opThrowReferenceError, opResolveField,
+    opThrowReferenceError, opResolveField, opPassMultipleArguments,
   ]
   OpDispatchTable[cast[uint8](op.opcode)](interpreter, op)
 

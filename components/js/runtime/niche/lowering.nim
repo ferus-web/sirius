@@ -320,24 +320,27 @@ proc genCall(
       stmt.fn.function
 
   proc fillArguments() =
+    var argumentRegs = newSeqUninitialized[uint](stmt.arguments.len)
     for i, arg in stmt.arguments:
       case arg.kind
       of cakIdent:
         debug "interpreter: passing ident parameter to function with ident: " & arg.ident
 
-        runtime.ir.passArgument(runtime.index(arg.ident, defaultParams(fn)))
+        argumentRegs[i] = runtime.index(arg.ident, defaultParams(fn))
       of cakAtom: # already loaded via the statement expander
         let ident = $i
         debug "interpreter: passing atom parameter to function with ident: " & ident
-        runtime.ir.passArgument(runtime.index(ident, internalIndex(stmt)))
+        argumentRegs &= runtime.index(ident, internalIndex(stmt))
       of cakFieldAccess:
         let index = runtime.resolveFieldAccess(
           fn, stmt, runtime.index(arg.access.identifier, defaultParams(fn)), arg.access
         )
-        runtime.ir.passArgument(index)
+        argumentRegs[i] = index
       of cakImmediateExpr:
         let index = runtime.index($i, internalIndex(stmt))
-        runtime.ir.passArgument(index)
+        argumentRegs[i] = index
+
+    runtime.ir.passMultipleArguments(ensureMove(argumentRegs))
 
   if *stmt.fn.field:
     let identName = (&stmt.fn.field).identifier

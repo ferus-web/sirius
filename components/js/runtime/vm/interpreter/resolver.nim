@@ -188,3 +188,7 @@ proc resolve*(clause: Clause, op: var Operation, heap: HeapManager) =
     for i in 2 ..< op.arguments.len:
       op.arguments &=
         op.consume(String, "RESFLD expects an optional string", heap = heap)
+  of PassMultipleArguments:
+    for x in 0 ..< op.rawArgs.len:
+      op.arguments &=
+        op.consume(Integer, "CFIELD expects an integer at position " & $x, heap = heap)

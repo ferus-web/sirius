@@ -173,6 +173,9 @@ type
     ThrowReferenceError
     ResolveField
 
+    ## An operation to reduce the number of `PassArgument` instructions significantly.
+    PassMultipleArguments
+
 const
   OpCodeToTable* = {
     "CALL": Call,
@@ -216,6 +219,7 @@ const
     "POW": Power,
     "THROWREF": ThrowReferenceError,
     "RESFLD": ResolveField,
+    "PMARG": PassMultipleArguments,
   }.toTable
 
   OpCodeToString* = static:
