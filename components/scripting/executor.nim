@@ -39,7 +39,7 @@ proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
   element.script.rt.opts = InterpreterOpts(
     test262: false,
     repl: false,
-    dumpBytecode: true,
+    dumpBytecode: false,
     insertDebugHooks: true,
     codegen: CodegenOpts(
       elideLoops: false,

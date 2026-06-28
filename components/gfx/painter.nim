@@ -236,11 +236,11 @@ proc drawTree*(ctx: RenderingContext) =
   if ctx.displayList == nil:
     buildDisplayList(ctx)
 
+  ctx.displayList.layers[ZLevel(0)].nodes[cast[int16](ctx.transformNode)].transform.translation =
+    ctx.viewerPosition
+
   ctx.fig.beginFrame()
   presentDisplayList(ctx)
   ctx.fig.endFrame()
-
-  ctx.displayList.layers[ZLevel(0)].nodes[cast[int16](ctx.transformNode)].transform.translation =
-    ctx.viewerPosition # HACK: This works, but is it sane? I don't think so.
 
   ctx.lastRender = currTime
