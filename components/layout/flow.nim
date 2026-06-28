@@ -129,7 +129,9 @@ proc computeLayout*(
           fSize * 1.2'f32
         else:
           outputManager.computePixels(
-            &node.height, relativeBase = &parentExplicitHeight
+            &node.height,
+            relativeBase = (if *parentExplicitHeight: &parentExplicitHeight
+            else: 0'f32),
           )
 
     if node.dimensions.x == 0'f32:
@@ -165,10 +167,12 @@ proc computeLayout*(
         none(float32)
 
     explicitHeight =
-      if *node.height and *parentExplicitHeight:
+      if *node.height:
         some(
           outputManager.computePixels(
-            &node.height, relativeBase = &parentExplicitHeight
+            &node.height,
+            relativeBase = (if *parentExplicitHeight: &parentExplicitHeight
+            else: 0'f32),
           )
         )
       else:
@@ -285,8 +289,12 @@ proc computeLayout*(
         let bounds = getLineBounds(cursor.y)
         let floatWidth = bounds.right - bounds.left - marginLeft - marginRight
 
+        let fPos = vec2(
+          node.absolutePos.x + bounds.left + marginLeft,
+          node.absolutePos.y + cursor.y + marginTop,
+        )
         computeLayout(
-          child, vec2(0, 0), floatWidth, outputManager, fontProvider, explicitHeight
+          child, fPos, floatWidth, outputManager, fontProvider, explicitHeight
         )
 
         if child.floatMode == FloatMode.Left:
@@ -318,12 +326,10 @@ proc computeLayout*(
 
       if child.display == DisplayMode.Anonymous:
         let
-          fontSize = computePixels(outputManager, &child.fontSize)
+          fontSize = computePixels(outputManager, &child.fontSize, fontSize = 16'f32)
           lineHeight = resolveLineHeight(child.lineHeight, fontSize, outputManager)
 
         processTextContent(child.content, node.whitespace)
-        # child.dimensions =
-        #  vec2(float32(child.content.len) * (fontSize * 0.65'f32), fontSize)
 
         child.arrangement = fontProvider.loader.measureTextBounds(
           child.fontFamily, vec2(innerAvailableWidth, fontSize), fontSize, child.content
@@ -347,7 +353,7 @@ proc computeLayout*(
         child.absolutePos.y = node.absolutePos.y + cursor.y + halfLeading
 
         cursor.x += child.dimensions.x
-        currLineHeight = max(currLineHeight, lineHeight)
+        currLineHeight = max(currLineHeight, max(lineHeight, child.dimensions.y))
         maxLineWidth = max(maxLineWidth, cursor.x + padRight + borderWidth)
       elif child.display == DisplayMode.Inline:
         var bounds = getLineBounds(cursor.y)
@@ -366,7 +372,7 @@ proc computeLayout*(
         let lineHeight =
           resolveLineHeight(child.lineHeight, child.dimensions.y, outputManager)
         cursor.x += child.dimensions.x
-        currLineHeight = max(currLineHeight, lineHeight)
+        currLineHeight = max(currLineHeight, max(lineHeight, child.dimensions.y))
         maxLineWidth = max(maxLineWidth, cursor.x + padRight + borderWidth)
       elif child.display == DisplayMode.Block:
         var bounds = getLineBounds(cursor.y)
@@ -384,13 +390,15 @@ proc computeLayout*(
         computeLayout(
           child,
           blockPos,
-          bounds.right - bounds.left - marginLeft,
+          bounds.right - bounds.left - marginLeft - marginRight,
           outputManager,
           fontProvider,
           explicitHeight,
         )
 
         cursor.y += marginTop + child.dimensions.y + marginBottom
+        bounds = getLineBounds(cursor.y)
+        cursor.x = bounds.left
         maxLineWidth = max(
           maxLineWidth,
           child.dimensions.x + bounds.left + marginLeft + padRight + borderWidth,
