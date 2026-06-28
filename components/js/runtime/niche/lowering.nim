@@ -410,28 +410,26 @@ proc genConstructObject(
 ) =
   runtime.expand(fn, stmt, internal)
   runtime.ir.resetArgs()
-  runtime.ir.passArgument(runtime.index(stmt.objName, defaultParams(fn)))
 
+  var argumentRegs = newSeqUninitialized[uint](stmt.args.len + 1)
+  argumentRegs[0] = runtime.index(stmt.objName, defaultParams(fn))
   for i, arg in stmt.args:
     case arg.kind
     of cakIdent:
       let ident = arg.ident
-      info "interpreter: passing ident parameter to function with ident: " & ident
-      runtime.ir.passArgument(runtime.index(ident, defaultParams(fn)))
+      argumentRegs[i + 1] = runtime.index(ident, defaultParams(fn))
     of cakAtom: # already loaded via the statement expander
       {.cast(gcsafe).}:
         let ident = $hash(stmt) & '_' & $i
-      info "interpreter: passing atom parameter to function with ident: " & ident
-      runtime.ir.passArgument(runtime.index(ident, internalIndex(stmt)))
+      argumentRegs[i + 1] = runtime.index(ident, internalIndex(stmt))
     of cakFieldAccess:
-      let index = runtime.resolveFieldAccess(
+      argumentRegs[i + 1] = runtime.resolveFieldAccess(
         fn, stmt, runtime.index(arg.access.identifier, defaultParams(fn)), arg.access
       )
-      runtime.ir.passArgument(index)
     of cakImmediateExpr:
-      let index = runtime.index($i, internalIndex(stmt))
-      runtime.ir.passArgument(index)
+      argumentRegs[i + 1] = runtime.index($i, internalIndex(stmt))
 
+  runtime.ir.passMultipleArguments(ensureMove(argumentRegs))
   runtime.ir.call("BALI_ICTOR")
   runtime.ir.resetArgs()
 
