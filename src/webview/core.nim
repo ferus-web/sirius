@@ -136,49 +136,7 @@ proc resolveURLSegment*(
   ## absolute URL (e.g `https://foobar.lol/style.css`), resolve a full qualified URL.
   ##
   ## If the segment is not absolute, the view's base URL's scheme and host will be prefixed to the segment.
-  # NOTE: I have zero clue if this is guaranteed to work everywhere. The below algorithm
-  #       is simply based on my observations on what different sites had.
-
-  let absoluteByDefault = tryParseURL(segment)
-  if *absoluteByDefault:
-    # If the segment is absolute on its own, return its parsed representation.
-    return ok(&absoluteByDefault)
-
-  # Otherwise, if the parsing error was not related to relativity, return nothing.
-  # The segment is likely malformed.
-  if absoluteByDefault.error() notin {
-    url.ParseError.RelativeUrlWithoutBase, url.ParseError.MissingSchemeNonRelativeUrl
-  }:
-    error "Cannot resolve URL segment",
-      segment = segment, fault = absoluteByDefault.error()
-    return absoluteByDefault
-
-  # Let fixedBuffer be a String. Now, perform the following steps on it.
-  let
-    baseScheme = view.target.scheme
-    baseHost = view.target.host
-    basePath = view.target.pathname
-
-  var fixedBuffer =
-    newStringOfCap(segment.len + baseScheme.len + 3 + baseHost.len + 1 + basePath.len)
-
-  # 1. Append the WebView's base URL's scheme to it, along with "://"
-  fixedBuffer &= baseScheme
-  fixedBuffer &= "://"
-
-  # 2. Append the WebView's base URL's host to it.
-  fixedBuffer &= baseHost
-
-  # 3. If the segment does not begin with '/', append '/', along with the base URL's path, to fixedBuffer.
-  if not segment.startsWith('/'):
-    fixedBuffer &= '/'
-    fixedBuffer &= basePath
-
-  # 4. Append the segment to fixedBuffer.
-  fixedBuffer &= segment
-
-  # 5. Return the result of URL parsing performed on fixedBuffer.
-  tryParseURL(ensureMove(fixedBuffer))
+  tryParseURL(segment, some(view.target))
 
 proc reflow(view: WebView) =
   let htmlElem = view.dom.childList.filterIt(

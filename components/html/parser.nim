@@ -162,7 +162,7 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
 
 proc createHTMLElementImpl(builder: MiniDOMBuilder): Node =
   let localName = builder.factory.tagTypeToAtom(TAG_HTML)
-  return builder.document.createElement(localName, Namespace.HTML)
+  builder.document.createElement(localName, Namespace.HTML)
 
 proc createElementForTokenImpl(
     builder: MiniDOMBuilder,

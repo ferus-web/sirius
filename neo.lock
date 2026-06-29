@@ -32,10 +32,10 @@
       "checksum": "e9a24a6c64773620c53ece4f844c4af93235d61ef250b7b6fcadd40d221c37d2"
     },
     "url": {
-      "version": "0.1.8",
-      "commit": "327e7ed6bdedf4e1e41d389fad190a3a3508e9f9",
+      "version": "0.1.9",
+      "commit": "8fa2d218cbfb11de41e85d9a47081a1b7a14758a",
       "url": "https://github.com/xTrayambak/url",
-      "checksum": "f08417efe195a03049cd1cda26daa6c83e7584fff3931c9b0ae76de2600f1536"
+      "checksum": "b671dadef5219734e52abaef50cf994c37fba669220934ad35b2220d4cc994ca"
     },
     "colored_logger": {
       "version": "0.1.0",
