@@ -7,12 +7,13 @@ when not isMainModule:
   {.error: "This file is not meant to be separately imported!".}
 
 import std/[strutils, terminal, times, tables, os, options, monotimes, logging, json]
+import components/aux/pretty
 import components/js/grammar/prelude
 import components/js/runtime/prelude
 import
   components/js/runtime/vm/heap/[boehm],
   components/js/runtime/vm/interpreter/interpreter
-import pkg/[colored_logger, jsony, pretty, noise, fuzzy, shakar]
+import pkg/[colored_logger, jsony, noise, fuzzy, shakar]
 import ./argparser
 
 when defined(amd64):
