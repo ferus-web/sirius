@@ -592,6 +592,33 @@ func next*(tokenizer: var Tokenizer): Token =
   else:
     tokenizer.consumeInvalid()
 
+func peek*(tokenizer: var Tokenizer): Token =
+  let oldPos = tokenizer.pos
+  let token = tokenizer.next()
+
+  tokenizer.pos = oldPos
+
+  token
+
+func peekExceptWhitespace*(tokenizer: var Tokenizer): Option[Token] =
+  if tokenizer.eof:
+    return
+
+  let oldPos = tokenizer.pos
+  let oldLocation = tokenizer.location
+  var tok = tokenizer.next()
+
+  while not tokenizer.eof() and tok.kind == TokenKind.Whitespace:
+    tok = tokenizer.next()
+
+  tokenizer.pos = oldPos
+  tokenizer.location = oldLocation
+
+  if tok.kind != TokenKind.Whitespace:
+    some tok
+  else:
+    none Token
+
 func nextExceptWhitespace*(tokenizer: var Tokenizer): Option[Token] =
   if tokenizer.eof:
     return

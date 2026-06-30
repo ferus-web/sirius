@@ -1120,17 +1120,12 @@ proc parseScope(parser: Parser): seq[Statement] =
 
   while not parser.tokenizer.eof:
     if not singleExpr:
-      let
-        prevPos = parser.tokenizer.pos
-        prevLoc = parser.tokenizer.location
-        c = parser.tokenizer.nextExceptWhitespace()
+      let c = parser.tokenizer.peekExceptWhitespace()
 
       if *c and (&c).kind == TokenKind.RCurly:
         metRCurly = true
+        discard parser.tokenizer.nextExceptWhitespace()
         break
-      else:
-        parser.tokenizer.pos = prevPos
-        parser.tokenizer.location = prevLoc
 
     let stmt = parser.parseStatement()
 
@@ -1491,11 +1486,15 @@ proc parseStatement(parser: Parser): Option[Statement] =
     let body = parser.parseScope()
     var elseBody: seq[Statement]
 
-    if not parser.tokenizer.eof and (
-      let nextToken = parser.tokenizer.nextExceptWhitespace()
-      *nextToken and (&nextToken).kind == TokenKind.Else
-    ): # FIXME: untangle this shitshow
-      elseBody = parser.parseScope()
+    if not parser.tokenizer.eof and
+        (let nextToken = parser.tokenizer.peekExceptWhitespace(); *nextToken):
+      let next = &nextToken
+      case next.kind
+      of TokenKind.Else:
+        discard parser.tokenizer.nextExceptWhitespace()
+        elseBody = parser.parseScope()
+      else:
+        discard
 
     var lastScope = parser.ast.scopes[parser.ast.currentScope]
     var exprScope =
