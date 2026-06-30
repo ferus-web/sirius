@@ -11,8 +11,6 @@ import
   components/scripting/dom/[element]
 import pkg/shakar
 
-import pretty, tables
-
 type JSDocument* = object
   internal*: Hidden[dom.Document]
 
