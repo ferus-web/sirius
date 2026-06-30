@@ -417,8 +417,6 @@ proc genCallAndStoreResult(
     runtime.index(stmt.storeIdent, defaultParams(fn), willHandleResolveFail = true)
 
   if index == runtime.index("undefined", defaultParams(fn)):
-    echo "oops " & stmt.storeIdent
-    print ownerStmt
     if *ownerStmt:
       runtime.markInternal(stmt, stmt.storeIdent)
       index = runtime.addrIdx - 1
