@@ -609,12 +609,14 @@ proc parseDeclaration(
 
   let
     copiedTok = parser.tokenizer
-    expr = parser.parseExpression(ident.some())
-
-  if !expr:
+    exprOpt = parser.parseExpression(ident.some())
+  
+  if !exprOpt:
     parser.tokenizer = copiedTok
   else:
-    return expr
+    let expr = &exprOpt
+    expr.storeIn = some(ident)
+    return some(expr)
 
   var
     atom: Option[MAtom]

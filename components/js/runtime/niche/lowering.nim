@@ -648,7 +648,7 @@ proc genBinaryOp(
       if internal:
         runtime.index(&stmt.binStoreIn, internalIndex(stmt))
       else:
-        leftIdx
+        runtime.index(&stmt.binStoreIn, defaultParams(fn))
 
     # runtime.ir.loadNull(address)
     runtime.ir.copyAtom(leftIdx, address)

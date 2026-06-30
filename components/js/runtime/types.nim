@@ -91,9 +91,13 @@ type
     Trace
     Warn
 
+  TaskFlag* {.pure, size: sizeof(uint8).} = enum
+    Immortal = 0
+
   Task* = object
     callback*: JSValue
     delay*: Duration
+    flags*: set[TaskFlag]
 
     deadline*: MonoTime
 

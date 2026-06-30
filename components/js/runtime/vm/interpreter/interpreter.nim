@@ -10,6 +10,7 @@ import components/js/runtime/vm/ir/shared
 import components/js/runtime/normalize
 import components/js/runtime/compiler/base
 import components/js/runtime/atom_helpers
+import components/aux/pretty
 import pkg/[shakar]
 
 when hasJITSupport:
@@ -243,12 +244,15 @@ proc generateTraceback*(
       var codeLine: uint
       var closestIdx = -1
 
-      for opIdx, sourceInfo in interpreter.sourceMap[cls.name]:
-        let idx = opIdx.int
-        if idx <= targetIdx and idx > closestIdx:
-          closestIdx = idx
-          sourceLine = sourceInfo.message
-          codeLine = sourceInfo.line
+      if cls.name in interpreter.sourceMap:
+        # TODO: Generate source maps for anonymous functions too?
+        # We probably should make named function maps reliable first, though...
+        for opIdx, sourceInfo in interpreter.sourceMap[cls.name]:
+          let idx = opIdx.int
+          if idx <= targetIdx and idx > closestIdx:
+            closestIdx = idx
+            sourceLine = sourceInfo.message
+            codeLine = sourceInfo.line
 
       msg &= "\n\tFunction <" & currTrace.exception.clause & ">, line " & $codeLine
 
@@ -256,7 +260,7 @@ proc generateTraceback*(
         currTrace = &currTrace.next
       else:
         if closestIdx == -1 or sourceLine.len < 1:
-          sourceLine = "<failed to find mapped source?>"
+          sourceLine = "<failed to find mapped source>"
 
         msg &= "\n\t\t" & sourceLine
         msg &= "\n\t\t" & repeat('^', sourceLine.len - 1)
@@ -366,7 +370,7 @@ proc call*(
       msg "new op to execute chosen @ " & newClause.name & '/' & $interpreter.currIndex
       # set execution op index to 0 to start from the beginning
     else:
-      unreachable
+      raise newException(Defect, "Cannot find clause: " & name)
 
 proc invoke*(interpreter: var PulsarInterpreter, value: JSValue) {.gcsafe.} =
   if value.kind == Integer:
@@ -759,6 +763,11 @@ proc opInc(interpreter: var PulsarInterpreter, op: ptr Operation) =
   of Integer:
     interpreter.addAtom(
       integer(interpreter.heapManager, &atom.getInt() + 1), (&op.arguments[0].getInt())
+    )
+  of Float:
+    interpreter.addAtom(
+      floating(interpreter.heapManager, &atom.getFloat() + 1.0),
+      (&op.arguments[0].getInt()),
     )
   else:
     interpreter.addAtom(

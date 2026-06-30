@@ -112,6 +112,7 @@ type
     Invalid
     Shebang
     InvalidShebang
+    Of
 
   MalformedStringReason* {.pure.} = enum
     None
@@ -188,4 +189,5 @@ const Keywords* = {
   "for": TokenKind.For,
   "try": TokenKind.Try,
   "catch": TokenKind.Catch,
+  "of": TokenKind.Of,
 }.toTable
