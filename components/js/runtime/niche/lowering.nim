@@ -1,6 +1,7 @@
 ## Bali runtime (MIR emitter)
 
 import std/[options, hashes, logging, strutils, tables, importutils]
+import components/aux/pretty
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/prelude
 import components/js/grammar/prelude
@@ -34,9 +35,6 @@ proc expand*(
     runtime: Runtime, fn: Function, stmt: Statement, internal: bool = false
 ) {.gcsafe.} =
   {.cast(gcsafe).}:
-    # FIXME: All of this is GC-safe, because I say so: moronic compiler!
-    # I beseech thee to obey my orders and compile this steaming pile of
-    # garbage this instant!
     case stmt.kind
     of Call:
       debug "niche: expand Call statement"
@@ -112,6 +110,16 @@ proc expand*(
           ownerStmt = some(stmt),
           internal = true,
         )
+      elif stmt.binLeft.kind == StatementKind.Call:
+        runtime.generateBytecode(
+          fn, stmt.binLeft, ownerStmt = some(stmt), internal = true
+        )
+        runtime.markInternal(stmt, "left_term")
+        runtime.ir.readRegister(runtime.addrIdx - 1, Register.ReturnValue)
+      elif stmt.binLeft.kind == IdentHolder:
+        discard
+      else:
+        unreachable
 
       if stmt.binRight.kind == AtomHolder:
         debug "niche: BinaryOp right term is an atom"
@@ -121,8 +129,16 @@ proc expand*(
           ownerStmt = some(stmt),
           internal = true,
         )
+      elif stmt.binRight.kind == StatementKind.Call:
+        runtime.generateBytecode(
+          fn, stmt.binRight, ownerStmt = some(stmt), internal = true
+        )
+        runtime.markInternal(stmt, "right_term")
+        runtime.ir.readRegister(runtime.addrIdx - 1, Register.ReturnValue)
       elif stmt.binRight.kind == IdentHolder:
         debug "niche: BinaryOp right term is an ident"
+      else:
+        unreachable
     of IfStmt:
       debug "niche: expand IfStmt"
 
@@ -390,14 +406,25 @@ proc genReturnFn(runtime: Runtime, fn: Function, stmt: Statement) =
   else:
     unreachable
 
-proc genCallAndStoreResult(runtime: Runtime, fn: Function, stmt: Statement) =
+proc genCallAndStoreResult(
+    runtime: Runtime,
+    fn: Function,
+    stmt: Statement,
+    ownerStmt: Option[Statement] = none(Statement),
+) =
   runtime.generateBytecode(fn, stmt.storeFn, ownerStmt = some(stmt))
   var index =
     runtime.index(stmt.storeIdent, defaultParams(fn), willHandleResolveFail = true)
 
   if index == runtime.index("undefined", defaultParams(fn)):
-    runtime.markLocal(fn, stmt.storeIdent)
-    index = runtime.addrIdx - 1
+    echo "oops " & stmt.storeIdent
+    print ownerStmt
+    if *ownerStmt:
+      runtime.markInternal(stmt, stmt.storeIdent)
+      index = runtime.addrIdx - 1
+    else:
+      runtime.markLocal(fn, stmt.storeIdent)
+      index = runtime.addrIdx - 1
 
   debug "emitter: call-and-store result will be stored in ident \"" & stmt.storeIdent &
     "\" or index " & $index
@@ -519,7 +546,7 @@ proc genBinaryOp(
 
   var
     leftIdx =
-      if leftTerm.kind == AtomHolder:
+      if leftTerm.kind in {AtomHolder, StatementKind.Call}:
         runtime.index("left_term", internalIndex(stmt))
       elif leftTerm.kind == IdentHolder:
         runtime.index(leftTerm.ident, defaultParams(fn))
@@ -527,7 +554,7 @@ proc genBinaryOp(
         0
 
     rightIdx =
-      if rightTerm.kind == AtomHolder:
+      if rightTerm.kind in {AtomHolder, StatementKind.Call}:
         runtime.index("right_term", internalIndex(stmt))
       elif rightTerm.kind == IdentHolder:
         runtime.index(rightTerm.ident, defaultParams(fn))
@@ -1248,7 +1275,7 @@ proc generateBytecode(
   of ReturnFn:
     runtime.genReturnFn(fn = fn, stmt = stmt)
   of CallAndStoreResult:
-    runtime.genCallAndStoreResult(fn = fn, stmt = stmt)
+    runtime.genCallAndStoreResult(fn = fn, stmt = stmt, ownerStmt = ownerStmt)
   of ConstructObject:
     runtime.genConstructObject(fn = fn, stmt = stmt, internal = internal)
   of ReassignVal:

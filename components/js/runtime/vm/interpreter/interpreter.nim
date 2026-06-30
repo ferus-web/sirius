@@ -328,7 +328,6 @@ proc swap*(interpreter: var PulsarInterpreter, a, b: int) {.inline, cdecl.} =
   interpreter.addAtom(&atomA, b)
   interpreter.addAtom(&atomB, a)
 
-import pkg/pretty
 proc call*(
     interpreter: var PulsarInterpreter, name: string, op: Operation
 ) {.gcsafe, inline, cdecl.} =
@@ -367,7 +366,6 @@ proc call*(
       msg "new op to execute chosen @ " & newClause.name & '/' & $interpreter.currIndex
       # set execution op index to 0 to start from the beginning
     else:
-      print interpreter.clauses
       unreachable
 
 proc invoke*(interpreter: var PulsarInterpreter, value: JSValue) {.gcsafe.} =

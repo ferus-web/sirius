@@ -629,6 +629,6 @@ func nextExceptWhitespace*(tokenizer: var Tokenizer): Option[Token] =
     tok = tokenizer.next()
 
   if tok.kind != TokenKind.Whitespace:
-    some tok
+    some(tok)
   else:
-    none Token
+    none(Token)

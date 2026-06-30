@@ -7,7 +7,7 @@ import
   components/js/runtime/compiler/amd64/[common, native_forwarding],
   components/js/runtime/compiler/base,
   components/js/internal/assembler/amd64
-import pkg/shakar, pretty
+import pkg/shakar
 
 const
   EnsureNoInt8Align* = high(uint8)

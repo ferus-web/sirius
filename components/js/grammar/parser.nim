@@ -4,8 +4,8 @@
 
 import std/[options, strutils, tables, sequtils]
 import components/js/grammar/[token, tokenizer, ast, errors, statement]
-import components/js/runtime/vm/atom
-import pkg/[results, pretty, yaml, shakar]
+import components/js/runtime/vm/atom, components/aux/pretty
+import pkg/[results, yaml, shakar]
 
 {.push warning[UnreachableCode]: off.}
 
@@ -48,6 +48,10 @@ func `$`*(error: ParseError): string =
 {.push gcsafe.}
 proc parseArguments(parser: Parser): Option[PositionedArguments]
 
+proc parseExpression(
+  parser: Parser, storeIn: Option[string] = none(string), ignoreTerms: bool = false
+): Option[Statement]
+
 proc parseFunctionCall(parser: Parser, name: string): Option[Statement] =
   let
     args = parser.parseArguments()
@@ -69,10 +73,9 @@ proc parseFunctionCall(parser: Parser, name: string): Option[Statement] =
       curr = curr.next
 
     name = curr.identifier
-
-    return some call(callFunction(name, access), arguments)
+    some(call(callFunction(name, access), arguments))
   else:
-    return some call(name.callFunction, arguments)
+    some(call(name.callFunction, arguments))
 
 proc parseAtom(parser: Parser, token: Token): Option[Statement]
 
@@ -134,10 +137,18 @@ proc parseExpression(
       else:
         term.binRight = &parser.parseAtom(next)
     of TokenKind.Identifier:
+      var bin = identHolder(next.ident)
+
+      if (not parser.tokenizer.eof and (
+        let nextTok = parser.tokenizer.peekExceptWhitespace(); *nextTok and (&nextTok).kind == TokenKind.LParen)):
+        # Is this an actual identifier, or a function call?
+        discard parser.tokenizer.nextExceptWhitespace()
+        bin = &parser.parseFunctionCall(next.ident)
+      
       if term.binLeft == nil:
-        term.binLeft = identHolder(next.ident)
+        term.binLeft = move(bin)
       else:
-        term.binRight = identHolder(next.ident)
+        term.binRight = move(bin)
     of TokenKind.Add:
       term.op = BinaryOperation.Add
     of TokenKind.Sub:
@@ -912,8 +923,24 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
           call = parser.parseFunctionCall(token.ident)
           resIdent = "@0_" & $idx
 
-        parser.ast.appendToCurrentScope(callAndStoreMut(resIdent, &call))
-        args.pushIdent(resIdent)
+        if not parser.tokenizer.eof and (
+          let nextTok = parser.tokenizer.peekExceptWhitespace()
+          *nextTok and (&nextTok).kind in {TokenKind.Add, TokenKind.Sub, TokenKind.Mul, TokenKind.Div} # TODO: Expand this!
+        ):
+          let exprOpt = parser.parseExpression(ignoreTerms = true)
+          if !exprOpt:
+            parser.error Other, "expected expression after symbol, got none."
+
+          let expr = &exprOpt
+          expr.binRight = expr.binLeft # we'll have to manually move around the LHS and RHS since we parsed the LHS already.
+          expr.binLeft = &call
+
+          args.pushImmExpr(expr)
+          print args
+        else:
+          parser.ast.appendToCurrentScope(callAndStoreMut(resIdent, &call))
+
+          args.pushIdent(resIdent)
       else:
         parser.tokenizer.pos = prevPos
         parser.tokenizer.location = prevLocation
@@ -927,7 +954,7 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
           args.pushFieldAccess(createFieldAccess(splitted))
         else:
           args.pushIdent(token.ident)
-    of TokenKind.Number, TokenKind.String, TokenKind.LParen, TokenKind.LCurly:
+    of TokenKind.Number, TokenKind.String:
       last = some(token.kind)
       let atom = parser.parseAtom(token)
 
