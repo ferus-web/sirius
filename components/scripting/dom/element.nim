@@ -30,6 +30,7 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
         element.childList.setLen(1)
 
         let textData = runtime.ToString(value)
+
         if textData.len > 0:
           element.childList[0] = Text(data: textData, parentNode: element)
 

@@ -438,22 +438,22 @@
         var gt = "hello friends!";
         setInterval(function() {
             gi++;
-            if (gi == g.innerHTML.length)
+            if (gi == 15) // Parser error 1: This should be `g.innerHTML.length`, but nested field accesses are not supported yet.
                 gi = 0;
             var t1 = gt.substring(0, gi);
             var t2 = gt.substring(gi, gt.length);
-            var nt = t1.toUpperCase() + t2.toLowerCase(); // parser error 1: bali can't handle function call results being added
-            g.innerHTML = nt;
+            var nt = t1.toUpperCase() + t2.toLowerCase();
+            g.textContent = nt;
         }, 250);
 
         // FIXME: We don't load the YouTube embeds on SerenityOS for now since they
         //        bog down performance massively and we can't play video yet anyway.
-        if (navigator.platform != "SerenityOS") {
+        /* if (navigator.platform != "SerenityOS") {
             for (iframe of document.getElementsByTagName("iframe")) {
 		// parser error 2: no support for this kind of for-exprs
                 iframe.setAttribute("src", iframe.getAttribute("data-src"));
             }
-        }
+        } */
     </script>
 </body>
 </html>

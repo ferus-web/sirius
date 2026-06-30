@@ -13,7 +13,7 @@ import
   components/os/[assets, fonts, threads],
   components/net/core,
   components/js/grammar/prelude,
-  components/js/runtime/[arguments, bridge, common, construction, wrapping],
+  components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
   components/js/stdlib/uri,
   components/scripting/[executor, types]
 
@@ -443,8 +443,9 @@ proc executeOneMacrotask(view: WebView) =
     front.deadline <= currTime
   ):
     view.coreScript.script.rt.callNoRetval(front.callback)
-    discard view.coreScript.script.rt.macrotaskQueue.popFirst()
-      # For the core script, this is a tiny hack since none of our tasks there need to be repeated.
+
+    if not front.flags.contains(TaskFlag.Immortal):
+      discard view.coreScript.script.rt.macrotaskQueue.popFirst()
 
   for scriptElem in view.scripts:
     if scriptElem.script.rt.macrotaskQueue.len > 0 and (
@@ -453,6 +454,9 @@ proc executeOneMacrotask(view: WebView) =
     ):
       scriptElem.script.rt.callNoRetval(front.callback)
       front.deadline = currTime + front.delay
+
+      if not front.flags.contains(TaskFlag.Immortal):
+        discard scriptElem.script.rt.macrotaskQueue.popFirst()
 
 proc poll*(view: WebView) =
   view.loader.poll()
