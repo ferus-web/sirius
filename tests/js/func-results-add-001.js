@@ -1,11 +1,4 @@
 var gt = "hello friends!";
+var ge = "hello enemies!"
 
-while (true) {
-  if (gt == "hello friends!")
-	console.log(gt)
-  else
-	throw gt
-
-  console.log("i wish i were a bird")
-  gt = "i became a teapot instead"
-}
+console.log(gt.toUpperCase() + ge.toLowerCase())

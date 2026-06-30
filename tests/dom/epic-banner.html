@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head><title>cool banner</title></head>
+  <body>
+    <div id="eyecatcher">
+      <p id="msg">Insert cool message</p>
+    </div>
+
+    <script>
+      const data = "hello there!";
+      const msg = document.getElementById("msg");
+      var x = 0
+      var text = "1";
+
+      setTimeout(function() {
+	if (x == 0) { x = 1; text = msg.toUpperCase(); }
+	else if (x == 1) { x = 0; text = msg.toLowerCase(); }
+
+	msg.textContent = text;
+      }, 1000)
+    </script>
+  </body>
+</html>

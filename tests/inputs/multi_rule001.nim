@@ -1,5 +1,5 @@
 import components/style/parser
-import pretty
+import components/aux/pretty
 
 let v = newParser(
   newParserInput(

@@ -122,7 +122,7 @@ font-size: 1em;
 """
 
 import components/style/parser
-import pretty
+import components/aux/pretty
 
 let parsing = newParser(newParserInput(src))
 let ss = parsing.parseStylesheet()
