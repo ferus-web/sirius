@@ -15,11 +15,10 @@ type
     ## allocate any more memory.
 
   AllocationMetrics* = object
-    #!fmt: off
-    allocatedBytesTotal*: uint64   ## Number of bytes allocated overall
-    allocatedBytesBump*: uint64    ## Number of bytes caught by the bump allocator
-    allocatedBytesGc*: uint64       ## Number of bytes allocated via the GC after the bump allocator is exhausted
-    #!fmt: on
+    allocatedBytesTotal*: uint64 ## Number of bytes allocated overall
+    allocatedBytesBump*: uint64 ## Number of bytes caught by the bump allocator
+    allocatedBytesGc*: uint64
+      ## Number of bytes allocated via the GC after the bump allocator is exhausted
 
   HeapManager* = ref object
     bump*: BumpAllocator
@@ -30,7 +29,7 @@ proc release*(manager: HeapManager) =
   manager.bump.release()
 
   debug "vm/heap: performing full GC collection"
-  GC_fullCollect()
+  boehmGC_fullCollect()
 
 proc allocate*(manager: HeapManager, size: SomeUnsignedInt): pointer =
   manager.metrics.allocatedBytesTotal += size

@@ -219,6 +219,9 @@ proc initAssemblerX64*(): AssemblerX64 =
 
   ensureMove(s)
 
+proc release*(assembler: AssemblerX64) =
+  releaseExecutableBuffer(assembler.data)
+
 proc getFuncStart*[T](assembler: AssemblerX64): T =
   cast[T](assembler.curAdr)
 

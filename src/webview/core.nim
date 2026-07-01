@@ -14,8 +14,13 @@ import
   components/net/core,
   components/js/grammar/prelude,
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
+  components/js/runtime/vm/heap/manager,
+  components/js/runtime/compiler/base,
   components/js/stdlib/uri,
   components/scripting/[executor, types]
+
+when hasJITSupport:
+  import components/js/internal/assembler/amd64
 
 logScope:
   topics = "webview/core"
@@ -332,8 +337,31 @@ proc showTransportErrorPage(view: WebView, url: URL, err: TransportError) =
 
   loadHTMLStream(view, newStringStream(ensureMove(errorTemplate)))
 
+proc cleanup(view: WebView) =
+  debug "Cleaning up resources from previous page"
+  if view.dom == nil:
+    debug "Nothing to cleanup."
+    return
+
+  # TODO: Ideally, we should handle this in Bali alongside freeing the JIT buffers
+  for scriptElement in view.scripts:
+    info "Freeing memory for script element",
+      url = scriptElement.script.baseURL,
+      bumpAllocated = scriptElement.script.rt.heapManager.metrics.allocatedBytesBump,
+      gcAllocated = scriptElement.script.rt.heapManager.metrics.allocatedBytesGc
+    scriptElement.script.rt.heapManager.release()
+
+    # Free memory used by JIT assemblers
+    when hasJITSupport and defined(amd64):
+      scriptElement.script.rt.vm.baseline.s.release()
+      scriptElement.script.rt.vm.midtier.s.release()
+
+  view.scripts.reset()
+
 proc loadUrl(view: WebView, url: URL) =
   info "Loading page", dest = url
+
+  view.cleanup()
 
   view.target = url
   view.app.setCursorShape(Shape.Progress)

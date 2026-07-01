@@ -38,3 +38,9 @@ proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer 
     discard mprotect(address, size.int32, ensureMove(perms))
 
     return address
+
+proc releaseExecutableBuffer*(buffer: pointer) =
+  when defined(windows):
+    return # TODO: Implement this on Windows
+
+  libc.free(buffer)
