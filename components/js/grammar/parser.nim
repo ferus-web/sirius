@@ -990,6 +990,7 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
         if !arr:
           parser.error Other, "got malformed array while parsing arguments"
 
+        last = some(TokenKind.LBracket)
         args.pushImmExpr(&arr)
       else:
         # Else, we're at an array index.
@@ -997,6 +998,7 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
         if !access:
           parser.error Other, "got malformed array indexing while parsing arguments"
 
+        last = some(TokenKind.LBracket)
         discard
           args.pop() # We should remove the last argument, it was accidentally added in.
         args.pushImmExpr(&access)
