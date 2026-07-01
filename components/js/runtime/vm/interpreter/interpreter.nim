@@ -731,9 +731,13 @@ proc opWriteField(interpreter: var PulsarInterpreter, op: ptr Operation) =
       propertyObj = some(idx)
 
   if not *propertyObj:
-    atom.objValues &= undefined(interpreter.heapManager)
-    propertyObj =
-      some(Property(isAccessor: false, index: cast[uint32](atom.objValues.len) - 1'u32))
+    propertyObj = some(
+      Property(
+        isAccessor: false,
+        index: cast[uint32](atom.objValues.len) - 1'u32,
+        descriptors: {FieldDescriptor.Writable},
+      )
+    )
 
   let property = &propertyObj
   if not property.descriptors.contains(FieldDescriptor.Writable):
