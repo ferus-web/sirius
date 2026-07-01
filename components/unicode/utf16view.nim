@@ -142,3 +142,15 @@ func valid*(view: UTF16View): bool {.inline, raises: [].} =
     simdutf.validateUtf16BE(view.data, view.size)
   of UTFEndianness.Host:
     simdutf.validateUtf16(view.data, view.size)
+
+proc isomorphicDecode*(input: string): Option[UTF16View] {.inline.} =
+  ## To isomorphic decode a byte sequence input, return a string whose code point length is equal to input’s length and whose code points have the same values as the values of input’s bytes, in the same order. 
+  if input.len > 0:
+    let view = UTF16View(
+      data: cast[ptr uint16](allocShared0(input.len)), size: cast[uint64](input.len)
+    )
+    copyMem(cast[pointer](view.data), cast[pointer](input[0].addr), input.len)
+
+    return some(view)
+
+  none(UTF16View)
