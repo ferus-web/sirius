@@ -981,6 +981,7 @@ proc genAccessArrayIndex(
     runtime: Runtime,
     fn: Function,
     stmt: Statement,
+    parentStmt: Option[Statement],
     storeIn: Option[string] = none(string),
 ) =
   debug "emitter: generate IR for array indexing"
@@ -999,8 +1000,9 @@ proc genAccessArrayIndex(
   runtime.ir.call("BALI_INDEX")
 
   if *storeIn:
+    assert(*parentStmt)
     runtime.ir.readRegister(
-      runtime.index(&storeIn, internalIndex(stmt)), Register.ReturnValue
+      runtime.index(&storeIn, internalIndex(&parentStmt)), Register.ReturnValue
     )
 
   runtime.ir.resetArgs()
@@ -1314,7 +1316,9 @@ proc generateBytecode(
   of Waste:
     runtime.genWaste(fn = fn, stmt = stmt)
   of AccessArrayIndex:
-    runtime.genAccessArrayIndex(fn = fn, stmt = stmt, storeIn = exprStoreIn)
+    runtime.genAccessArrayIndex(
+      fn = fn, stmt = stmt, storeIn = exprStoreIn, parentStmt = parentStmt
+    )
   of TernaryOp:
     runtime.genTernaryOp(fn = fn, stmt = stmt)
   of ForLoop:
