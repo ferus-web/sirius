@@ -981,9 +981,8 @@ proc findField(
 ): JSValue =
   let field = $accesses.field
   if field in atom.objFields:
+    let prop = atom.objFields[field]
     if accesses.next == nil:
-      let prop = atom.objFields[field]
-
       if prop.isAccessor:
         vm.invoke(prop.accessor.getter)
         dec vm.currIndex
@@ -993,7 +992,7 @@ proc findField(
       else:
         return atom.objValues[prop.index]
     else:
-      return findField(vm, atom, accesses.next)
+      return findField(vm, atom.objValues[prop.index], accesses.next)
 
   undefined(vm.heapManager)
 
