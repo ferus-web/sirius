@@ -256,9 +256,6 @@ proc generateStdIr*(runtime: Runtime) =
     proc(value: JSValue) =
       # 22.1.3.25 String.prototype.substring ( start, end )
 
-      # If either argument is NaN or negative, it is replaced with zero; if either argument is strictly greater than the length
-      # of the String, it is replaced with the length of the String.
-
       let
         # 1. Let O be ? RequireObjectCoercible(this value).
         obj = runtime.RequireObjectCoercible(&value.tagged("internal"))
@@ -268,8 +265,13 @@ proc generateStdIr*(runtime: Runtime) =
         str = newUtf16View(strVal)
 
         # 3. Let len be the length of S.
-        stringLength = int(str.size - 1)
+        stringLength =
+          if str.size == 0:
+            0
+          else:
+            int(str.size - 1)
 
+      var
         # 4. Let intStart be ? ToIntegerOrInfinity(start).
         start = runtime.ToNumber(&runtime.argument(1)).int()
 
@@ -280,6 +282,21 @@ proc generateStdIr*(runtime: Runtime) =
           else:
             runtime.ToNumber(&runtime.argument(2)).int()
 
+      # If either argument is NaN or negative, it is replaced with zero; if either argument is strictly greater than the length
+      # of the String, it is replaced with the length of the String.
+      if start < 0:
+        start = 0
+
+      if ending < 0:
+        ending = 0
+
+      if start > stringLength:
+        start = stringLength
+
+      if ending > stringLength:
+        ending = stringLength
+
+      let
         # 6. Let finalStart be the result of clamping intStart between 0 and len.
         finalStart = clamp(start, 0, stringLength)
 
@@ -291,6 +308,9 @@ proc generateStdIr*(runtime: Runtime) =
 
         # 9. Let to be max(finalStart, finalEnd)
         toVal = max(finalStart, finalEnd)
+
+      if fromVal == toVal:
+        ret runtime.newJSString(newString(0))
 
       # 10. Return the substring of S from from to to.
       ret runtime.newJSString(strVal[fromVal .. toVal])

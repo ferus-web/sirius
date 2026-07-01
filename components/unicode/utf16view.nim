@@ -42,21 +42,31 @@ proc `=destroy`*(view: UTF16View) =
 proc newUtf16View*(str: ptr char, size: uint64): UTF16View {.raises: [].} =
   ## Convert a UTF-8 buffer to a `UTF16View`
   var view: UTF16View
-  view.size = simdutf.utf16LengthFromUtf8(str, size)
-  view.data = cast[ptr uint16](allocShared0(cast[uint64](sizeof(uint16)) * view.size))
 
-  discard simdutf.convertUtf8ToUtf16(str, size, view.data)
+  if size > 0:
+    view.size = simdutf.utf16LengthFromUtf8(str, size)
+    view.data = cast[ptr uint16](allocShared0(cast[uint64](sizeof(uint16)) * view.size))
+    discard simdutf.convertUtf8ToUtf16(str, size, view.data)
 
   ensureMove(view)
 
 proc newUtf16View*(str: sink string): UTF16View =
-  newUtf16View(str[0].addr, cast[uint64](str.len))
+  newUtf16View(
+    if str.len > 0:
+      str[0].addr
+    else:
+      nil,
+    cast[uint64](str.len),
+  )
 
 func empty*(view: UTF16View): bool {.inline, raises: [].} =
   ## Check whether this view has no data
-  view.size == 0'u64
+  view.data == nil or view.size == 0'u64
 
 func codepointLen*(view: UTF16View): uint64 =
+  if view.data == nil:
+    raise newException(Defect, "UTF16View has no buffer attached")
+
   case view.endianness
   of UTFEndianness.Little:
     simdutf.countUtf16LE(view.data, view.size)
@@ -69,6 +79,9 @@ func codeUnitAt*(
     view: UTF16View, index: SomeUnsignedInt
 ): uint16 {.inline, raises: [].} =
   ## Get the UTF-16 code unit at `index`
+  if view.data == nil:
+    raise newException(Defect, "UTF16View has no buffer attached")
+
   cast[ptr uint16](cast[uint64](view.data) + index)[]
     # TODO: Can we not just use ptr UncheckedArray[uint16] here?
 
@@ -89,6 +102,9 @@ func codePointAt*(
     view: UTF16View, index: SomeUnsignedInt
 ): uint32 {.raises: [ValueError].} =
   ## Get the code point at `index` in this view.
+  if view.data == nil:
+    raise newException(Defect, "UTF16View has no buffer attached")
+
   if index > view.size:
     raise newException(IndexDefect, "Index " & $index & " is out of range")
 
@@ -110,9 +126,15 @@ func `==`*(a, b: UTF16View): bool {.inline, raises: [].} =
 
 func start*(view: UTF16View): uint16 {.inline.} =
   ## Get the initial codepoint for this view.
+  if view.data == nil:
+    raise newException(Defect, "UTF16View has no buffer attached")
+
   view.data[]
 
 func valid*(view: UTF16View): bool {.inline, raises: [].} =
+  if view.data == nil:
+    return false # TODO: Should this be a defect too, instead?
+
   case view.endianness
   of UTFEndianness.Little:
     simdutf.validateUtf16LE(view.data, view.size)
