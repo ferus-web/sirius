@@ -277,7 +277,8 @@ proc pushAtom*(args: var PositionedArguments, atom: MAtom) {.inline.} =
   args &= CallArg(kind: cakAtom, atom: atom)
 
 proc pushImmExpr*(args: var PositionedArguments, expr: Statement) {.inline.} =
-  assert expr.kind in {BinaryOp, AccessArrayIndex, AtomHolder, DefineFunction},
+  assert expr.kind in
+    {BinaryOp, AccessArrayIndex, AtomHolder, DefineFunction, CreateArrayLiteral},
     "Attempt to push invalid expression to arguments: " & $expr.kind
   args &= CallArg(kind: cakImmediateExpr, expr: expr)
 

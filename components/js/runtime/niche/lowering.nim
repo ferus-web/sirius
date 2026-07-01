@@ -1222,11 +1222,20 @@ proc genDefineFunction(
       runtime.addrIdx - 1, runtime.index(&storeIn, internalIndex(parent))
     )
 
-proc genCreateArrayLit(runtime: Runtime, fn: Function, stmt: Statement) =
+proc genCreateArrayLit(
+    runtime: Runtime,
+    fn: Function,
+    stmt: Statement,
+    parentStmt: Option[Statement],
+    exprStoreIn: Option[string],
+) =
   let pos = runtime.addrIdx
   runtime.ir.loadList(pos)
   if *stmt.storeIn:
     runtime.markLocal(fn, &stmt.storeIn)
+  elif *parentStmt:
+    assert(*exprStoreIn)
+    runtime.markInternal(&parentStmt, &exprStoreIn)
 
   for child in stmt.calChildren:
     case child.kind
@@ -1319,7 +1328,9 @@ proc generateBytecode(
       fn = fn, stmt = stmt, parent = &parentStmt, storeIn = exprStoreIn
     )
   of CreateArrayLiteral:
-    runtime.genCreateArrayLit(fn = fn, stmt = stmt)
+    runtime.genCreateArrayLit(
+      fn = fn, stmt = stmt, parentStmt = parentStmt, exprStoreIn = exprStoreIn
+    )
   of AtomHolder:
     if *exprStoreIn and *parentStmt:
       # HACK: Just to prevent a crash on many sites.
