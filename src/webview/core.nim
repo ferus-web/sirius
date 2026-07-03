@@ -364,17 +364,20 @@ proc loadUrl(view: WebView, url: URL) =
 
   view.target = url
   view.realm = newRealm()
-  view.app.setCursorShape(Shape.Progress)
+  # view.app.setCursorShape(Shape.Progress)
 
-  let (resp, err) = view.loader.net.getStream(url, timeoutMs = 60000)
-    # TODO: Timeout should be customizable
-
-  if err.kind == TransportErrorKind.None:
-    loadHTMLStream(view, resp.body.stream)
-  else:
-    error "An error occurred while fetching the requested content",
-      message = err.message
-    showTransportErrorPage(view, url, err)
+  view.dom = Document()
+  discard view.loader.getAsyncStream(
+    url = url,
+    timeoutMs = 60000,
+    finalize = proc(resp: Response, err: TransportError) =
+      if err.kind == TransportErrorKind.None:
+        loadHTMLStream(view, resp.body.stream)
+      else:
+        error "An error occurred while fetching the requested content",
+          message = err.message
+        showTransportErrorPage(view, url, err),
+  )
 
 proc loadPage*(view: WebView, target: string) =
   view.target = parseURL(target)
@@ -546,7 +549,8 @@ proc loop*(view: WebView): int =
     of EventKind.CursorMove:
       view.cursor = event.cursor.pos
       let lastFocused = view.focusedElement
-      view.focusedElement = hitTest(view, view.renderCtx.tree, view.cursor)
+      if view.renderCtx.tree != nil:
+        view.focusedElement = hitTest(view, view.renderCtx.tree, view.cursor)
 
       handleFocusedElement(view, clicked = false)
     of EventKind.CursorFocusObtained:
