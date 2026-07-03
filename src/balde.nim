@@ -355,11 +355,11 @@ proc execFile(ctx: Input, file: string) {.inline.} =
 
   if ctx.enabled("dump-allocation-metrics", "A"):
     echo "=== Execution Allocation Metrics ==="
-    echo "* Total Allocations: " & $runtime.heapManager.metrics.allocatedBytesTotal &
+    echo "* Total Allocations: " & $runtime.realm.heap.metrics.allocatedBytesTotal &
       " bytes"
-    echo "* Bump Allocations: " & $runtime.heapManager.metrics.allocatedBytesBump &
+    echo "* Bump Allocations: " & $runtime.realm.heap.metrics.allocatedBytesBump &
       " bytes"
-    echo "* GC Allocations: " & $runtime.heapManager.metrics.allocatedBytesGc & " bytes"
+    echo "* GC Allocations: " & $runtime.realm.heap.metrics.allocatedBytesGc & " bytes"
 
 proc baldeRun(ctx: Input) =
   if not ctx.enabled("verbose", "v"):
@@ -386,19 +386,18 @@ proc baldeRepl(ctx: Input) =
     if prevRuntime != nil:
       runtime.realm = prevRuntime.realm
       runtime.vm.stack = prevRuntime.vm.stack
-      runtime.heapManager = prevRuntime.heapManager
-        # HACK: I have a feeling this'll fail majestically.
-        # Copy all atoms of the previous runtime to the new one
 
+    print runtime.vm.stack
+
+    runtime.realm.clauses.reset()
     runtime.run()
     if ctx.enabled("dump-allocation-metrics", "A"):
       echo "=== Execution Allocation Metrics ==="
-      echo "* Total Allocations: " & $runtime.heapManager.metrics.allocatedBytesTotal &
+      echo "* Total Allocations: " & $runtime.realm.heap.metrics.allocatedBytesTotal &
         " bytes"
-      echo "* Bump Allocations: " & $runtime.heapManager.metrics.allocatedBytesBump &
+      echo "* Bump Allocations: " & $runtime.realm.heap.metrics.allocatedBytesBump &
         " bytes"
-      echo "* GC Allocations: " & $runtime.heapManager.metrics.allocatedBytesGc &
-        " bytes"
+      echo "* GC Allocations: " & $runtime.realm.heap.metrics.allocatedBytesGc & " bytes"
     prevRuntime = runtime
 
   echo "Welcome to Balde, with Bali v" & Version

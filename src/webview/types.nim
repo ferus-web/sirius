@@ -42,6 +42,7 @@ type
 
     dom*: Document
     target*: URL
+    realm*: js.Realm
     scripts*: seq[HTMLScriptElement]
     coreScript*: HTMLScriptElement
 

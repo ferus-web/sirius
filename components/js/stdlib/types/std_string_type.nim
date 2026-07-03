@@ -13,7 +13,7 @@ type JSString* = object
 proc newJSString*(runtime: Runtime, native: string): JSValue =
   ## Given a native string, turn it into a `JSString` allocated on the heap.
   var str = runtime.createObjFromType(JSString)
-  str.tag("internal", str(runtime.heapManager, native))
+  str.tag("internal", str(runtime.realm.heap, native))
 
   ensureMove(str)
 

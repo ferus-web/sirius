@@ -349,17 +349,12 @@ proc cleanup(view: WebView) =
 
   # TODO: Ideally, we should handle this in Bali alongside freeing the JIT buffers
   for scriptElement in view.scripts:
-    info "Freeing memory for script element",
-      url = scriptElement.script.baseURL,
-      bumpAllocated = scriptElement.script.rt.heapManager.metrics.allocatedBytesBump,
-      gcAllocated = scriptElement.script.rt.heapManager.metrics.allocatedBytesGc
-    scriptElement.script.rt.heapManager.release()
-
     # Free memory used by JIT assemblers
     when hasJITSupport and defined(amd64):
       scriptElement.script.rt.vm.baseline.s.release()
       scriptElement.script.rt.vm.midtier.s.release()
 
+  view.realm.heap.release()
   view.scripts.reset()
 
 proc loadUrl(view: WebView, url: URL) =
@@ -368,6 +363,7 @@ proc loadUrl(view: WebView, url: URL) =
   view.cleanup()
 
   view.target = url
+  view.realm = newRealm()
   view.app.setCursorShape(Shape.Progress)
 
   let (resp, err) = view.loader.net.getStream(url, timeoutMs = 60000)

@@ -1484,7 +1484,6 @@ proc generateInternalIR*(runtime: Runtime) =
     "BALI_ICTOR",
     proc(op: Operation) =
       let typ = &runtime.argument(1)
-        # NOTE: This was deepCopy'd before. _SURELY_ nothing will go wrong, right?
       let ctor = typ.tagged("Construct")
 
       runtime.vm.registers.callArgs.delete(0)
@@ -1493,7 +1492,12 @@ proc generateInternalIR*(runtime: Runtime) =
         runtime.typeError("Type has no constructor")
         return
 
+      print runtime.vm.registers.callArgs[0]
+      print &ctor
+
       runtime.vm[].invoke(&ctor)
+
+      print runtime.vm.registers.retval
       runtime.vm.registers.callArgs.reset(),
   )
 

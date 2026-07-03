@@ -2,7 +2,7 @@
 ## which can then be used by the MIR emitter to generate MIR.
 ## 
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[sequtils]
+import std/[strformat, sequtils]
 import components/js/runtime/vm/shared
 import components/js/runtime/vm/[atom]
 import components/js/runtime/vm/ir/[emitter, shared]
@@ -23,11 +23,14 @@ proc addOp*(gen: var IRGenerator, operation: IROperation): uint {.inline.} =
     for i, _ in gen.modules:
       var module = gen.modules[i]
       if module.name == gen.currModule:
-        module.operations &= operation
-        gen.modules[i] = module
-        gen.cachedIndex = module.operations.len.uint
+        gen.modules[i].operations &= operation
+        gen.cachedIndex = cast[uint64](module.operations.len)
         gen.cachedModule = gen.modules[i].addr
         return gen.cachedIndex
+
+    raise newException(
+      Defect, &"Cannot add operation in current clause (currModule={gen.currModule})"
+    )
   else:
     gen.cachedModule.operations &= operation
     gen.cachedIndex = gen.cachedModule.operations.len.uint

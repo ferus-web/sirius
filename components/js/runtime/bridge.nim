@@ -188,7 +188,7 @@ proc getMethod*(
 
           # If the function returned nothing, just push undefined to that register.
           if !runtime.vm.registers.retVal:
-            runtime.vm.registers.retVal = some(undefined(runtime.heapManager))
+            runtime.vm.registers.retVal = some(undefined(runtime.realm.heap))
       )
     else:
       debug "runtime: getMethod(): field is not callable"
@@ -310,7 +310,7 @@ proc call*(runtime: Runtime, callable: JSValue, arguments: varargs[JSValue]): JS
 
   let retVal = runtime.getReturnValue()
   if !retVal:
-    return undefined(runtime.heapManager)
+    return undefined(runtime.realm.heap)
 
   &retVal
 
@@ -381,7 +381,7 @@ proc setFieldAccessor*(
       # HACK: Could we possibly have pragmas like {.writable.}, {.enumerable.}, {.configurable.} so the type data itself can specify this?
     accessor: Accessor(
       getter: nativeCallable(
-        runtime.heapManager,
+        runtime.realm.heap,
         proc() =
           assert(
             accessor != nil and accessor.getter != nil,
@@ -390,7 +390,7 @@ proc setFieldAccessor*(
           accessor.getter(atom),
       ),
       setter: nativeCallable(
-        runtime.heapManager,
+        runtime.realm.heap,
         proc() =
           assert(
             accessor != nil and accessor.setter != nil,

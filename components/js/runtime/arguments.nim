@@ -30,6 +30,6 @@ proc argument*(
       return
     else:
       debug "runtime: argument(): `required` == false, ignoring and returning `undefined`"
-      return some(undefined(runtime.heapManager))
+      return some(undefined(runtime.realm.heap))
 
   some(runtime.vm.registers.callArgs[position - 1])

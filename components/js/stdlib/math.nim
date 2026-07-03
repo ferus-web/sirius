@@ -44,16 +44,16 @@ proc generateStdIr*(runtime: Runtime) =
 
   runtime.registerType("Math", JSMath)
   runtime.rng = newRNG(algo = Algorithm)
-  runtime.setProperty(JSMath, "LN10", floating(runtime.heapManager, math.ln(10'f64)))
-  runtime.setProperty(JSMath, "LN2", floating(runtime.heapManager, math.ln(2'f64)))
+  runtime.setProperty(JSMath, "LN10", floating(runtime.realm.heap, math.ln(10'f64)))
+  runtime.setProperty(JSMath, "LN2", floating(runtime.realm.heap, math.ln(2'f64)))
   runtime.setProperty(
-    JSMath, "LOG10E", floating(runtime.heapManager, math.log10(math.E))
+    JSMath, "LOG10E", floating(runtime.realm.heap, math.log10(math.E))
   )
-  runtime.setProperty(JSMath, "LOG2E", floating(runtime.heapManager, math.log2(math.E)))
+  runtime.setProperty(JSMath, "LOG2E", floating(runtime.realm.heap, math.log2(math.E)))
   runtime.setProperty(
-    JSMath, "SQRT1_2", floating(runtime.heapManager, math.sqrt(1 / 2))
+    JSMath, "SQRT1_2", floating(runtime.realm.heap, math.sqrt(1 / 2))
   )
-  runtime.setProperty(JSMath, "SQRT2", floating(runtime.heapManager, math.sqrt(2'f64)))
+  runtime.setProperty(JSMath, "SQRT2", floating(runtime.realm.heap, math.sqrt(2'f64)))
 
   # Math.random
   # WARN: Do not use this for cryptography! This uses one of eight highly predictable pseudo-random

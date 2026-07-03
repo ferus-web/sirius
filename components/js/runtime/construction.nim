@@ -10,30 +10,30 @@ import components/js/runtime/vm/atom,
 {.push inline, sideEffect.}
 
 proc integer*(runtime: Runtime, value: SomeInteger): JSValue =
-  integer(runtime.heapManager, value)
+  integer(runtime.realm.heap, value)
 
 proc floating*(runtime: Runtime, value: SomeFloat | SomeInteger): JSValue =
-  floating(runtime.heapManager, value)
+  floating(runtime.realm.heap, value)
 
 proc str*(runtime: Runtime, value: string): JSValue =
-  str(runtime.heapManager, value)
+  str(runtime.realm.heap, value)
 
 proc sequence*(runtime: Runtime, value: seq[MAtom]): JSValue =
-  sequence(runtime.heapManager, value)
+  sequence(runtime.realm.heap, value)
 
 proc undefined*(runtime: Runtime): JSValue =
-  undefined(runtime.heapManager)
+  undefined(runtime.realm.heap)
 
 proc null*(runtime: Runtime): JSValue =
-  null(runtime.heapManager)
+  null(runtime.realm.heap)
 
 proc bigint*(runtime: Runtime, value: SomeInteger | string): JSValue =
-  bigint(runtime.heapManager, value)
+  bigint(runtime.realm.heap, value)
 
 proc boolean*(runtime: Runtime, value: bool): JSValue =
-  boolean(runtime.heapManager, value)
+  boolean(runtime.realm.heap, value)
 
 proc obj*(runtime: Runtime): JSValue =
-  obj(runtime.heapManager)
+  obj(runtime.realm.heap)
 
 {.pop.}

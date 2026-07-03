@@ -109,6 +109,8 @@ type
     values*: seq[Value]
     clauses*: seq[string]
 
+    heap*: HeapManager
+
     constantsGenerated*: bool = false
     registeredEcmaTypes*: bool = false
 
@@ -138,7 +140,6 @@ type
 
     types*: seq[JSType]
 
-    heapManager*: HeapManager
     deathCallback*: DeathCallback
     consoleDelegate*: ConsoleDelegate
     rng*: librng.RNG
@@ -147,8 +148,8 @@ type
 
     macrotaskQueue*: Deque[Task]
 
-func newRealm*(): Realm {.inline.} =
-  Realm()
+proc newRealm*(): Realm {.inline.} =
+  Realm(heap: initHeapManager())
 
 {.push warning[UnreachableCode]: off.}
 proc setExperiment*(opts: var ExperimentOpts, name: string, value: bool): bool =
@@ -182,7 +183,7 @@ proc setupAtom*(runtime: Runtime, typ: JSType, value: JSValue) =
   for name, member in typ.members:
     if member.isAtom():
       let idx = cast[uint32](value.objValues.len)
-      value.objValues &= undefined(runtime.heapManager)
+      value.objValues &= undefined(runtime.realm.heap)
 
       if member.hidden:
         value.objHiddenFields[name] = idx
@@ -199,12 +200,12 @@ proc setupAtom*(runtime: Runtime, typ: JSType, value: JSValue) =
   for name, protoFn in typ.prototypeFunctions:
     capture name, protoFn:
       value[name] = nativeCallable(
-        runtime.heapManager,
+        runtime.realm.heap,
         proc() =
           typ.prototypeFunctions[name](value),
       )
 
-  value.tag("bali_object_type", integer(runtime.heapManager, typ.proto.int))
+  value.tag("bali_object_type", integer(runtime.realm.heap, typ.proto.int))
 
 proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
   ## Create an atom (object) based off of a provided type.
@@ -213,7 +214,7 @@ proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
   ## in determining what type this object belongs to. It also attaches all the prototype functions needed.
   ##
   ## **This value will be allocated via Bali's internal garbage collector. Don't unnecessarily call this or else you might trigger a GC collection sweep.**
-  let atom = obj(runtime.heapManager)
+  let atom = obj(runtime.realm.heap)
   setupAtom(runtime, typ, atom)
 
   atom

@@ -11,19 +11,19 @@ import
 
 proc wrap*(runtime: Runtime, val: SomeInteger | string | float | bool): JSValue =
   when val is SomeInteger:
-    return integer(runtime.heapManager, val.int)
+    return integer(runtime.realm.heap, val.int)
 
   when val is bool:
-    return boolean(runtime.heapManager, val)
+    return boolean(runtime.realm.heap, val)
 
   when val is string:
     return runtime.newJSString(val)
 
   when val is float:
-    return floating(runtime.heapManager, val)
+    return floating(runtime.realm.heap, val)
 
 proc wrap*[T: not JSValue](runtime: Runtime, val: openArray[T]): JSValue =
-  var vec = sequence(runtime.heapManager, newSeqOfCap[MAtom](val.len - 1))
+  var vec = sequence(runtime.realm.heap, newSeqOfCap[MAtom](val.len - 1))
 
   for v in val:
     vec.sequence &= runtime.wrap(v)[]
@@ -32,20 +32,20 @@ proc wrap*[T: not JSValue](runtime: Runtime, val: openArray[T]): JSValue =
 
 proc wrap*[T: ref object | ptr object](runtime: Runtime, hidden: Hidden[T]): JSValue =
   # just store these as 64 bit signed ints
-  integer(runtime.heapManager, cast[int64](hidden))
+  integer(runtime.realm.heap, cast[int64](hidden))
 
 func wrap*[V: JSValue | MAtom](runtime: Runtime, atom: V): V {.inline.} =
   atom
 
 proc wrap*[A, B](runtime: Runtime, val: Table[A, B]): JSValue =
-  var atom = obj(runtime.heapManager)
+  var atom = obj(runtime.realm.heap)
   for k, v in val:
     atom[$k] = runtime.wrap(v)
 
   atom
 
 proc wrap*[T: object](runtime: Runtime, obj: T): JSValue =
-  let mObj = atom.obj(runtime.heapManager)
+  let mObj = atom.obj(runtime.realm.heap)
 
   for name, field in obj.fieldPairs:
     when field is FieldAccessor:
@@ -70,7 +70,7 @@ proc wrap*(runtime: Runtime, val: seq[JSValue]): JSValue =
   for i, value in val:
     atoms[i] = val[i][]
 
-  sequence(runtime.heapManager, ensureMove(atoms))
+  sequence(runtime.realm.heap, ensureMove(atoms))
 
 template `[]=`*[T: not JSValue](atom: JSValue, name: string, value: T) =
   atom[name] = runtime.wrap(value)
