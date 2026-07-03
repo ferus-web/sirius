@@ -219,6 +219,7 @@ proc fetchHTMLImageResource(
         if err.kind != TransportErrorKind.None:
           error "Failed to fetch image", src = src, err = err.kind
           view.imageCache[&srcRaw] = view.failedPlaceholderImage
+          view.renderCtx.reuploadImage(&srcRaw)
           view.reflow()
           return
 
@@ -230,6 +231,7 @@ proc fetchHTMLImageResource(
             err = exc.msg, src = &src, size = resp.body.stream.data.len
           view.imageCache[&srcRaw] = view.failedPlaceholderImage
 
+        view.renderCtx.reuploadImage(&srcRaw)
         view.reflow(),
     )
   else:
@@ -240,6 +242,8 @@ proc fetchHTMLImageResource(
 
       if *decodedData:
         view.imageCache[&srcRaw] = decodeImage(&decodedData)
+        view.renderCtx.reuploadImage(&srcRaw)
+        view.reflow()
       else:
         warn "Image element has data URL, but its content could not be decoded as base64."
     except pixie.PixieError as exc:

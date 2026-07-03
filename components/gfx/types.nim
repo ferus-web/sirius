@@ -1,4 +1,4 @@
-import std/[monotimes, tables]
+import std/[monotimes, deques, tables]
 import
   pkg/[pixie, vmath],
   pkg/figdraw/[figrender, fignodes],
@@ -23,4 +23,6 @@ type RenderingContext* = ref object
   lastRender*: monotimes.MonoTime
 
   imageCache*: TableRef[string, pixie.Image]
+  imageReuploadQueue*: Deque[string]
+
   paintDebugBounds*: bool

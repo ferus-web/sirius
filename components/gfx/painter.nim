@@ -1,7 +1,7 @@
 ## Painter implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[hashes, monotimes, tables, times, options]
+import std/[hashes, deques, importutils, monotimes, tables, times, options]
 import
   pkg/[pixie, shakar, vmath],
   pkg/figdraw/[commons, fignodes, figrender],
@@ -14,6 +14,8 @@ import
   components/layout/[output_manager, types],
   components/dom/[dom, tags],
   components/os/fonts
+
+privateAccess(VulkanContext)
 
 proc textLayout(
     box: Rect,
@@ -171,8 +173,12 @@ proc invalidate*(ctx: RenderingContext) =
   ctx.rootNode.reset()
   ctx.transformNode.reset()
 
-  for name, img in ctx.imageCache:
-    loadImage(imgId(name), img)
+  while ctx.imageReuploadQueue.len > 0:
+    let name = ctx.imageReuploadQueue.popFirst()
+    loadImage(imgId(name), ctx.imageCache[name])
+
+func reuploadImage*(ctx: RenderingContext, name: string) =
+  ctx.imageReuploadQueue.addLast(name)
 
 proc presentDisplayList(ctx: RenderingContext) =
   ctx.fig.renderFrame(
@@ -223,6 +229,7 @@ proc buildDisplayList(ctx: RenderingContext) =
   # draw(ctx, ctx.tree)
 
 proc drawTree*(ctx: RenderingContext) =
+  let lastAtlasSize = VulkanContext(ctx.fig.ctx).atlasSize
   let currTime = getMonoTime()
 
   let delta = float32(inMilliseconds(currTime - ctx.lastRender)) / 100'f32
@@ -242,5 +249,9 @@ proc drawTree*(ctx: RenderingContext) =
   ctx.fig.beginFrame()
   presentDisplayList(ctx)
   ctx.fig.endFrame()
+
+  if lastAtlasSize != VulkanContext(ctx.fig.ctx).atlasSize:
+    for name, _ in ctx.imageCache:
+      ctx.reuploadImage(name)
 
   ctx.lastRender = currTime
