@@ -118,7 +118,7 @@ proc getReturnValue*(runtime: Runtime): Option[JSValue] =
   runtime.vm.registers.retVal
 
 proc get*(runtime: Runtime, identifier: string): Option[JSValue] =
-  for value in runtime.values:
+  for value in runtime.realm.values:
     if value.kind != vkGlobal:
       continue
     if value.identifier != identifier:
@@ -319,7 +319,7 @@ proc setGlobal*(runtime: Runtime, name: string, value: JSValue) =
   ##
   ## **NOTE**: This only works if called _before_ bytecode generation.
   ## **TODO** (xTrayambak): I should probably implement dynamic identifier binding at runtime
-  let index = runtime.addrIdx
+  let index = runtime.realm.addrIdx
   runtime.markGlobal(name)
 
   if cast[uint](runtime.vm.stack.len) <= index:

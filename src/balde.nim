@@ -384,8 +384,10 @@ proc baldeRepl(ctx: Input) =
       )
 
     if prevRuntime != nil:
-      runtime.values = prevRuntime.values
+      runtime.realm = prevRuntime.realm
       runtime.vm.stack = prevRuntime.vm.stack
+      runtime.heapManager = prevRuntime.heapManager
+        # HACK: I have a feeling this'll fail majestically.
         # Copy all atoms of the previous runtime to the new one
 
     runtime.run()
@@ -411,7 +413,7 @@ proc baldeRepl(ctx: Input) =
       if prevRuntime == nil:
         return
 
-      for ident in prevRuntime.values:
+      for ident in prevRuntime.realm.values:
         if ident.kind != vkInternal and fuzzyMatchSmart(text, ident.identifier) >= 0.5f:
           noise.addCompletion(ident.identifier)
 

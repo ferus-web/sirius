@@ -42,10 +42,10 @@ proc typeRegistrationFinalizer*(runtime: Runtime) {.gcsafe.} =
     runtime.vm[].addAtom(ensureMove(jsObj), index.int)
 
 proc registerEcmaTypes*(runtime: Runtime) =
-  if runtime.registeredEcmaTypes:
+  if runtime.realm.registeredEcmaTypes:
     return
 
-  runtime.registeredEcmaTypes = true
+  runtime.realm.registeredEcmaTypes = true
   std_string.generateStdIR(runtime)
   console.generateStdIR(runtime)
   math.generateStdIR(runtime)
@@ -137,6 +137,7 @@ proc run*(runtime: Runtime) {.gcsafe.} =
 proc newRuntime*(
     file: string,
     ast: AST = default(AST),
+    realm: Realm = newRealm(),
     opts: InterpreterOpts = default(InterpreterOpts),
 ): Runtime {.inline.} =
   ## Instantiate the runtime by feeding it the name of the file executed and the AST, alongside the interpreter settings.
@@ -147,9 +148,9 @@ proc newRuntime*(
 
   Runtime(
     ast: ast,
-    clauses: @[],
     ir: newIRGenerator(file),
     vm: newPulsarInterpreter(@[]),
     heapManager: initHeapManager(),
+    realm: realm,
     opts: opts,
   )

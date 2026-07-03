@@ -104,6 +104,14 @@ type
   DeathCallback* = proc(vm: PulsarInterpreter) {.gcsafe.}
   ConsoleDelegate* = proc(level: ConsoleLevel, msg: string) {.gcsafe.}
 
+  Realm* = ref object
+    addrIdx*: uint
+    values*: seq[Value]
+    clauses*: seq[string]
+
+    constantsGenerated*: bool = false
+    registeredEcmaTypes*: bool = false
+
   RuntimeStats* = object
     atomsAllocated*: uint ## How many atoms have been allocated so far?
     bytecodeSize*: uint ## How many kilobytes is the bytecode?
@@ -123,12 +131,6 @@ type
     opts*: InterpreterOpts
 
     irHints*: IRHints
-    constantsGenerated*: bool = false
-    registeredEcmaTypes*: bool = false
-
-    addrIdx*: uint
-    values*: seq[Value]
-    clauses*: seq[string]
     test262*: Test262Opts
 
     statFieldAccesses, statTypeofCalls: uint
@@ -141,7 +143,12 @@ type
     consoleDelegate*: ConsoleDelegate
     rng*: librng.RNG
 
+    realm*: Realm
+
     macrotaskQueue*: Deque[Task]
+
+func newRealm*(): Realm {.inline.} =
+  Realm()
 
 {.push warning[UnreachableCode]: off.}
 proc setExperiment*(opts: var ExperimentOpts, name: string, value: bool): bool =
@@ -231,81 +238,83 @@ proc markInternal*(
     runtime: Runtime, stmt: Statement, ident: string, index: Option[uint] = none(uint)
 ) =
   var toRm: seq[int]
-  for i, value in runtime.values:
+  for i, value in runtime.realm.values:
     {.cast(gcsafe).}:
       if value.kind == vkInternal and value.identifier == ident and
           hash(stmt) == value.ownerStmt:
         toRm &= i
 
   for rm in toRm:
-    runtime.values.del(rm)
+    runtime.realm.values.del(rm)
 
   {.cast(gcsafe).}:
     let indexS =
       if *index:
         &index
       else:
-        runtime.addrIdx
+        runtime.realm.addrIdx
 
-    runtime.values &=
+    runtime.realm.values &=
       Value(kind: vkInternal, index: indexS, identifier: ident, ownerStmt: hash(stmt))
 
     info "Ident \"" & ident & "\" is being internally marked at index " & $indexS &
       " with statement hash: " & $hash(stmt)
 
   if !index:
-    inc runtime.addrIdx
+    inc runtime.realm.addrIdx
 
 proc markGlobal*(runtime: Runtime, ident: string, index: Option[uint] = none(uint)) =
   var toRm: seq[int]
-  for i, value in runtime.values:
+  for i, value in runtime.realm.values:
     if value.kind == vkGlobal and value.identifier == ident:
       toRm &= i
 
   for rm in toRm:
-    runtime.values.del(rm)
+    runtime.realm.values.del(rm)
 
   let idx =
     if *index:
       &index
     else:
-      runtime.addrIdx
+      runtime.realm.addrIdx
 
-  runtime.values &= Value(kind: vkGlobal, index: idx, identifier: ident)
+  runtime.realm.values &= Value(kind: vkGlobal, index: idx, identifier: ident)
 
-  info "Ident \"" & ident & "\" is being globally marked at index " & $runtime.addrIdx
+  info "Ident \"" & ident & "\" is being globally marked at index " &
+    $runtime.realm.addrIdx
 
-  inc runtime.addrIdx
+  inc runtime.realm.addrIdx
 
 proc markLocal*(
     runtime: Runtime, fn: Function, ident: string, index: Option[uint] = none(uint)
 ) =
   var toRm: seq[int]
-  for i, value in runtime.values:
+  for i, value in runtime.realm.values:
     if value.kind == vkLocal and value.ownerFunc == hash(fn) and
         value.identifier == ident:
       toRm &= i
 
   for rm in toRm:
-    runtime.values.del(rm)
+    runtime.realm.values.del(rm)
 
   let idx =
     if *index:
       &index
     else:
-      runtime.addrIdx
+      runtime.realm.addrIdx
 
-  runtime.values &=
+  runtime.realm.values &=
     Value(kind: vkLocal, index: idx, identifier: ident, ownerFunc: hash(fn))
 
-  info "Ident \"" & ident & "\" is being locally marked at index " & $runtime.addrIdx
+  info "Ident \"" & ident & "\" is being locally marked at index " &
+    $runtime.realm.addrIdx
 
-  inc runtime.addrIdx
+  inc runtime.realm.addrIdx
 
 proc resolveVariable*(
     runtime: Runtime, ident: string, params: IndexParams, demangle: bool = false
 ): Option[uint] =
-  for value in runtime.values:
+  for value in runtime.realm.values:
     for prio in params.priorities:
       if value.kind == vkGlobal and value.identifier == ident:
         return some(value.index)
@@ -355,44 +364,44 @@ proc loadIRAtom*(runtime: Runtime, atom: MAtom): uint =
   debug "codegen: loading atom with kind: " & $atom.kind
   case atom.kind
   of Integer:
-    runtime.ir.loadInt(runtime.addrIdx, atom)
-    return runtime.addrIdx
+    runtime.ir.loadInt(runtime.realm.addrIdx, atom)
+    return runtime.realm.addrIdx
   of String:
-    runtime.ir.loadStr(runtime.addrIdx, atom)
+    runtime.ir.loadStr(runtime.realm.addrIdx, atom)
     runtime.ir.resetArgs()
     runtime.ir.passMultipleArguments(
-      @[runtime.index("String", globalIndex()), runtime.addrIdx]
+      @[runtime.index("String", globalIndex()), runtime.realm.addrIdx]
     )
     runtime.ir.call("BALI_ICTOR")
     runtime.ir.resetArgs()
-    runtime.ir.readRegister(runtime.addrIdx, Register.ReturnValue)
+    runtime.ir.readRegister(runtime.realm.addrIdx, Register.ReturnValue)
     runtime.ir.zeroRetval()
-    return runtime.addrIdx
+    return runtime.realm.addrIdx
   of Null:
-    runtime.ir.loadNull(runtime.addrIdx)
-    return runtime.addrIdx
+    runtime.ir.loadNull(runtime.realm.addrIdx)
+    return runtime.realm.addrIdx
   of Boolean:
-    runtime.ir.loadBool(runtime.addrIdx, atom)
-    return runtime.addrIdx
+    runtime.ir.loadBool(runtime.realm.addrIdx, atom)
+    return runtime.realm.addrIdx
   of Object:
     if atom.isUndefined():
-      runtime.ir.loadObject(runtime.addrIdx)
-      return runtime.addrIdx
+      runtime.ir.loadObject(runtime.realm.addrIdx)
+      return runtime.realm.addrIdx
     else:
       unreachable # FIXME
   of Float:
-    runtime.ir.loadFloat(runtime.addrIdx, atom)
-    return runtime.addrIdx
+    runtime.ir.loadFloat(runtime.realm.addrIdx, atom)
+    return runtime.realm.addrIdx
   of Sequence:
-    runtime.ir.loadList(runtime.addrIdx)
-    result = runtime.addrIdx
+    runtime.ir.loadList(runtime.realm.addrIdx)
+    result = runtime.realm.addrIdx
 
     for item in atom.sequence:
-      inc runtime.addrIdx
+      inc runtime.realm.addrIdx
       let idx = runtime.loadIRAtom(item)
       runtime.ir.appendList(result, idx)
   of Undefined:
-    runtime.ir.loadUndefined(runtime.addrIdx)
-    return runtime.addrIdx
+    runtime.ir.loadUndefined(runtime.realm.addrIdx)
+    return runtime.realm.addrIdx
   else:
     unreachable

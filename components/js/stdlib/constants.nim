@@ -6,10 +6,10 @@ import components/js/runtime/vm/[atom, prelude]
 import components/js/runtime/types
 
 proc generateStdIr*(runtime: Runtime) =
-  if runtime.constantsGenerated:
+  if runtime.realm.constantsGenerated:
     return
 
-  runtime.constantsGenerated = true
+  runtime.realm.constantsGenerated = true
 
   let params = IndexParams(priorities: @[vkGlobal])
 

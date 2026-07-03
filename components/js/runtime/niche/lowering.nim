@@ -92,8 +92,8 @@ proc expand*(
 
       if *stmt.storeIn:
         debug "niche: BinaryOp evaluation will be stored in: " & &stmt.storeIn & " (" &
-          $runtime.addrIdx & ')'
-        runtime.ir.loadInt(runtime.addrIdx, 0)
+          $runtime.realm.addrIdx & ')'
+        runtime.ir.loadInt(runtime.realm.addrIdx, 0)
 
         if not internal:
           debug "niche: ...locally"
@@ -115,7 +115,7 @@ proc expand*(
           fn, stmt.binLeft, ownerStmt = some(stmt), internal = true
         )
         runtime.markInternal(stmt, "left_term")
-        runtime.ir.readRegister(runtime.addrIdx - 1, Register.ReturnValue)
+        runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
       elif stmt.binLeft.kind == IdentHolder:
         discard
       else:
@@ -134,7 +134,7 @@ proc expand*(
           fn, stmt.binRight, ownerStmt = some(stmt), internal = true
         )
         runtime.markInternal(stmt, "right_term")
-        runtime.ir.readRegister(runtime.addrIdx - 1, Register.ReturnValue)
+        runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
       elif stmt.binRight.kind == IdentHolder:
         debug "niche: BinaryOp right term is an ident"
       else:
@@ -240,9 +240,9 @@ proc loadFieldAccessStrings*(runtime: Runtime, access: FieldAccess) =
   )
 
   while curr != nil:
-    runtime.ir.loadStr(runtime.addrIdx, curr.identifier)
-    runtime.ir.passArgument(runtime.addrIdx)
-    inc runtime.addrIdx
+    runtime.ir.loadStr(runtime.realm.addrIdx, curr.identifier)
+    runtime.ir.passArgument(runtime.realm.addrIdx)
+    inc runtime.realm.addrIdx
 
     curr = curr.next
 
@@ -257,7 +257,7 @@ proc resolveFieldAccess*(
     internal = true,
     ownerStmt = some(stmt),
   )
-  let accessResult = runtime.addrIdx - 1 # index where the value will be stored
+  let accessResult = runtime.realm.addrIdx - 1 # index where the value will be stored
 
   var access = access.next
   var accessSeq: seq[string]
@@ -419,10 +419,10 @@ proc genCallAndStoreResult(
   if index == runtime.index("undefined", defaultParams(fn)):
     if *ownerStmt:
       runtime.markInternal(stmt, stmt.storeIdent)
-      index = runtime.addrIdx - 1
+      index = runtime.realm.addrIdx - 1
     else:
       runtime.markLocal(fn, stmt.storeIdent)
-      index = runtime.addrIdx - 1
+      index = runtime.realm.addrIdx - 1
 
   debug "emitter: call-and-store result will be stored in ident \"" & stmt.storeIdent &
     "\" or index " & $index
@@ -482,7 +482,7 @@ proc genReassignVal(runtime: Runtime, fn: Function, stmt: Statement) =
     let accesses = createFieldAccess(stmt.reIdentifier.split('.'))
     let atomIndex = runtime.loadIRAtom(stmt.reAtom)
 
-    inc runtime.addrIdx
+    inc runtime.realm.addrIdx
 
     # prepare for internal call
     runtime.ir.passArgument(
@@ -491,7 +491,7 @@ proc genReassignVal(runtime: Runtime, fn: Function, stmt: Statement) =
       )
     ) # 1: Atom index that needs its field to be overwritten
 
-    inc runtime.addrIdx
+    inc runtime.realm.addrIdx
 
     runtime.ir.passArgument(atomIndex) # 2: The atom to be put in the field
 
@@ -566,8 +566,8 @@ proc genBinaryOp(
     # We can't just go around mutating <x>, as that'd break semantic correctness.
     # As such, we need to copy <x> to <z> and rewrite the LHS address to <z>'s address
     runtime.markLocal(fn, &stmt.binStoreIn)
-    runtime.ir.copyAtom(leftIdx, runtime.addrIdx - 1)
-    leftIdx = runtime.addrIdx - 1
+    runtime.ir.copyAtom(leftIdx, runtime.realm.addrIdx - 1)
+    leftIdx = runtime.realm.addrIdx - 1
 
   case stmt.op
   of BinaryOperation.Add:
@@ -765,7 +765,7 @@ proc genCopyValMut(runtime: Runtime, fn: Function, stmt: Statement) =
     runtime.generateBytecode(
       fn, createMutVal(stmt.cpMutDestIdent, stackNull()), internal = false
     )
-    let dest = runtime.addrIdx - 1
+    let dest = runtime.realm.addrIdx - 1
 
     if stmt.cpMutDestIdent.contains('.'):
       # Field access.
@@ -793,7 +793,7 @@ proc genCopyValImmut(runtime: Runtime, fn: Function, stmt: Statement) =
   runtime.generateBytecode(
     fn, createMutVal(stmt.cpImmutDestIdent, stackNull()), internal = false
   )
-  let dest = runtime.addrIdx - 1
+  let dest = runtime.realm.addrIdx - 1
 
   runtime.ir.copyAtom(runtime.index(stmt.cpImmutSourceIdent, defaultParams(fn)), dest)
 
@@ -1025,7 +1025,7 @@ proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
         unreachable
         0'u
 
-  inc runtime.addrIdx
+  inc runtime.realm.addrIdx
 
   let addrOfTrueExpr =
     if stmt.trueTernary.kind == AtomHolder:
@@ -1036,7 +1036,7 @@ proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
       unreachable
       0'u
 
-  inc runtime.addrIdx
+  inc runtime.realm.addrIdx
 
   let addrOfFalseExpr =
     if stmt.falseTernary.kind == AtomHolder:
@@ -1047,7 +1047,7 @@ proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
       unreachable
       0'u
 
-  inc runtime.addrIdx
+  inc runtime.realm.addrIdx
 
   proc getCurrOpNum(): uint =
     for module in runtime.ir.modules:
@@ -1058,7 +1058,7 @@ proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
     0'u
 
   runtime.markLocal(fn, storeIn)
-  let finalAddr = runtime.addrIdx - 1
+  let finalAddr = runtime.realm.addrIdx - 1
 
   runtime.ir.passArgument(addrOfCond)
   runtime.ir.passArgument(runtime.index("true", defaultParams(fn)))
@@ -1160,7 +1160,7 @@ proc genTryClause(runtime: Runtime, fn: Function, stmt: Statement) =
   if *stmt.tryCatchBody:
     if *stmt.tryErrorCaptureIdent:
       runtime.markLocal(fn = fn, ident = &stmt.tryErrorCaptureIdent)
-      let errorCaptureIndex = runtime.addrIdx - 1
+      let errorCaptureIndex = runtime.realm.addrIdx - 1
 
       runtime.ir.readRegister(errorCaptureIndex, Register.Error)
 
@@ -1206,7 +1206,7 @@ proc genDefineFunction(
     fn = stmt.defunFn
     name =
       if fn.name.len < 1:
-        "@anon" & $(runtime.addrIdx - 1)
+        "@anon" & $(runtime.realm.addrIdx - 1)
       else:
         fn.name
 
@@ -1217,11 +1217,11 @@ proc genDefineFunction(
   runtime.ir.currModule = moduleName
 
   runtime.markLocal(fn, name)
-  runtime.ir.loadBytecodeCallable(runtime.addrIdx - 1, normalizeIRName(name))
+  runtime.ir.loadBytecodeCallable(runtime.realm.addrIdx - 1, normalizeIRName(name))
 
   if *storeIn:
     runtime.ir.copyAtom(
-      runtime.addrIdx - 1, runtime.index(&storeIn, internalIndex(parent))
+      runtime.realm.addrIdx - 1, runtime.index(&storeIn, internalIndex(parent))
     )
 
 proc genCreateArrayLit(
@@ -1231,7 +1231,7 @@ proc genCreateArrayLit(
     parentStmt: Option[Statement],
     exprStoreIn: Option[string],
 ) =
-  let pos = runtime.addrIdx
+  let pos = runtime.realm.addrIdx
   runtime.ir.loadList(pos)
   if *stmt.storeIn:
     runtime.markLocal(fn, &stmt.storeIn)
@@ -1253,7 +1253,7 @@ proc genAtomHolder(
 ) =
   let index = runtime.loadIRAtom(stmt.atom)
   runtime.markInternal(parent, storeIn, index = some(index))
-  inc runtime.addrIdx
+  inc runtime.realm.addrIdx
 
 {.pop.}
 
@@ -1376,8 +1376,8 @@ proc generateBytecodeForScope(
     name = fn.name
 
   debug "generateBytecodeForScope(): function name: " & name
-  if not runtime.clauses.contains(name):
-    runtime.clauses.add(name)
+  if not runtime.realm.clauses.contains(name):
+    runtime.realm.clauses.add(name)
     runtime.ir.newModule(name.normalizeIRName())
 
   for child in scope.children:
@@ -1389,7 +1389,7 @@ proc generateBytecodeForScope(
 
     if clause.len > 0:
       runtime.markGlobal(clause)
-      let fnIndex = runtime.addrIdx - 1
+      let fnIndex = runtime.realm.addrIdx - 1
       runtime.ir.loadBytecodeCallable(fnIndex, clause)
 
   runtime.irHints.generatedClauses &= name
@@ -1401,10 +1401,10 @@ proc generateBytecodeForScope(
   else:
     if allocateConstants:
       constants.generateStdIr(runtime)
-      inc runtime.addrIdx
+      inc runtime.realm.addrIdx
 
       for i, typ in runtime.types:
-        let idx = runtime.addrIdx
+        let idx = runtime.realm.addrIdx
         runtime.markGlobal(typ.name)
         runtime.ir.createField(idx, 0, "@bali_object_type")
         runtime.types[i].singletonId = idx
