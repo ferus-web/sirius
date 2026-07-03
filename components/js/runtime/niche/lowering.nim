@@ -142,7 +142,8 @@ proc expand*(
     of IfStmt:
       debug "niche: expand IfStmt"
 
-      if stmt.conditionExpr.binLeft.kind == AtomHolder:
+      case stmt.conditionExpr.binLeft.kind
+      of AtomHolder:
         debug "niche: if-stmt: left term is an atom"
         runtime.generateBytecode(
           fn,
@@ -150,8 +151,19 @@ proc expand*(
           ownerStmt = some(stmt),
           internal = true,
         )
+      of FieldAccessHolder:
+        runtime.generateBytecode(
+          fn,
+          stmt.conditionExpr.binLeft,
+          ownerStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("left_term"),
+        )
+      else:
+        discard
 
-      if stmt.conditionExpr.binRight.kind == AtomHolder:
+      case stmt.conditionExpr.binRight.kind
+      of AtomHolder:
         debug "niche: if-stmt: right term is an atom"
         runtime.generateBytecode(
           fn,
@@ -159,6 +171,16 @@ proc expand*(
           ownerStmt = some(stmt),
           internal = true,
         )
+      of FieldAccessHolder:
+        runtime.generateBytecode(
+          fn,
+          stmt.conditionExpr.binRight,
+          ownerStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("right_term"),
+        )
+      else:
+        discard
     of WhileStmt:
       debug "niche: expand WhileStmt"
       if stmt.whConditionExpr.binLeft.kind == AtomHolder:
@@ -676,8 +698,7 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
       of IdentHolder:
         debug "emitter: if-stmt: LHS is ident"
         runtime.index(stmt.conditionExpr.binLeft.ident, defaultParams(fn))
-      of AtomHolder:
-        debug "emitter: if-stmt: LHS is atom"
+      of AtomHolder, FieldAccessHolder:
         runtime.index("left_term", internalIndex(stmt))
       else:
         unreachable
@@ -688,8 +709,7 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
       of IdentHolder:
         debug "emitter: if-stmt: RHS is ident"
         runtime.index(stmt.conditionExpr.binRight.ident, defaultParams(fn))
-      of AtomHolder:
-        debug "emitter: if-stmt: RHS is atom"
+      of AtomHolder, FieldAccessHolder:
         runtime.index("right_term", internalIndex(stmt))
       else:
         unreachable
@@ -1255,6 +1275,17 @@ proc genAtomHolder(
   runtime.markInternal(parent, storeIn, index = some(index))
   inc runtime.realm.addrIdx
 
+proc genFieldAccessHolder(
+    runtime: Runtime, fn: Function, stmt: Statement, storeIn: string, parent: Statement
+) =
+  let index = runtime.resolveFieldAccess(
+    fn,
+    stmt,
+    runtime.index(stmt.fieldAccessList.identifier, defaultParams(fn)),
+    stmt.fieldAccessList,
+  )
+  runtime.markInternal(parent, storeIn, index = some(index))
+
 {.pop.}
 
 proc generateBytecode(
@@ -1341,6 +1372,10 @@ proc generateBytecode(
       runtime.genAtomHolder(
         fn = fn, stmt = stmt, storeIn = &exprStoreIn, parent = &parentStmt
       )
+  of FieldAccessHolder:
+    runtime.genFieldAccessHolder(
+      fn = fn, stmt = stmt, storeIn = &exprStoreIn, parent = &ownerStmt
+    )
   else:
     warn "emitter: unimplemented bytecode generation directive: " & $stmt.kind
 
@@ -1492,12 +1527,7 @@ proc generateInternalIR*(runtime: Runtime) =
         runtime.typeError("Type has no constructor")
         return
 
-      print runtime.vm.registers.callArgs[0]
-      print &ctor
-
       runtime.vm[].invoke(&ctor)
-
-      print runtime.vm.registers.retval
       runtime.vm.registers.callArgs.reset(),
   )
 

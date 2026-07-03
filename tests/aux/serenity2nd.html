@@ -448,12 +448,12 @@
 
         // FIXME: We don't load the YouTube embeds on SerenityOS for now since they
         //        bog down performance massively and we can't play video yet anyway.
-        /* if (navigator.platform != "SerenityOS") {
-            for (iframe of document.getElementsByTagName("iframe")) {
+        if (navigator.platform != "SerenityOS") {
+            /*for (iframe of document.getElementsByTagName("iframe")) {
 		// parser error 2: no support for this kind of for-exprs
                 iframe.setAttribute("src", iframe.getAttribute("data-src"));
-            }
-        } */
+            }*/
+        }
     </script>
 </body>
 </html>

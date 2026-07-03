@@ -33,6 +33,7 @@ type
     CompoundAssignment
     DefineFunction
     CreateArrayLiteral
+    FieldAccessHolder
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -185,6 +186,8 @@ type
       limitedTo*: Option[Scope]
     of CreateArrayLiteral:
       calChildren*: MixedLiteralChildren
+    of FieldAccessHolder:
+      fieldAccessList*: FieldAccess
 
 func hash*(access: FieldAccess): Hash {.inline.} =
   hash((access.identifier))
@@ -288,6 +291,9 @@ proc atomHolder*(atom: MAtom): Statement =
 
 proc identHolder*(ident: string): Statement =
   Statement(kind: IdentHolder, ident: ident)
+
+proc fieldHolder*(access: FieldAccess): Statement =
+  Statement(kind: FieldAccessHolder, fieldAccessList: access)
 
 proc defineFunction*(fn: Function, limitedTo: Option[Scope] = none(Scope)): Statement =
   Statement(kind: DefineFunction, defunFn: fn, limitedTo: limitedTo)

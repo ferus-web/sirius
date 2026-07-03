@@ -137,7 +137,10 @@ proc parseExpression(
       else:
         term.binRight = &parser.parseAtom(next)
     of TokenKind.Identifier:
-      var bin = identHolder(next.ident)
+      var bin = if next.ident.contains('.'):
+        fieldHolder(createFieldAccess(next.ident.split('.')))
+      else:
+        identHolder(next.ident)
 
       if (not parser.tokenizer.eof and (
         let nextTok = parser.tokenizer.peekExceptWhitespace(); *nextTok and (&nextTok).kind == TokenKind.LParen)):

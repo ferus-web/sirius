@@ -32,7 +32,6 @@ proc release*(manager: HeapManager) =
   boehmGC_fullCollect()
 
 proc allocate*(manager: HeapManager, size: SomeUnsignedInt): pointer =
-  debugEcho "HeapManager::allocate(" & $size & ')'
   manager.metrics.allocatedBytesTotal += size
 
   if manager.bump.remaining >= size:
