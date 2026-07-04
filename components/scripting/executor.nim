@@ -12,6 +12,7 @@ import
   components/scripting/dom/[document, element],
   components/scripting/timeouts,
   components/scripting/html/[navigator]
+import components/aux/pretty
 import pkg/[chronicles, shakar, url]
 
 logScope:

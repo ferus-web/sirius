@@ -34,6 +34,7 @@ type
     DefineFunction
     CreateArrayLiteral
     FieldAccessHolder
+    ListIterator
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -188,6 +189,10 @@ type
       calChildren*: MixedLiteralChildren
     of FieldAccessHolder:
       fieldAccessList*: FieldAccess
+    of ListIterator:
+      iterStoresIn*: Option[string]
+      iterList*: Statement
+      iterBody*: Scope
 
 func hash*(access: FieldAccess): Hash {.inline.} =
   hash((access.identifier))
@@ -291,6 +296,9 @@ proc atomHolder*(atom: MAtom): Statement =
 
 proc identHolder*(ident: string): Statement =
   Statement(kind: IdentHolder, ident: ident)
+
+proc listIterator*(storesIn: string, iterList: Statement): Statement =
+  Statement(kind: ListIterator, iterStoresIn: some(storesIn), iterList: iterList)
 
 proc fieldHolder*(access: FieldAccess): Statement =
   Statement(kind: FieldAccessHolder, fieldAccessList: access)

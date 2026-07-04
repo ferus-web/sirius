@@ -1221,7 +1221,9 @@ proc parseForLoop(parser: Parser): Option[Statement] =
   ## Parse a for-loop expression.
   ## **Basic Rules**
   ##
-  ## for (< initializer >; < condition >; < incrementer >) { < body > }
+  ## for (<initializer>; <condition>; <incrementer>) { <body> }
+  ## OR
+  ## for (<store-in> of <list>) { <body> }
   ##
   ## - We're assuming that the `for` token has already been hit.
   template expectSemicolon(section: string) =
@@ -1242,52 +1244,111 @@ proc parseForLoop(parser: Parser): Option[Statement] =
   if (&parenTok).kind != TokenKind.LParen:
     parser.error UnexpectedToken,
       "expected left facing parenthesis, got " & $(&parenTok).kind
+  
+  let peekedNext = parser.tokenizer.peekExceptWhitespace()
+  if !peekedNext:
+    parser.error Other, "expected identifier or initializer statement, got EOF instead."
 
-  # Now, parse the next statement you can see.
-  # This is the initializer.
-  # Revert back if there's nothing.
-  var copiedTok = parser.tokenizer
-  let initializer = parser.parseStatement()
-  if !initializer:
-    parser.tokenizer = ensureMove(copiedTok)
+  if (&peekedNext).kind == TokenKind.Identifier:
+    # This is a list/collection iterator
+    let
+      storeIn = (&parser.tokenizer.nextExceptWhitespace()).ident
+      ofToken = parser.tokenizer.nextExceptWhitespace()
 
-  # Now, expect a semicolon.
-  expectSemicolon "initializer"
+    let iter = Statement(kind: ListIterator, iterStoresIn: some(storeIn))
 
-  # Now, parse the next statement you can see.
-  # This is the condition.
-  # Revert back if there's nothing.
-  copiedTok = parser.tokenizer
-  let condition = parser.parseExpression()
-  if !condition:
-    parser.tokenizer = ensureMove(copiedTok)
+    if !ofToken:
+      parser.error Other, "expected `of` after identifier, got EOF instead."
 
-  # Now, expect a semicolon
-  expectSemicolon "conditional"
+    if (&ofToken).kind != TokenKind.Of:
+      parser.error UnexpectedToken, "expected `of` after identifier, got " & $((&ofToken).kind)
 
-  # Now, parse the next statement you can see.
-  # This is the incrementor.
-  # Revert back if there's nothing.
-  copiedTok = parser.tokenizer
-  let incrementor = parser.parseStatement()
-  if !incrementor:
-    parser.tokenizer = ensureMove(copiedTok)
+    let peekedCollection = parser.tokenizer.peekExceptWhitespace()
+    if !peekedCollection:
+      parser.error Other, "expected array or identifier after `of`, got EOF instead."
 
-  # Now, parse the n- just kidding
-  # Expect left parenthesis
-  let endingParen = parser.tokenizer.nextExceptWhitespace()
-  if !endingParen:
-    parser.error Other,
-      "expected right facing parenthesis to close for-expression, got EOF."
+    var sawRParen = false
 
-  if (&endingParen).kind != TokenKind.RParen:
-    parser.error UnexpectedToken,
-      "expected right facing parenthesis to close for-expression, got " &
-        $(&endingParen).kind
+    if (&peekedCollection).kind == TokenKind.Identifier:
+      discard parser.tokenizer.nextExceptWhitespace()
 
-  let body = Scope(stmts: parser.parseScope())
+      let collectionIdent = (&peekedCollection).ident
+      let succeedsCollection = parser.tokenizer.peekExceptWhitespace()
 
-  return some(forLoop(initializer, condition, incrementor, body))
+      if !succeedsCollection:
+        parser.error Other, "expected left-facing parenthesis after identifier, got EOF instead."
+
+      discard parser.tokenizer.nextExceptWhitespace()
+      case (&succeedsCollection).kind
+      of TokenKind.LParen:
+        # Function call!
+        let call = parser.parseFunctionCall(collectionIdent)
+        iter.iterList = &call
+      of TokenKind.RParen:
+        # We're done with everything.
+        sawRParen = true
+      else: unreachable
+    else:
+      let atom = parser.parseAtom(&parser.tokenizer.nextExceptWhitespace())
+      print atom
+      assert off
+
+    if not sawRParen:
+      let expectRParen = parser.tokenizer.nextExceptWhitespace()
+      if !expectRParen or (&expectRParen).kind != TokenKind.RParen:
+        parser.error Other, "Left-facing parenthesis must close collection iterator"
+
+    iter.iterBody = Scope(stmts: parser.parseScope())
+    
+    return some(iter)
+  else:
+    # This is a "classic" initializer+condition+increment loop
+
+    # Now, parse the next statement you can see.
+    # This is the initializer.
+    # Revert back if there's nothing.
+    var copiedTok = parser.tokenizer
+    let initializer = parser.parseStatement()
+    if !initializer:
+      parser.tokenizer = ensureMove(copiedTok)
+
+    # Now, expect a semicolon.
+    expectSemicolon "initializer"
+
+    # Now, parse the next statement you can see.
+    # This is the condition.
+    # Revert back if there's nothing.
+    copiedTok = parser.tokenizer
+    let condition = parser.parseExpression()
+    if !condition:
+      parser.tokenizer = ensureMove(copiedTok)
+
+    # Now, expect a semicolon
+    expectSemicolon "conditional"
+
+    # Now, parse the next statement you can see.
+    # This is the incrementor.
+    # Revert back if there's nothing.
+    copiedTok = parser.tokenizer
+    let incrementor = parser.parseStatement()
+    if !incrementor:
+      parser.tokenizer = ensureMove(copiedTok)
+
+    # Now, parse the n- just kidding
+    # Expect left parenthesis
+    let endingParen = parser.tokenizer.nextExceptWhitespace()
+    if !endingParen:
+      parser.error Other,
+        "expected right facing parenthesis to close for-expression, got EOF."
+
+    if (&endingParen).kind != TokenKind.RParen:
+      parser.error UnexpectedToken,
+        "expected right facing parenthesis to close for-expression, got " &
+          $(&endingParen).kind
+
+    let body = Scope(stmts: parser.parseScope())
+
+    return some(forLoop(initializer, condition, incrementor, body))
 
 proc parseTryClause(parser: Parser): Option[Statement] =
   ## Parse a try-catch clause.
