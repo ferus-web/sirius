@@ -66,3 +66,21 @@ func textContent*(node: dom.Node): string =
     buffer &= child.textContent
 
   ensureMove(buffer)
+
+func getElementsByTagName*(element: dom.Node, qualifiedName: string): seq[dom.Element] =
+  var elems: seq[dom.Element] # TODO: Preallocate atleast a bit?
+  if element of dom.Element and
+      (qualifiedName == "*" or $tagType(Element(element)) == qualifiedName):
+    elems &= Element(element)
+
+  for child in element.childList:
+    if not (child of dom.Element):
+      continue
+
+    let child = Element(child)
+    if qualifiedName == "*" or $tagType(child) == qualifiedName:
+      elems &= child
+
+    elems &= getElementsByTagName(child, qualifiedName)
+
+  ensureMove(elems)

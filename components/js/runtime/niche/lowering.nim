@@ -1,4 +1,6 @@
-## Bali runtime (MIR emitter)
+## This file contains all the routines that lower AST nodes to bytecode for the VM.
+## 
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[options, hashes, logging, strutils, tables, importutils]
 import components/aux/pretty
@@ -1286,6 +1288,10 @@ proc genFieldAccessHolder(
   )
   runtime.markInternal(parent, storeIn, index = some(index))
 
+proc genListIterator*(runtime: Runtime, fn: Function, stmt: Statement) =
+  runtime.markLocal(fn, &stmt.iterStoresIn)
+  runtime.generateBytecode(fn = fn, stmt = stmt.iterList)
+
 {.pop.}
 
 proc generateBytecode(
@@ -1376,6 +1382,8 @@ proc generateBytecode(
     runtime.genFieldAccessHolder(
       fn = fn, stmt = stmt, storeIn = &exprStoreIn, parent = &ownerStmt
     )
+  of ListIterator:
+    runtime.genListIterator(fn = fn, stmt = stmt)
   else:
     warn "emitter: unimplemented bytecode generation directive: " & $stmt.kind
 

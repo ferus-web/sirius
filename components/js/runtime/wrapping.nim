@@ -72,6 +72,14 @@ proc wrap*(runtime: Runtime, val: seq[JSValue]): JSValue =
 
   sequence(runtime.realm.heap, ensureMove(atoms))
 
+proc wrap*[T](runtime: Runtime, val: seq[T]): JSValue =
+  var atoms = newSeq[MAtom](val.len)
+
+  for i, value in val:
+    atoms[i] = runtime.wrap(value)[]
+
+  sequence(runtime.realm.heap, ensureMove(atoms))
+
 template `[]=`*[T: not JSValue](atom: JSValue, name: string, value: T) =
   atom[name] = runtime.wrap(value)
 

@@ -43,3 +43,28 @@ proc generateBindings*(runtime: Runtime) =
         ret null(runtime)
     ,
   )
+
+  runtime.definePrototypeFn(
+    JSDocument,
+    "getElementsByTagName",
+    proc(this: JSValue) =
+      let tagName = runtime.ToString(
+        &runtime.argument(
+          1,
+          required = true,
+          message = "document.getElementById() expects 1 argument, got {nargs}",
+        )
+      )
+
+      let
+        document = &this.getPrivateObject(dom.Document)
+        target = document.getElementsByTagName(tagName)
+
+      # TODO: Can we implement HTMLCollection some day?
+      var elems = newSeq[JSElement](target.len)
+      for i, elem in target:
+        elems[i] = runtime.toJSElement(elem)
+
+      ret ensureMove(elems)
+    ,
+  )
