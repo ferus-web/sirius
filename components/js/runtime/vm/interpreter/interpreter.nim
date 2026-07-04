@@ -992,7 +992,18 @@ proc findField(
       else:
         return atom.objValues[prop.index]
     else:
-      return findField(vm, atom.objValues[prop.index], accesses.next)
+      var next: JSValue
+
+      if prop.isAccessor:
+        vm.invoke(prop.accessor.getter)
+        dec vm.currIndex
+        if *vm.registers.retval:
+          next = &vm.registers.retval
+      else:
+        next = atom.objValues[prop.index]
+
+      assert(next != nil)
+      return findField(vm, next, accesses.next)
 
   undefined(vm.heapManager)
 

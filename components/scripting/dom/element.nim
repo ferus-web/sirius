@@ -8,12 +8,12 @@ import
   components/js/runtime/[arguments, bridge, construction, types, wrapping],
   components/js/runtime/abstract/[coercible, to_number, to_string],
   components/dom/dom,
-  components/html/dom_utils
+  components/html/[dom_utils, parser, serialization]
 import pkg/shakar
 
 type JSElement* = object
   internal*: Hidden[dom.Element]
-  textContent*: FieldAccessor
+  textContent*, innerHTML*: FieldAccessor
   parentElement*: JSValue
 
   localName*, tagName*: string
@@ -50,6 +50,20 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
           element.childList[0] = Text(data: textData, parentNode: element)
 
         element.document.edited = true,
+    ),
+    innerHTML: FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret serializeFragment(&this.getPrivateObject(dom.Node))
+      ,
+      setter: proc(this: JSValue, value: JSValue) {.gcsafe.} =
+        let element = &this.getPrivateObject(dom.Element)
+        {.cast(gcsafe).}:
+          # FIXME: Why is this GC-unsafe?
+          element.childList = parseHTMLFragment(
+            runtime.ToString(value), element, MiniDOMBuilderCallbacks()
+          )
+            # TODO: Provide proper callbacks here! Right now these'll just segfault and crash if any special stuff's found while parsing!!!!!
+      ,
     ),
     parentElement: (
       if element.parentNode != nil and element.parentNode of dom.Element:
