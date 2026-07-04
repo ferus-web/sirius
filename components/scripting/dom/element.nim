@@ -62,6 +62,7 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
           element.childList = parseHTMLFragment(
             runtime.ToString(value), element, MiniDOMBuilderCallbacks()
           )
+          element.document.edited = true
             # TODO: Provide proper callbacks here! Right now these'll just segfault and crash if any special stuff's found while parsing!!!!!
       ,
     ),
