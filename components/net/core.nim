@@ -5,7 +5,7 @@
 import std/[deques, locks, options, streams, tables]
 import
   components/impure/libcurl,
-  components/net/[http_headers, curl_wrapper],
+  components/net/[http_headers, curl_wrapper, mime],
   components/os/threads
 import pkg/[chronicles, results, shakar, url]
 
@@ -117,6 +117,10 @@ type
       stream*: StringStream
 
   NetworkClient* = ref NetworkClientObj
+
+func contentType*(response: Response): Option[MimeType] =
+  if (let contentType = response.headers["content-type"]; *contentType):
+    return getMimeType(&contentType)
 
 proc noTransportError(): TransportError {.inline.} =
   TransportError(kind: TransportErrorKind.None, message: "", curlCode: 0)

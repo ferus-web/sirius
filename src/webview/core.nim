@@ -5,13 +5,14 @@ import std/[monotimes, options, streams, strformat, strutils, sequtils, tables, 
 import ./[hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
+  components/aux/stream_utils,
   components/gfx/[core, init, painter, font_loader],
   components/dom/[dom, tags],
   components/html/[parser, dom_utils, data_parser, meta],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
-  components/net/core,
+  components/net/[core, mime],
   components/js/grammar/prelude,
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
   components/js/runtime/vm/heap/manager,
@@ -243,7 +244,8 @@ proc fetchHTMLImageResource(
       if *decodedData:
         view.imageCache[&srcRaw] = decodeImage(&decodedData)
         view.renderCtx.reuploadImage(&srcRaw)
-        view.reflow()
+        element.document.edited = true
+        # view.reflow()
       else:
         warn "Image element has data URL, but its content could not be decoded as base64."
     except pixie.PixieError as exc:
@@ -357,6 +359,34 @@ proc cleanup(view: WebView) =
   view.realm.heap.release()
   view.scripts.reset()
 
+proc loadImageStream(view: WebView, resp: Response) =
+  let imageViewerTemplate =
+    &view.assetProvider.openAssetStream("resources/image-viewer.html")
+  let viewerTemplate =
+    imageViewerTemplate.readAll() %
+    [(&resp.url).pathname.strip(chars = {'/'}), resp.body.stream.encodeBase64()]
+
+  imageViewerTemplate.close()
+
+  view.loadHTMLStream(newStringStream(viewerTemplate))
+
+proc loadStream(view: WebView, resp: Response) =
+  let contentType = resp.contentType()
+
+  if !contentType:
+    # If there's no Content-Type, we're probably best off assuming this is HTML.
+    view.loadHTMLStream(resp.body.stream)
+    return
+
+  case &contentType
+  of MimeType.HTML:
+    view.loadHTMLStream(resp.body.stream)
+    return
+  of MimeType.JPEG, MimeType.PNG, MimeType.WebP:
+    view.loadImageStream(resp)
+  else:
+    warn "Unhandled content type", typ = &contentType
+
 proc loadUrl(view: WebView, url: URL) =
   info "Loading page", dest = url
 
@@ -372,11 +402,11 @@ proc loadUrl(view: WebView, url: URL) =
     timeoutMs = 60000,
     finalize = proc(resp: Response, err: TransportError) =
       if err.kind == TransportErrorKind.None:
-        loadHTMLStream(view, resp.body.stream)
+        view.loadStream(resp)
       else:
         error "An error occurred while fetching the requested content",
           message = err.message
-        showTransportErrorPage(view, url, err),
+        view.showTransportErrorPage(url, err),
   )
 
 proc loadPage*(view: WebView, target: string) =

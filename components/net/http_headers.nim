@@ -1,6 +1,6 @@
 # TODO: Rewrite the parsing logic entirely.
 
-import std/[strutils, parseutils]
+import std/[options, strutils, parseutils]
 
 type
   HttpHeader* = tuple[name: string, value: string]
@@ -15,11 +15,13 @@ proc contains*(headers: HttpHeaders, key: string): bool =
     if cmpIgnoreCase(k, key) == 0:
       return true
 
-proc `[]`*(headers: HttpHeaders, key: string): string =
+proc `[]`*(headers: HttpHeaders, key: string): Option[string] =
   ## Returns the first header value for the key. Not case sensitive.
   for (k, v) in headers.items:
     if cmpIgnoreCase(k, key) == 0:
-      return v
+      return some(v)
+
+  none(string)
 
 proc `[]=`*(headers: var HttpHeaders, key, value: string) =
   ## Adds a new header if the key is not already present. If the key is already
