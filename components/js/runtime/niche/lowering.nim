@@ -92,22 +92,15 @@ proc expand*(
           internal = true,
         )
     of BinaryOp:
-      debug "niche: expand BinaryOp"
-
       if *stmt.storeIn:
-        debug "niche: BinaryOp evaluation will be stored in: " & &stmt.storeIn & " (" &
-          $runtime.realm.addrIdx & ')'
         runtime.ir.loadInt(runtime.realm.addrIdx, 0)
 
         if not internal:
-          debug "niche: ...locally"
           runtime.markLocal(fn, &stmt.storeIn)
         else:
-          debug "niche: ...internally"
           runtime.markInternal(stmt, &stmt.storeIn)
 
       if stmt.binLeft.kind == AtomHolder:
-        debug "niche: BinaryOp left term is an atom"
         runtime.generateBytecode(
           fn,
           createImmutVal("left_term", stmt.binLeft.atom),
@@ -122,11 +115,18 @@ proc expand*(
         runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
       elif stmt.binLeft.kind == IdentHolder:
         discard
+      elif stmt.binRight.kind == FieldAccessHolder:
+        runtime.generateBytecode(
+          fn,
+          stmt.binLeft,
+          ownerStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("left_term"),
+        )
       else:
         unreachable
 
       if stmt.binRight.kind == AtomHolder:
-        debug "niche: BinaryOp right term is an atom"
         runtime.generateBytecode(
           fn,
           createImmutVal("right_term", stmt.binRight.atom),
@@ -140,8 +140,15 @@ proc expand*(
         runtime.markInternal(stmt, "right_term")
         runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
       elif stmt.binRight.kind == IdentHolder:
-        debug "niche: BinaryOp right term is an ident"
+        discard
       elif stmt.binRight.kind == FieldAccessHolder:
+        runtime.generateBytecode(
+          fn,
+          stmt.binRight,
+          ownerStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("right_term"),
+        )
       else:
         unreachable
     of IfStmt:
@@ -571,7 +578,9 @@ proc genBinaryOp(
 
   var
     leftIdx =
-      if leftTerm.kind in {AtomHolder, StatementKind.Call}:
+      if leftTerm.kind in {
+        StatementKind.AtomHolder, StatementKind.Call, StatementKind.FieldAccessHolder
+      }:
         runtime.index("left_term", internalIndex(stmt))
       elif leftTerm.kind == IdentHolder:
         runtime.index(leftTerm.ident, defaultParams(fn))
@@ -579,7 +588,9 @@ proc genBinaryOp(
         0
 
     rightIdx =
-      if rightTerm.kind in {AtomHolder, StatementKind.Call}:
+      if rightTerm.kind in {
+        StatementKind.AtomHolder, StatementKind.Call, StatementKind.FieldAccessHolder
+      }:
         runtime.index("right_term", internalIndex(stmt))
       elif rightTerm.kind == IdentHolder:
         runtime.index(rightTerm.ident, defaultParams(fn))

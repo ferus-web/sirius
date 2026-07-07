@@ -34,6 +34,7 @@ proc registerWebBindings(elem: tags.HTMLScriptElement) =
   navigator.generateBindings(elem.script.rt)
 
 proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
+  echo codeBuffer
   let parser = newParser(codeBuffer)
   element.script.ast = parser.parse()
   if element.script.rt == nil:
