@@ -1458,7 +1458,6 @@ proc generateBytecodeForScope(
       for i, typ in runtime.types:
         let idx = runtime.realm.addrIdx
         runtime.markGlobal(typ.name)
-        runtime.ir.createField(idx, 0, "@bali_object_type")
         runtime.types[i].singletonId = idx
 
   for i, stmt in scope.stmts:
