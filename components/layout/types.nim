@@ -36,6 +36,7 @@ type
     whitespace*: Whitespace
     floatMode*: FloatMode
     border*: Border
+    textAlignment*: TextAlignment
 
     style*: ComputedStyle ## The computed style of the associated DOM node
     content*: string ## Any text content
@@ -76,6 +77,7 @@ proc clone*(node: LayoutNode): LayoutNode =
   result.height = node.height
   result.floatMode = node.floatMode
   result.border = node.border
+  result.textAlignment = node.textAlignment
 
   result.arrangement = node.arrangement
   result.relativePos = node.relativePos

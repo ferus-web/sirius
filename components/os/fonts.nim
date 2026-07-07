@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, tables]
-import components/impure/fontconfig
+import components/impure/fontconfig, components/css/types
 import pkg/[chronicles, shakar, vmath], pkg/figdraw/common/fonttypes
 
 logScope:
@@ -17,7 +17,11 @@ type
   LoaderImplementation* = object ## Font-loading implementation vtable
     loadFont*: proc(name, path: string): Option[Font]
     measureTextBounds*: proc(
-      font: Font, availableSize: Vec2, fontSize: float32, text: string
+      font: Font,
+      availableSize: Vec2,
+      fontSize: float32,
+      alignment: TextAlignment,
+      text: string,
     ): GlyphArrangement
 
   FontProviderObj = object

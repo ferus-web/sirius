@@ -332,7 +332,11 @@ proc computeLayout*(
         processTextContent(child.content, node.whitespace)
 
         child.arrangement = fontProvider.loader.measureTextBounds(
-          child.fontFamily, vec2(innerAvailableWidth, fontSize), fontSize, child.content
+          child.fontFamily,
+          vec2(innerAvailableWidth, fontSize),
+          fontSize,
+          child.textAlignment,
+          child.content,
         )
         child.dimensions =
           vec2(child.arrangement.bounding.w, child.arrangement.bounding.h)

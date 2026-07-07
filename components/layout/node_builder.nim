@@ -47,6 +47,8 @@ const
   BorderColorAttr = "border-color"
   BorderStyleAttr = "border-style"
 
+  TextAlignAttr = "text-align"
+
 func cleanFontFamily(family: CSSValue): string =
   ## Clean up the font-family attribute so fontconfig can easily parse it internally.
   # TODO: This routine doesn't belong here.
@@ -480,6 +482,10 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
         layoutNode.border.width = some(prop)
       else:
         discard
+    elif attr == TextAlignAttr:
+      if prop.kind == CSSValueKind.String and
+          (let alignment = getTextAlignmentProperty(prop.str); *alignment):
+        layoutNode.textAlignment = &alignment
     else:
       discard # warn "Unhandled style property", name = attr
 

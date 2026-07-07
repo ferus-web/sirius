@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, tables]
-import components/os/fonts as osfonts
+import components/os/fonts as osfonts, components/css/types
 import pkg/[chronicles, vmath]
 import pkg/figdraw/common/[fonttypes, fontutils, typefaces]
 
@@ -24,8 +24,13 @@ proc getLoaderImplementation*(): LoaderImplementation =
         error "Failed to load font!", name = name, path = path
         none(osfonts.Font),
     measureTextBounds: proc(
-        font: osfonts.Font, availableSize: Vec2, fontSize: float32, text: string
+        font: osfonts.Font,
+        availableSize: Vec2,
+        fontSize: float32,
+        alignment: TextAlignment,
+        text: string,
     ): GlyphArrangement {.closure.} =
+      # TODO: Rename this to `measureGlyphArrangement` or something like that, this name has outgrown its job
       typeset(
         rect(0, 0, availableSize.x, availableSize.y),
         [
@@ -36,8 +41,15 @@ proc getLoaderImplementation*(): LoaderImplementation =
             text,
           )
         ],
-        hAlign = Left, # TODO: Probably should do something about these
-        vAlign = Top, # same as above
+        hAlign = (
+          case alignment
+          of TextAlignment.Start, TextAlignment.Left: FontHorizontal.Left
+          of TextAlignment.End, TextAlignment.Right: FontHorizontal.Right
+          of TextAlignment.Center: FontHorizontal.Center
+          else: FontHorizontal.Left
+        ),
+          # TODO: Handle others, also the Start/End ones aren't computed correctly afaik.
+        vAlign = Top, # TODO: Probably should do something about this
         wrap = true,
         minContent = false,
       ),

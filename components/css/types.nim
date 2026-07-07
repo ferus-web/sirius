@@ -75,3 +75,14 @@ type
     PreWrap
     BreakSpaces
     PreLine
+
+  TextAlignment* {.pure, size: sizeof(uint8).} = enum
+    ## https://www.w3.org/TR/css-text-3/#justification
+    Start = 0
+    End
+    Left
+    Right
+    Center
+    Justify
+    MatchParent
+    JustifyAll
