@@ -256,6 +256,9 @@ proc fetchHTMLImageResource(
 proc executeScript(
     view: WebView, element: tags.HTMLScriptElement, document: dom.Document
 ) =
+  if view.opts.disableScripting:
+    return
+
   var codeBuffer: string # TODO: Prealloc somehow?
   for child in element.childList:
     if child of dom.Text:

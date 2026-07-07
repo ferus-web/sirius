@@ -19,7 +19,8 @@ logScope:
 
 type
   WebViewOpts* = object
-    disableImageLoading*, disableExternalStylesheets*, disableStyling*: bool
+    disableImageLoading*, disableExternalStylesheets*, disableStyling*,
+      disableScripting*: bool
 
   FinalizeCallback* = proc(response: Response, err: TransportError)
 

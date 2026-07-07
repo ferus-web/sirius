@@ -11,6 +11,7 @@ proc main() {.inline.} =
       disableImageLoading: args.enabled("disable-image-loading"),
       disableExternalStylesheets: args.enabled("disable-external-stylesheets"),
       disableStyling: args.enabled("disable-styling"),
+      disableScripting: args.enabled("disable-scripting"),
     )
   )
   view.loadPage(args.command)
