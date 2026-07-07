@@ -65,7 +65,8 @@ type
     stmts*: seq[Statement]
 
   Function* = ref object of Scope
-    name*: string = "outer"
+    name*: string
+    unmangled*: bool
     arguments*: seq[string] = @[] ## expected arguments!
 
   BinaryOperation* {.pure.} = enum

@@ -22,6 +22,8 @@ privateAccess(PulsarInterpreter)
 privateAccess(Runtime)
 privateAccess(AllocStats)
 
+const EntryPointName* = "@start"
+
 proc generateBytecode(
   runtime: Runtime,
   fn: Function,
@@ -318,7 +320,7 @@ proc genCreateImmutVal(
   let idx = runtime.loadIRAtom(stmt.imAtom.unwrap) # NOTE: This was deepCopy'd earlier.
 
   if not internal:
-    if fn.name == "outer":
+    if fn.name == EntryPointName:
       debug "emitter: marking index as global because it's in outer-most scope: " & $idx
 
     runtime.markLocal(fn, stmt.imIdentifier, index = some(idx))
@@ -336,7 +338,7 @@ proc genCreateMutVal(
   let idx = runtime.loadIRAtom(stmt.mutAtom.unwrap)
 
   if not internal:
-    if fn.name == "outer":
+    if fn.name == EntryPointName:
       debug "emitter: marking index as global because it's in outer-most scope: " & $idx
 
     runtime.markLocal(fn, stmt.mutIdentifier, index = some(idx))
@@ -1409,19 +1411,26 @@ proc generateBytecodeForScope(
       try:
         Function(scope)
       except ObjectConversionDefect:
+        # FIXME: what even is this???
         Function(
-          name: "outer",
+          name: EntryPointName,
           arguments: newSeq[string](0),
           prev: scope.prev,
           children: scope.children,
           stmts: scope.stmts,
+          unmangled: true,
         ) # FIXME: discriminate between scopes
     name = fn.name
 
   debug "generateBytecodeForScope(): function name: " & name
   if not runtime.realm.clauses.contains(name):
     runtime.realm.clauses.add(name)
-    runtime.ir.newModule(name.normalizeIRName())
+    runtime.ir.newModule(
+      if likely(not fn.unmangled):
+        name.normalizeIRName()
+      else:
+        name
+    )
 
   for child in scope.children:
     let clause =
@@ -1438,7 +1447,7 @@ proc generateBytecodeForScope(
   runtime.irHints.generatedClauses &= name
   runtime.vm.sourceMap[name] = initTable[uint, tuple[message: string, line: uint]]()
 
-  if name != "outer":
+  if name != EntryPointName:
     runtime.loadArgumentsOntoStack(fn)
     # runtime.markGlobal(name)
   else:

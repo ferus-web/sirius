@@ -119,8 +119,8 @@ proc run*(runtime: Runtime) {.gcsafe.} =
   runtime.vm[].feed(runtime.ir.modules)
   runtime.typeRegistrationFinalizer()
 
-  debug "interpreter: setting entry point to `outer`"
-  runtime.vm[].setEntryPoint("outer")
+  debug "interpreter: setting entry point"
+  runtime.vm[].setEntryPoint(lowering.EntryPointName)
 
   # for error in runtime.ast.errors:
   #  runtime.syntaxError($error, if runtime.opts.test262: 0 else: 1)
