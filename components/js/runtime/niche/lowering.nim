@@ -141,6 +141,7 @@ proc expand*(
         runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
       elif stmt.binRight.kind == IdentHolder:
         debug "niche: BinaryOp right term is an ident"
+      elif stmt.binRight.kind == FieldAccessHolder:
       else:
         unreachable
     of IfStmt:
@@ -430,7 +431,7 @@ proc genReturnFn(runtime: Runtime, fn: Function, stmt: Statement) =
   elif *stmt.retIdent:
     runtime.ir.returnFn(runtime.index(&stmt.retIdent, defaultParams(fn)).int)
   else:
-    unreachable
+    runtime.ir.returnFn(runtime.index("undefined", defaultParams(fn)).int)
 
 proc genCallAndStoreResult(
     runtime: Runtime,

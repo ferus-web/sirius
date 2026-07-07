@@ -226,6 +226,7 @@ proc atomToJSValue*(heap: HeapManager, atom: MAtom): JSValue =
   of Object:
     value.objFields = atom.objFields
     value.objValues = atom.objValues
+    value.objHiddenFields = atom.objHiddenFields
       # TODO: this might be dangerous. perhaps we should run `atomToJSValue` on all the objvalues too.
   of Float:
     value.floatval = atom.floatVal

@@ -227,7 +227,8 @@ proc generateTraceback*(
         currTrace.exception.operation - 1
 
     if not *op:
-      msg &= "\n\tFunction <" & currTrace.exception.clause & '>'
+      if currTrace.exception.clause != "@start":
+        msg &= "\n\tFunction <" & currTrace.exception.clause & '>'
 
       if *currTrace.next:
         currTrace = &currTrace.next
@@ -253,8 +254,8 @@ proc generateTraceback*(
             closestIdx = idx
             sourceLine = sourceInfo.message
             codeLine = sourceInfo.line
-
-      msg &= "\n\tFunction <" & currTrace.exception.clause & ">, line " & $codeLine
+      if currTrace.exception.clause != "@start":
+        msg &= "\n\tFunction <" & currTrace.exception.clause & ">, line " & $codeLine
 
       if *currTrace.next:
         currTrace = &currTrace.next
@@ -370,7 +371,7 @@ proc call*(
       msg "new op to execute chosen @ " & newClause.name & '/' & $interpreter.currIndex
       # set execution op index to 0 to start from the beginning
     else:
-      raise newException(Defect, "Cannot find clause: " & name)
+      interpreter.typeErrorHook("cannot call " & name)
 
 proc invoke*(interpreter: var PulsarInterpreter, value: JSValue) {.gcsafe.} =
   if value.kind == Integer:
@@ -386,7 +387,7 @@ proc invoke*(interpreter: var PulsarInterpreter, value: JSValue) {.gcsafe.} =
       callable.fn()
       inc interpreter.currIndex
     else:
-      interpreter.typeErrorHook("not a function")
+      interpreter.typeErrorHook($callable.kind & " is not a function")
   elif value.kind == String:
     msg "atom is string/ref to native function"
     interpreter.call(&getStr(value), default(Operation))
