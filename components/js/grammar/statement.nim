@@ -35,6 +35,7 @@ type
     CreateArrayLiteral
     FieldAccessHolder
     ListIterator
+    CopyFieldToVar
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -104,6 +105,7 @@ type
     of CreateImmutVal:
       imIdentifier*: string
       imAtom*: Statement
+      imField*: FieldAccess
     of Call:
       fn*: FunctionCall
       arguments*: PositionedArguments
@@ -194,6 +196,10 @@ type
       iterStoresIn*: Option[string]
       iterList*: Statement
       iterBody*: Scope
+    of CopyFieldToVar:
+      cfvarField*: FieldAccess
+      cfvarIdentDest*: Option[string]
+      cfvarFieldDest*: Option[FieldAccess]
 
 func hash*(access: FieldAccess): Hash {.inline.} =
   hash((access.identifier))
@@ -218,7 +224,9 @@ proc hash*(stmt: Statement): Hash {.inline.} =
   of CreateMutVal:
     hash = hash !& hash((stmt.mutIdentifier, stmt.mutAtom))
   of CreateImmutVal:
-    hash = hash !& hash((stmt.imIdentifier, stmt.imAtom))
+    hash =
+      hash !&
+      hash((stmt.imIdentifier, cast[int64](stmt.imAtom), cast[int64](stmt.imField)))
   of Call:
     hash = hash !& hash((stmt.fn, stmt.arguments))
   of NewFunction:
@@ -307,6 +315,12 @@ proc fieldHolder*(access: FieldAccess): Statement =
 proc defineFunction*(fn: Function, limitedTo: Option[Scope] = none(Scope)): Statement =
   Statement(kind: DefineFunction, defunFn: fn, limitedTo: limitedTo)
 
+proc copyFieldToVar*(dest: string, source: FieldAccess): Statement =
+  Statement(kind: CopyFieldToVar, cfvarField: source, cfvarIdentDest: some(dest))
+
+proc copyFieldToVar*(dest: FieldAccess, source: FieldAccess): Statement =
+  Statement(kind: CopyFieldToVar, cfvarField: source, cfvarFieldDest: some(dest))
+
 proc throwError*(
     errorStr: Option[string], errorExc: Option[void], errorIdent: Option[string]
 ): Statement =
@@ -320,6 +334,9 @@ proc throwError*(
 
 proc createImmutVal*(name: string, atom: MAtom): Statement =
   Statement(kind: CreateImmutVal, imIdentifier: name, imAtom: atomHolder atom)
+
+proc createImmutVal*(name: string, field: FieldAccess): Statement =
+  Statement(kind: CreateImmutVal, imIdentifier: name, imField: field)
 
 proc breakStmt*(): Statement =
   Statement(kind: Break)

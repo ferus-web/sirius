@@ -322,10 +322,16 @@ proc genCreateImmutVal(
     internal: bool,
     ownerStmt: Option[Statement],
 ) =
-  debug "emitter: generate IR for creating immutable value with identifier: " &
-    stmt.imIdentifier
-
-  let idx = runtime.loadIRAtom(stmt.imAtom.unwrap) # NOTE: This was deepCopy'd earlier.
+  let idx =
+    if stmt.imAtom != nil:
+      runtime.loadIRAtom(unwrap(stmt.imAtom))
+    else:
+      runtime.resolveFieldAccess(
+        fn,
+        stmt,
+        runtime.index(stmt.imField.identifier, defaultParams(fn)),
+        stmt.imField,
+      )
 
   if not internal:
     if fn.name == EntryPointName:
@@ -1306,6 +1312,25 @@ proc genListIterator*(runtime: Runtime, fn: Function, stmt: Statement) =
   runtime.markLocal(fn, &stmt.iterStoresIn)
   runtime.generateBytecode(fn = fn, stmt = stmt.iterList)
 
+proc genCopyFieldToVar*(runtime: Runtime, fn: Function, stmt: Statement) =
+  let resolved = resolveFieldAccess(
+    runtime,
+    fn,
+    stmt,
+    runtime.index(stmt.cfvarField.identifier, defaultParams(fn)),
+    stmt.cfvarField,
+  )
+
+  if *stmt.cfvarIdentDest:
+    runtime.ir.copyAtom(
+      source = resolved, dest = runtime.index(&stmt.cfvarIdentDest, defaultParams(fn))
+    )
+  elif *stmt.cfvarFieldDest:
+    let dest = &stmt.cfvarFieldDest
+    runtime.ir.writeField(
+      runtime.index(dest.identifier, defaultParams(fn)), dest.next.identifier, resolved
+    )
+
 {.pop.}
 
 proc generateBytecode(
@@ -1398,6 +1423,8 @@ proc generateBytecode(
     )
   of ListIterator:
     runtime.genListIterator(fn = fn, stmt = stmt)
+  of CopyFieldToVar:
+    runtime.genCopyFieldToVar(fn = fn, stmt = stmt)
   else:
     warn "emitter: unimplemented bytecode generation directive: " & $stmt.kind
 

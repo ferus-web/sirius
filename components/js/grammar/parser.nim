@@ -137,17 +137,22 @@ proc parseExpression(
       else:
         term.binRight = &parser.parseAtom(next)
     of TokenKind.Identifier:
-      var bin = if next.ident.contains('.'):
-        fieldHolder(createFieldAccess(next.ident.split('.')))
-      else:
-        identHolder(next.ident)
+      var bin =
+        if next.ident.contains('.'):
+          fieldHolder(createFieldAccess(next.ident.split('.')))
+        else:
+          identHolder(next.ident)
 
-      if (not parser.tokenizer.eof and (
-        let nextTok = parser.tokenizer.peekExceptWhitespace(); *nextTok and (&nextTok).kind == TokenKind.LParen)):
+      if (
+        not parser.tokenizer.eof and (
+          let nextTok = parser.tokenizer.peekExceptWhitespace()
+          *nextTok and (&nextTok).kind == TokenKind.LParen
+        )
+      ):
         # Is this an actual identifier, or a function call?
         discard parser.tokenizer.nextExceptWhitespace()
         bin = &parser.parseFunctionCall(next.ident)
-      
+
       if term.binLeft == nil:
         term.binLeft = move(bin)
       else:
@@ -613,7 +618,7 @@ proc parseDeclaration(
   let
     copiedTok = parser.tokenizer
     exprOpt = parser.parseExpression(ident.some())
-  
+
   if !exprOpt:
     parser.tokenizer = copiedTok
   else:
@@ -624,6 +629,7 @@ proc parseDeclaration(
   var
     atom: Option[MAtom]
     vIdent: Option[string]
+    vFieldAccess: Option[FieldAccess]
     ternary: Option[Statement]
     toCall: Option[Statement]
     declareFn: Option[Function]
@@ -655,7 +661,11 @@ proc parseDeclaration(
           ternary = parser.parseTernaryOp(ident = some(tok.ident))
           break
         else:
-          vIdent = some(tok.ident)
+          if tok.ident.contains('.'):
+            vFieldAccess = some(createFieldAccess(tok.ident.split('.')))
+          else:
+            vIdent = some(tok.ident)
+
           break
     of TokenKind.Number:
       if *tok.intVal:
@@ -695,7 +705,7 @@ proc parseDeclaration(
     else:
       parser.error UnexpectedToken, $tok.kind
 
-  assert not (*atom and *vIdent and *toCall and *ternary and *declareFn),
+  assert (*atom or *vIdent or *toCall or *ternary or *declareFn or *vFieldAccess),
     "Attempt to assign a value to nothing (something went wrong)"
 
   if *ternary:
@@ -708,23 +718,14 @@ proc parseDeclaration(
       some(defineFunction(&declareFn, some(parser.ast.scopes[parser.ast.currentScope])))
 
   if not reassignment:
-    case initialIdent
-    of "let", "const":
-      if *atom:
-        return some(createImmutVal(ident, &atom))
-      elif *vIdent:
-        return some(copyValImmut(ident, &vIdent))
-      elif *toCall:
-        return some(callAndStoreImmut(ident, &toCall))
-    of "var":
-      if *atom:
-        return some(createMutVal(ident, &atom))
-      elif *vIdent:
-        return some(copyValMut(ident, &vIdent))
-      elif *toCall:
-        return some(callAndStoreMut(ident, &toCall))
-    else:
-      parser.error UnexpectedToken, "identifier"
+    if *atom:
+      return some(createImmutVal(ident, &atom))
+    elif *vIdent:
+      return some(copyValImmut(ident, &vIdent))
+    elif *toCall:
+      return some(callAndStoreImmut(ident, &toCall))
+    elif *vFieldAccess:
+      return some(createImmutVal(ident, &vFieldAccess))
   else:
     if not reassignment:
       if *atom:
@@ -930,14 +931,17 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
 
         if not parser.tokenizer.eof and (
           let nextTok = parser.tokenizer.peekExceptWhitespace()
-          *nextTok and (&nextTok).kind in {TokenKind.Add, TokenKind.Sub, TokenKind.Mul, TokenKind.Div} # TODO: Expand this!
-        ):
+          *nextTok and
+            (&nextTok).kind in
+            {TokenKind.Add, TokenKind.Sub, TokenKind.Mul, TokenKind.Div}
+        ): # TODO: Expand this!
           let exprOpt = parser.parseExpression(ignoreTerms = true)
           if !exprOpt:
             parser.error Other, "expected expression after symbol, got none."
 
           let expr = &exprOpt
-          expr.binRight = expr.binLeft # we'll have to manually move around the LHS and RHS since we parsed the LHS already.
+          expr.binRight = expr.binLeft
+            # we'll have to manually move around the LHS and RHS since we parsed the LHS already.
           expr.binLeft = &call
 
           args.pushImmExpr(expr)
@@ -1120,10 +1124,23 @@ proc parseReassignment(parser: Parser, ident: string): Option[Statement] =
 
     return some(ensureMove(reassignExpr))
   elif *vIdent:
-    var copyExpr = copyValMut(ident, &vIdent)
-    copyExpr.source = parser.lines[parser.tokenizer.location.line]
+    let identifier = &vIdent
 
-    return some(ensureMove(copyExpr))
+    if identifier.contains('.'):
+      if ident.contains('.'):
+        return some(
+          copyFieldToVar(
+            createFieldAccess(ident.split('.')), # lhs
+            createFieldAccess(identifier.split('.')), # rhs
+          )
+        )
+      else:
+        return some(copyFieldToVar(ident, createFieldAccess(identifier.split('.'))))
+    else:
+      var copyExpr = copyValMut(ident, identifier)
+      copyExpr.source = parser.lines[parser.tokenizer.location.line]
+
+      return some(ensureMove(copyExpr))
   elif *toCall:
     var callStoreExpr = callAndStoreMut(ident, &toCall)
     callStoreExpr.source = parser.lines[parser.tokenizer.location.line]
@@ -1244,7 +1261,7 @@ proc parseForLoop(parser: Parser): Option[Statement] =
   if (&parenTok).kind != TokenKind.LParen:
     parser.error UnexpectedToken,
       "expected left facing parenthesis, got " & $(&parenTok).kind
-  
+
   let peekedNext = parser.tokenizer.peekExceptWhitespace()
   if !peekedNext:
     parser.error Other, "expected identifier or initializer statement, got EOF instead."
@@ -1261,7 +1278,8 @@ proc parseForLoop(parser: Parser): Option[Statement] =
       parser.error Other, "expected `of` after identifier, got EOF instead."
 
     if (&ofToken).kind != TokenKind.Of:
-      parser.error UnexpectedToken, "expected `of` after identifier, got " & $((&ofToken).kind)
+      parser.error UnexpectedToken,
+        "expected `of` after identifier, got " & $((&ofToken).kind)
 
     let peekedCollection = parser.tokenizer.peekExceptWhitespace()
     if !peekedCollection:
@@ -1276,7 +1294,8 @@ proc parseForLoop(parser: Parser): Option[Statement] =
       let succeedsCollection = parser.tokenizer.peekExceptWhitespace()
 
       if !succeedsCollection:
-        parser.error Other, "expected left-facing parenthesis after identifier, got EOF instead."
+        parser.error Other,
+          "expected left-facing parenthesis after identifier, got EOF instead."
 
       discard parser.tokenizer.nextExceptWhitespace()
       case (&succeedsCollection).kind
@@ -1287,7 +1306,8 @@ proc parseForLoop(parser: Parser): Option[Statement] =
       of TokenKind.RParen:
         # We're done with everything.
         sawRParen = true
-      else: unreachable
+      else:
+        unreachable
     else:
       let atom = parser.parseAtom(&parser.tokenizer.nextExceptWhitespace())
       print atom
@@ -1299,7 +1319,7 @@ proc parseForLoop(parser: Parser): Option[Statement] =
         parser.error Other, "Left-facing parenthesis must close collection iterator"
 
     iter.iterBody = Scope(stmts: parser.parseScope())
-    
+
     return some(iter)
   else:
     # This is a "classic" initializer+condition+increment loop
