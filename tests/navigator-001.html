@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Navigator Test Thingmajig</title>
+  </head>
+  <body>
+    <p>Codename: <strong id="codename">Not Set</strong></p>
+    <p>Appname: <strong id="appname">Not Set</strong></p>
+    <p>Version: <strong id="version">Not Set</strong></p>
+    <p>Platform: <strong id="platform">Not Set</strong></p>
+    <p>Product: <strong id="product">Not Set</strong></p>
+    <p>Product Sub: <strong id="productsub">Not Set</strong></p>
+    <p>User Agent: <strong id="useragent">Not Set</strong></p>
+    <p>Vendor: <strong id="vendor">Not Set</strong></p>
+    <p>Vendor Sub: <strong id="vendorsub">Not Set</strong></p>
+    <p>Online: <strong id="online">Not Set</strong></p>
+    <p>Cookies Enabled: <strong id="cookies">Not Set</strong></p>
+    <p>Hardware Concurrency: <strong id="concurrency">Not Set</strong></p>
+  </body>
+  <script>
+    const codename = document.getElementById("codename");
+    const appName = document.getElementById("appname");
+    const version = document.getElementById("version");
+    const platform = document.getElementById("platform");
+    const product = document.getElementById("product");
+    const productSub = document.getElementById("productsub");
+    const ua = document.getElementById("useragent");
+    const vendor = document.getElementById("vendor");
+    const vendorSub = document.getElementById("vendorsub");
+    const online = document.getElementById("online");
+    const cookies = document.getElementById("cookies");
+    const concurrency = document.getElementById("concurrency");
+    
+    codename.textContent = navigator.appCodeName;
+    appName.textContent = navigator.appName;
+    version.textContent = navigator.appVersion;
+    platform.textContent = navigator.platform;
+    product.textContent = navigator.product;
+    productSub.textContent = navigator.productSub;
+    ua.textContent = navigator.userAgent;
+    vendor.textContent = navigator.vendor;
+    vendorSub.textContent = navigator.vendorSub;
+    online.textContent = navigator.onLine;
+    cookies.textContent = navigator.cookieEnabled;
+    concurrency.textContent = navigator.hardwareConcurrency;
+  </script>
+</html>
