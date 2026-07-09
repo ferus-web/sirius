@@ -13,6 +13,10 @@ import
   components/scripting/timeouts,
   components/scripting/html/[navigator, window]
 import components/aux/pretty
+
+when defined(unix):
+  import components/impure/nix
+
 import pkg/[chronicles, shakar, url]
 
 logScope:
@@ -37,6 +41,22 @@ proc registerWebBindings(elem: tags.HTMLScriptElement) =
   window.generateBindings(elem.script.rt)
   window.generateGlobal(elem.script.rt, doc)
 
+proc setupRandomState(rng: out uint64) =
+  when defined(unix):
+    # NOTE: Is this available on OSX?
+
+    # We're basically just going to mix the two u64s we can derive from
+    # the auxiliary vector. We're going to use both of them because why not? :^)
+    let
+      rand = cast[ptr UncheckedArray[uint64]](nix.getauxval(nix.AT_RANDOM))
+      v1 = rand[0]
+      v2 = rand[1]
+
+    rng = v1 xor v2
+  else:
+    # TODO: Implement this for Windows and stuff. For now, we'll let the state be zero.
+    rng = 0'u64
+
 proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
   echo codeBuffer
   let parser = newParser(codeBuffer)
@@ -46,6 +66,7 @@ proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
       file = "<inline-script>" # TODO: We can probably use more descriptive names?
     )
 
+  setupRandomState(element.script.rt.rng)
   element.script.rt.ast = element.script.ast
   element.script.rt.opts = InterpreterOpts(
     test262: false,

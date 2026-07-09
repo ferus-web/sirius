@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Random numbers</title></head>
+  <body>
+    <p id="display">Random numbers go here :P</p>
+    <script>
+	let elem = document.getElementById("display");
+
+	setInterval(function() {
+	  let x = Math.random();
+	  console.log(x)
+	  elem.textContent = x;
+	}, 1000);
+    </script>
+  </body>
+</html>

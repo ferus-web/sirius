@@ -12,6 +12,10 @@ proc prctl*(
   a5: uint64 = 0'u64,
 ): int32 {.importc, header: "<sys/prctl.h>", sideEffect.}
 
+proc getauxval*(typ: uint64): uint64 {.importc, header: "<sys/auxv.h>", sideEffect.}
+
+let AT_RANDOM* {.importc, header: "<elf.h>".}: uint64
+
 when SupportsLinuxPrctls:
   # We barely use any of these, but it's nice to have them here nonetheless.
   {.push header: "<linux/prctl.h>", importc.}
