@@ -11,7 +11,7 @@ import
 import
   components/scripting/dom/[document, element],
   components/scripting/timeouts,
-  components/scripting/html/[navigator]
+  components/scripting/html/[navigator, window]
 import components/aux/pretty
 import pkg/[chronicles, shakar, url]
 
@@ -25,13 +25,17 @@ proc registerWebBindings(elem: tags.HTMLScriptElement) =
   elem.script.rt.registerEcmaTypes()
 
   document.generateBindings(elem.script.rt)
-  document.generateGlobal(elem.script.rt, elem.script.document)
+  let doc = document.generateGlobal(elem.script.rt, elem.script.document)
 
   element.generateBindings(elem.script.rt)
 
   timeouts.generateBindings(elem.script.rt)
 
   navigator.generateBindings(elem.script.rt)
+  navigator.generateGlobal(elem.script.rt)
+
+  window.generateBindings(elem.script.rt)
+  window.generateGlobal(elem.script.rt, doc)
 
 proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
   echo codeBuffer

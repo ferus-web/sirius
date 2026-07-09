@@ -14,8 +14,8 @@ import pkg/shakar
 type JSDocument* = object
   internal*: Hidden[dom.Document]
 
-proc generateGlobal*(runtime: Runtime, doc: dom.Document) =
-  discard runtime.setGlobal("document", JSDocument(internal: hidden(doc)))
+proc generateGlobal*(runtime: Runtime, doc: dom.Document): JSValue =
+  runtime.setGlobal("document", JSDocument(internal: hidden(doc)))
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType(prototype = JSDocument, name = "Document")

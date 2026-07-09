@@ -109,7 +109,7 @@ proc initWebView*(opts: WebViewOpts): WebView =
   webview.loader = newResourceLoader(
     newNetworkClient(
       userAgent =
-        "Mozilla/5.0 Sirius (+https://github.com/ferus-web/sirius; Wayland; Linux x86_64; rv: 0.1.0)"
+        "Mozilla/5.0 Sirius (+https://git.xtrayambak.xyz/ferus-web/sirius; Wayland; Linux x86_64; rv: 0.1.0)"
     )
   )
 
