@@ -727,6 +727,12 @@ proc opWriteField(interpreter: var PulsarInterpreter, op: ptr Operation) =
     atom = &oatomId
     propertyObj = none(Property)
 
+  if atom.isNull() or atom.isUndefined():
+    interpreter.typeErrorHook(
+      "can't access property \"" & fieldName & "\", value is null"
+    )
+    return
+
   for field, idx in atom.objFields:
     if field == fieldName:
       propertyObj = some(idx)
