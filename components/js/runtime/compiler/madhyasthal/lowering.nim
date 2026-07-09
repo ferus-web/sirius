@@ -217,10 +217,14 @@ proc lowerStream*(fn: var Function, stream: var OpStream): bool =
       fn.insts &=
         add(uint32(&op.arguments[0].getInt()), uint32(&op.arguments[1].getInt()))
     of CopyAtom:
-      let op = stream.consume()
+      let
+        op = stream.consume()
+        source = &op.arguments[0].getInt()
+        dest = &op.arguments[1].getInt()
 
-      fn.insts &=
-        copy(uint32(&op.arguments[0].getInt()), uint32(&op.arguments[1].getInt()))
+      # HACK: Ideally, this should be a separate peephole pass.
+      if source != dest:
+        fn.insts &= copy(cast[uint32](source), cast[uint32](dest))
     of Sub:
       let op = stream.consume()
 

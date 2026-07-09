@@ -474,7 +474,10 @@ proc compile*(
   else:
     pipeline.optimize(@[])
 
-  return compileLowered(cgen, pipeline)
+  let seg = compileLowered(cgen, pipeline)
+  cgen.s.finalize()
+
+  seg
 
 proc initAMD64MidtierCodegen*(
     vm: pointer, heap: HeapManager, callbacks: VMCallbacks

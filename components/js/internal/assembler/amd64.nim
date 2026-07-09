@@ -194,6 +194,24 @@ const BaseAssemblerSize* {.intdefine: "BaliBaseAssemblerSize".} = 0x10000
 proc curAdr*(assembler: AssemblerX64): int64 =
   cast[int64](assembler.data) + assembler.offset
 
+proc prepareForWrites*(assembler: AssemblerX64) =
+  setBufferProtection(
+    cast[pointer](assembler.data),
+    assembler.capacity,
+    readable = true,
+    writable = true,
+    executable = false,
+  )
+
+proc finalize*(assembler: AssemblerX64) =
+  setBufferProtection(
+    cast[pointer](assembler.data),
+    assembler.capacity,
+    readable = true,
+    writable = false,
+    executable = true,
+  )
+
 proc dump*(s: AssemblerX64, file: string) =
   assert(s.offset < s.capacity)
 
@@ -216,6 +234,7 @@ proc initAssemblerX64*(): AssemblerX64 =
     uint64(BaseAssemblerSize), readable = true, writable = true
   ))
   s.capacity = BaseAssemblerSize
+  prepareForWrites(s)
 
   ensureMove(s)
 

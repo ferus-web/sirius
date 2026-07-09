@@ -8,8 +8,6 @@ import components/js/platform/libc
 #!fmt: on
 
 proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer =
-  debug "assembler/buffer_alloc: allocating executable buffer of size " & $size &
-    " bytes (readable=" & $readable & "; writable=" & $writable & ')'
   when defined(windows):
     assert(
       (readable or writable) and not (not readable and writable),
@@ -26,18 +24,29 @@ proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer 
 
     return VirtualAlloc(NULL, size, MEM_COMMIT or MEM_RESERVE, perms)
   else:
-    var perms = PROT_EXEC
-    if readable:
-      perms = perms or PROT_READ
-
-    if writable:
-      perms = perms or PROT_WRITE
-
     var address: pointer
     discard posix_malign(address.addr, sysconf(SC_PAGESIZE), size)
-    discard mprotect(address, size.int32, ensureMove(perms))
+    discard mprotect(address, size.int32, PROT_NONE)
 
     return address
+
+proc setBufferProtection*(
+    address: pointer, size: int64, readable, writable, executable: bool
+) =
+  when defined(unix):
+    assert(size > 0 and size < cast[int64](int32.high))
+
+    var flags: int32 = PROT_NONE
+    if readable:
+      flags = flags or PROT_READ
+    if writable:
+      flags = flags or PROT_WRITE
+    if executable:
+      flags = flags or PROT_EXEC
+
+    discard mprotect(address, cast[int32](size), flags)
+  else:
+    {.warn: "Cannot enforce W^X on this platform. Owie.".}
 
 proc releaseExecutableBuffer*(buffer: pointer) =
   when defined(windows):
