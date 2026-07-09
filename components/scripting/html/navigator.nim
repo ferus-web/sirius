@@ -4,7 +4,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/cpuinfo
 import components/js/runtime/prelude
-import pkg/chronicles
+import pkg/[chronicles, shakar]
 
 logScope:
   topics = "html/navigator"
@@ -67,10 +67,12 @@ proc generateBindings*(runtime: Runtime) =
         "navigator.registerProtocolHandler() expects 2 arguments, got {nargs}"
 
       let
-        scheme =
-          runtime.ToString(runtime.argument(1, required = true, message = ErrorMessage))
-        url =
-          runtime.ToString(runtime.argument(2, required = true, message = ErrorMessage))
+        scheme = runtime.ToString(
+          &runtime.argument(1, required = true, message = ErrorMessage)
+        )
+        url = runtime.ToString(
+          &runtime.argument(2, required = true, message = ErrorMessage)
+        )
 
       warn "IMPLEMENTME: Navigator.registerProtocolHandler()",
         scheme = scheme, url = url
@@ -86,10 +88,12 @@ proc generateBindings*(runtime: Runtime) =
         "navigator.unregisterProtocolHandler() expects 2 arguments, got {nargs}"
 
       let
-        scheme =
-          runtime.ToString(runtime.argument(1, required = true, message = ErrorMessage))
-        url =
-          runtime.ToString(runtime.argument(2, required = true, message = ErrorMessage))
+        scheme = runtime.ToString(
+          &runtime.argument(1, required = true, message = ErrorMessage)
+        )
+        url = runtime.ToString(
+          &runtime.argument(2, required = true, message = ErrorMessage)
+        )
 
       warn "IMPLEMENTME: Navigator.unregisterProtocolHandler()",
         scheme = scheme, url = url
