@@ -2,71 +2,35 @@
 ##
 ## Copyright (C) 2024-2025 Trayambak Rai (xtrayambak at disroot dot org)
 
-import std/[importutils, tables, math, options, logging]
+import std/[tables, math, options]
 import components/js/runtime/vm/prelude
 import components/js/runtime/[arguments, types, bridge]
 import components/js/runtime/abstract/[to_number]
+import components/aux/rand/wyrand
 import pkg/shakar
-import pkg/[librng, librng/generator]
-
-privateAccess(RNG)
-
-const rawAlgo {.strdefine: "BaliRNGAlgorithm".} = "xoroshiro128"
-
-let Algorithm =
-  case rawAlgo
-  of "xoroshiro128":
-    Xoroshiro128
-  of "xoroshiro128pp":
-    Xoroshiro128PlusPlus
-  of "xoroshiro128ss":
-    Xoroshiro128StarStar
-  of "mersenne_twister":
-    MersenneTwister
-  of "marsaglia":
-    Marsaglia69069
-  of "pcg":
-    PCG
-  of "lehmer":
-    Lehmer64
-  of "splitmix":
-    Splitmix64
-  else:
-    assert(off, "Invalid RNG algorithm: " & rawAlgo)
-    Xoroshiro128
 
 type JSMath = object
   E*: float = math.E
   PI*: float = math.PI
 
 proc generateStdIr*(runtime: Runtime) =
-  info "math: generating IR interfaces"
-
   runtime.registerType("Math", JSMath)
-  runtime.rng = newRNG(algo = Algorithm)
   runtime.setProperty(JSMath, "LN10", floating(runtime.realm.heap, math.ln(10'f64)))
   runtime.setProperty(JSMath, "LN2", floating(runtime.realm.heap, math.ln(2'f64)))
   runtime.setProperty(
     JSMath, "LOG10E", floating(runtime.realm.heap, math.log10(math.E))
   )
   runtime.setProperty(JSMath, "LOG2E", floating(runtime.realm.heap, math.log2(math.E)))
-  runtime.setProperty(
-    JSMath, "SQRT1_2", floating(runtime.realm.heap, math.sqrt(1 / 2))
-  )
+  runtime.setProperty(JSMath, "SQRT1_2", floating(runtime.realm.heap, math.sqrt(1 / 2)))
   runtime.setProperty(JSMath, "SQRT2", floating(runtime.realm.heap, math.sqrt(2'f64)))
 
   # Math.random
-  # WARN: Do not use this for cryptography! This uses one of eight highly predictable pseudo-random
-  # number generation algorithms that librng implements!
+  # WARN: Do not use this for cryptography! This uses wyrand!
   runtime.defineFn(
     JSMath,
     "random",
     proc() {.gcsafe.} =
-      # TODO: Patch librng to annotate it with gcsafe rather than doing...
-      # whatever this is.
-      {.cast(gcsafe).}:
-        let value = float64(runtime.rng.generator.next()) / 1.8446744073709552e+19'f64
-      ret value
+      ret float64(wyrand(runtime.rng)) / 1.8446744073709552e+19'f64
     ,
   )
 

@@ -181,12 +181,6 @@
       "url": "https://github.com/treeform/bumpy",
       "checksum": "633ca1f19885c1fee4ab91f28b1ef1f449b9f8ef27050383595ca50bda86b893"
     },
-    "librng": {
-      "version": "0.1.3",
-      "commit": "69638caddffff2e55b3d8aabf573cb0c1aaef4b5",
-      "url": "https://github.com/xTrayambak/librng",
-      "checksum": "05bcb7ae092d82823ed51e0dc645e5df6816751662e7b8196fb44c4e02b144d8"
-    },
     "chronicles": {
       "version": "0.12.3",
       "commit": "e7f87336d2fa47b7752b42f0be4cabd5663a5e5c",
@@ -264,6 +258,12 @@
       "commit": "8bf4a0933ff405f83dc3a176199f528601e5b796",
       "url": "https://github.com/treeform/chroma",
       "checksum": "87cb8fd11d11c8272fe62972711f62693f417107140faa462e32704d91a61300"
+    },
+    "nint128": {
+      "version": "0.3.3",
+      "commit": "a9f23f246fd3a2cdb352cf9b67e970f88ec1507c",
+      "url": "https://github.com/rockcavera/nim-nint128",
+      "checksum": "80ea76f4c272a01791d72bd0d30d29d42ce0aded19794c7c8f95fa149d4de74d"
     }
   }
 }

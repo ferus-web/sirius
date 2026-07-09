@@ -8,7 +8,7 @@ import components/js/runtime/vm/prelude
 import components/js/grammar/prelude
 import components/js/runtime/[atom_obj_variant, atom_helpers, normalize]
 import components/js/runtime/vm/heap/manager
-import pkg/[shakar, librng]
+import pkg/shakar
 
 type
   NativeFunction* = proc() {.gcsafe.}
@@ -142,7 +142,7 @@ type
 
     deathCallback*: DeathCallback
     consoleDelegate*: ConsoleDelegate
-    rng*: librng.RNG
+    rng*: uint64
 
     realm*: Realm
 
