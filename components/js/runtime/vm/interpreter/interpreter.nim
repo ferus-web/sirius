@@ -760,14 +760,9 @@ proc opInc(interpreter: var PulsarInterpreter, op: ptr Operation) =
 
   case atom.kind
   of Integer:
-    interpreter.addAtom(
-      integer(interpreter.heapManager, &atom.getInt() + 1), (&op.arguments[0].getInt())
-    )
+    inc atom.integer
   of Float:
-    interpreter.addAtom(
-      floating(interpreter.heapManager, &atom.getFloat() + 1.0),
-      (&op.arguments[0].getInt()),
-    )
+    atom.floatVal += 1.0'f32
   else:
     interpreter.addAtom(
       floating(interpreter.heapManager, NaN), (&op.arguments[0].getInt())
@@ -780,9 +775,9 @@ proc opDec(interpreter: var PulsarInterpreter, op: ptr Operation) =
 
   case atom.kind
   of Integer:
-    interpreter.addAtom(
-      integer(interpreter.heapManager, &atom.getInt() - 1), (&op.arguments[0].getInt())
-    )
+    dec atom.integer
+  of Float:
+    atom.floatVal -= 1.0'f32
   else:
     interpreter.addAtom(
       floating(interpreter.heapManager, NaN), (&op.arguments[0].getInt())
