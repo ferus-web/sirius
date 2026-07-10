@@ -820,7 +820,7 @@ proc opPassArg(interpreter: var PulsarInterpreter, op: ptr Operation) =
   inc interpreter.currIndex
 
 proc opResetArgs(interpreter: var PulsarInterpreter, op: ptr Operation) =
-  interpreter.registers.callArgs.reset()
+  interpreter.registers.callArgs.setLen(0)
   inc interpreter.currIndex
 
 proc opCopyAtom(interpreter: var PulsarInterpreter, op: ptr Operation) =
