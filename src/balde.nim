@@ -377,7 +377,7 @@ proc baldeRepl(ctx: Input) =
 
   template evaluateSource(ast: AST) =
     var runtime = allocRuntime(ctx, "<repl>", ast, repl = true, dumpIRFor = dumpIRFor)
-    runtime.deathCallback = proc(vm: PulsarInterpreter) =
+    runtime.deathCallback = proc(vm: Interpreter) =
       styledWriteLine(
         stderr, fgRed, "An error occurred while evaluating the previous expression.",
         resetStyle,

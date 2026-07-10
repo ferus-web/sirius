@@ -10,7 +10,7 @@ type
   VMCallbacks* = object
     addAtom*: pointer
     getAtom*: pointer
-    copyAtom*: pointer # proc(vm: var PulsarInterpreter, source, dest: uint)
+    copyAtom*: pointer # proc(vm: var Interpreter, source, dest: uint)
     resetArgs*: pointer
     passArgument*: pointer
     callBytecodeClause*: pointer

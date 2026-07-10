@@ -85,7 +85,7 @@ proc run*(runtime: Runtime) {.gcsafe.} =
 
   if runtime.opts.test262:
     test262.generateStdIR(runtime)
-    runtime.deathCallback = proc(vm: PulsarInterpreter) =
+    runtime.deathCallback = proc(vm: Interpreter) =
       if not vm.trace.exception.message.contains(runtime.test262.negative.`type`):
         quit(QuitSuccess)
       else:
@@ -146,7 +146,7 @@ proc newRuntime*(
   Runtime(
     ast: ast,
     ir: newIRGenerator(file),
-    vm: newPulsarInterpreter(@[]),
+    vm: newInterpreter(@[]),
     realm: realm,
     opts: opts,
   )

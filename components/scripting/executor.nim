@@ -82,7 +82,7 @@ proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
     ),
     jit: JITOpts(),
   )
-  element.script.rt.deathCallback = proc(vm: PulsarInterpreter) =
+  element.script.rt.deathCallback = proc(vm: Interpreter) =
     error "Script execution error"
     debugEcho &"{element.script.rt.ir.name} on {element.script.baseURL}"
     debugEcho &"  pc: {vm.currIndex}; jit: {vm.runningCompiled}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"

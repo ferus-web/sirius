@@ -3,12 +3,12 @@ import components/js/runtime/vm/prelude
 import components/js/runtime/types
 import pkg/shakar
 
-privateAccess(PulsarInterpreter)
+privateAccess(Interpreter)
 
 type JSException* = ref object of RuntimeException
   name: string = ""
 
-proc DefaultDeathCallback*(vm: PulsarInterpreter) =
+proc DefaultDeathCallback*(vm: Interpreter) =
   when not defined(baliCrashAndBurnEverythingOnError):
     # Gracefully exit.
     quit(QuitFailure)

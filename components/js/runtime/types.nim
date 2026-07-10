@@ -101,7 +101,7 @@ type
 
     deadline*: MonoTime
 
-  DeathCallback* = proc(vm: PulsarInterpreter) {.gcsafe.}
+  DeathCallback* = proc(vm: Interpreter) {.gcsafe.}
   ConsoleDelegate* = proc(level: ConsoleLevel, msg: string) {.gcsafe.}
 
   Realm* = ref object
@@ -129,7 +129,7 @@ type
   Runtime* = ref object
     ast*: AST
     ir*: IRGenerator
-    vm*: ptr PulsarInterpreter
+    vm*: ptr Interpreter
     opts*: InterpreterOpts
 
     irHints*: IRHints

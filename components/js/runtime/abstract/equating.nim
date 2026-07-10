@@ -5,7 +5,7 @@ import components/js/runtime/vm/atom
 import components/unicode/utf16view
 import components/js/runtime/[atom_helpers, types, bridge, construction]
 import components/js/runtime/abstract/[coercion]
-import pkg/[gmp/gmp, shakar]
+import pkg/[gmp/gmp, shakar], components/aux/pretty
 import components/js/stdlib/types/[std_bigint, std_string_type]
 
 proc equateNumbers*(runtime: Runtime, x, y: JSValue): bool =

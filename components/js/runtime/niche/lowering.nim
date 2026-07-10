@@ -18,7 +18,7 @@ import components/js/runtime/vm/heap/boehm
 import components/js/runtime/abstract/equating
 import components/js/stdlib/prelude
 
-privateAccess(PulsarInterpreter)
+privateAccess(Interpreter)
 privateAccess(Runtime)
 privateAccess(AllocStats)
 
@@ -624,8 +624,7 @@ proc genBinaryOp(
     runtime.ir.divide(leftIdx, rightIdx)
   of BinaryOperation.Equal, BinaryOperation.TrueEqual:
     # runtime.ir.equate(leftIdx, rightIdx)
-    runtime.ir.passArgument(leftIdx)
-    runtime.ir.passArgument(rightIdx)
+    runtime.ir.passMultipleArguments(@[leftIdx, rightIdx])
     runtime.ir.call(
       if stmt.op == BinaryOperation.Equal:
         "BALI_EQUATE_ATOMS"
@@ -654,8 +653,7 @@ proc genBinaryOp(
         runtime.ir.loadBool(runtime.index(&stmt.binStoreIn, defaultParams(fn)), false)
     runtime.ir.overrideArgs(unequalJmp, @[stackInteger(unequalBranch)])
   of BinaryOperation.NotEqual:
-    runtime.ir.passArgument(leftIdx)
-    runtime.ir.passArgument(rightIdx)
+    runtime.ir.passMultipleArguments(@[leftIdx, rightIdx])
     runtime.ir.call("BALI_EQUATE_ATOMS")
     # FIXME: really weird bug in mirage's IR generator. wtf?
     let equalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1 # left == right branch
@@ -739,8 +737,7 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
 
   case stmt.conditionExpr.op
   of BinaryOperation.Equal, BinaryOperation.NotEqual, BinaryOperation.TrueEqual:
-    runtime.ir.passArgument(lhsIdx)
-    runtime.ir.passArgument(rhsIdx)
+    runtime.ir.passMultipleArguments(@[lhsIdx, rhsIdx])
     runtime.ir.call(
       if stmt.conditionExpr.op != BinaryOperation.TrueEqual:
         "BALI_EQUATE_ATOMS"

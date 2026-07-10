@@ -15,7 +15,7 @@ type BaselineJIT* = ref object of AMD64Codegen
 
 proc prepareAtomAddCall(cgen: BaselineJIT, index: int64) =
   # Signature for addAtom is:
-  # proc(vm: var PulsarInterpreter, atom: JSValue, index: uint): void
+  # proc(vm: var Interpreter, atom: JSValue, index: uint): void
   cgen.s.sub(regRsp.reg, 8)
   cgen.s.mov(regRdi, cast[int64](cgen.vm)) # pass the pointer to the vm
   cgen.s.mov(reg(regRsi), regRax) # The JSValue
@@ -24,7 +24,7 @@ proc prepareAtomAddCall(cgen: BaselineJIT, index: int64) =
   cgen.s.add(regRsp.reg, 8)
 
 proc prepareAtomGetCall(cgen: BaselineJIT, index: int64) =
-  # proc rawGet(vm: PulsarInterpreter, index: uint): JSValue
+  # proc rawGet(vm: Interpreter, index: uint): JSValue
   cgen.s.sub(regRsp.reg, 8)
   cgen.s.mov(regRdi, cast[int64](cgen.vm))
   cgen.s.mov(regRsi, index)

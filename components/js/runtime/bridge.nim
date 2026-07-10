@@ -10,7 +10,7 @@ import
 import pkg/shakar
 
 privateAccess(Runtime)
-privateAccess(PulsarInterpreter)
+privateAccess(Interpreter)
 privateAccess(AllocStats)
 
 func hidden*[T: ref object | ptr object](value: T): Hidden[T] {.inline, raises: [].} =
@@ -68,7 +68,6 @@ proc setProperty*[T, V](
 proc dumpStatistics*(runtime: Runtime): RuntimeStats =
   ## Get a `RuntimeStats` struct containing all the statistics about the
   ## runtime's state, including the VM's state and code generator's statistics.
-  info "runtime: dumping statistics"
   var stats: RuntimeStats
 
   stats.atomsAllocated = uint(runtime.vm.stack.len)
@@ -81,8 +80,6 @@ proc dumpStatistics*(runtime: Runtime): RuntimeStats =
   let allocStats = getAllocStats() - runtime.allocStatsStart
   stats.numAllocations = uint(allocStats.allocCount)
   stats.numDeallocations = uint(allocStats.deallocCount)
-
-  info "runtime: completed statistics dump"
 
   stats
 
