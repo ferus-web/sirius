@@ -55,6 +55,7 @@ proc poll*(loader: ResourceLoader) =
       loader.pendingAssets[requestId].finalize(
         response = resp.response, err = resp.error
       )
+      loader.pendingAssets.del(requestId)
 
   if loader.retryQueue.len > 0:
     let queued = loader.retryQueue.popFirst()

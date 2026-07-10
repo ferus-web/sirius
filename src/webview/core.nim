@@ -468,7 +468,12 @@ proc applyCursorState(view: WebView, layoutNode: LayoutNode) =
   let cursor = &layoutNode.cursor
 
   if cursor in cursorMap:
-    view.app.setCursorShape(cursorMap[cursor])
+    let shape = cursorMap[cursor]
+
+    if shape == Shape.Default and view.progress:
+      view.app.setCursorShape(Shape.Progress)
+    else:
+      view.app.setCursorShape(shape)
 
 proc handleFocusedDomElement(
     view: WebView, layoutNode: LayoutNode, element: dom.Element, clicked: bool = false
@@ -489,7 +494,7 @@ proc handleFocusedDomElement(
 
 proc handleFocusedElement(view: WebView, clicked: bool = false) =
   if !view.focusedElement:
-    view.app.setCursorShape(Shape.Default)
+    view.app.setCursorShape(if view.progress: Shape.Progress else: Shape.Default)
     return
 
   let elem = &view.focusedElement
@@ -524,6 +529,8 @@ proc executeOneMacrotask(view: WebView) =
 
 proc poll*(view: WebView) =
   view.loader.poll()
+  view.progress = view.loader.pendingAssets.len > 0 or view.loader.retryQueue.len > 0
+
   view.executeOneMacrotask()
 
 proc handleKeyboardEvent(view: WebView, event: Event) =
@@ -586,8 +593,6 @@ proc loop*(view: WebView): int =
         view.focusedElement = hitTest(view, view.renderCtx.tree, view.cursor)
 
       handleFocusedElement(view, clicked = false)
-    of EventKind.CursorFocusObtained:
-      view.app.setCursorShape(Shape.Default)
     of EventKind.CursorScroll:
       view.renderCtx.scrollVelocity = event.cursor.scroll * 0.25'f32
     of EventKind.CursorClick:

@@ -64,6 +64,9 @@ type
     imageCache*: TableRef[string, pixie.Image]
     failedPlaceholderImage*: pixie.Image
 
+    progress*: bool
+      # FIXME: There's probably some DOM API we can implement that shares the same thing instead of this hack
+
   WebView* = ref WebViewObj
 
 proc `=destroy`*(view: WebViewObj) =
