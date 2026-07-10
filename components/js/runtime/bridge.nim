@@ -93,15 +93,11 @@ proc setProperty*[V: not JSValue, T](
 
 proc defineFn*(runtime: Runtime, name: string, fn: NativeFunction) =
   ## Expose a native function to a JavaScript runtime.
-  debug "runtime: exposing native function to runtime: " & name
-  runtime.ir.newModule(normalizeIRName name)
-  let builtinName = "BALI_" & toUpperAscii(normalizeIRName(name))
   runtime.vm[].registerBuiltin(
-    builtinName,
+    name,
     proc(_: Operation) =
       fn(),
   )
-  runtime.ir.call(builtinName)
 
 proc definePrototypeFn*[T](
     runtime: Runtime, prototype: typedesc[T], name: string, fn: NativePrototypeFunction
