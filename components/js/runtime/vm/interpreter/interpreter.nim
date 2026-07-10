@@ -374,35 +374,23 @@ proc call*(
       interpreter.typeErrorHook("cannot call " & name)
 
 proc invoke*(interpreter: var PulsarInterpreter, value: JSValue) {.gcsafe.} =
-  if value.kind == Integer:
+  case value.kind
+  of Integer:
     let index = &getInt(value)
     msg "atom is integer/ref to atom: " & $index
-    let callable = &interpreter.get(index)
-
-    if callable.kind == BytecodeCallable:
-      msg "atom is bytecode segment"
-      interpreter.call(&getBytecodeClause(callable), default(Operation))
-    elif callable.kind == NativeCallable:
-      msg "atom is native segment"
-      callable.fn()
-      inc interpreter.currIndex
-    else:
-      interpreter.typeErrorHook($callable.kind & " is not a function")
-  elif value.kind == String:
+    interpreter.invoke(&interpreter.get(index))
+  of String:
     msg "atom is string/ref to native function"
     interpreter.call(&getStr(value), default(Operation))
-  elif value.kind == NativeCallable:
-    # FIXME: this is stupid.
+  of NativeCallable:
     msg "atom is native segment"
     value.fn()
     inc interpreter.currIndex
-  elif value.kind == BytecodeCallable:
-    # FIXME: this is stupid too
+  of BytecodeCallable:
+    msg "atom is bytecode segment"
     interpreter.call(&getBytecodeClause(value), default(Operation))
-    assert not interpreter.halt
-    assert interpreter.trapped
   else:
-    raise newException(ValueError, "INVK cannot deal with atom: " & $value.kind)
+    interpreter.typeErrorHook($value.kind & " is not a function")
 
 proc readRegister*(interpreter: var PulsarInterpreter, store, register, index: int) =
   case register
