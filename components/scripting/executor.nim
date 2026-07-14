@@ -10,14 +10,14 @@ import
   components/js/runtime/vm/interpreter/interpreter
 import
   components/scripting/dom/[document, element],
-  components/scripting/timeouts,
+  components/scripting/[url, timeouts],
   components/scripting/html/[navigator, window]
 import components/aux/pretty
 
 when defined(unix):
   import components/impure/nix
 
-import pkg/[chronicles, shakar, url]
+import pkg/[chronicles, shakar]
 
 logScope:
   topics = "scripting/executor"
@@ -40,6 +40,8 @@ proc registerWebBindings(elem: tags.HTMLScriptElement) =
 
   window.generateBindings(elem.script.rt)
   window.generateGlobal(elem.script.rt, doc)
+
+  url.generateBindings(elem.script.rt)
 
 proc setupRandomState(rng: out uint64) =
   when defined(unix):

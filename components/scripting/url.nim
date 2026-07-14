@@ -1,8 +1,8 @@
 ## JavaScript URL API - uses nim-url for URL parsing as per WHATWG
 ##
-## Copyright (C) 2024-2025 Trayambak Rai (xtrayambak at disroot dot org)
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak at disroot dot org)
 
-import std/[options, logging]
+import std/options
 import
   components/js/runtime/[arguments, types, atom_helpers, bridge, construction],
   components/js/runtime/abstract/coercion,
@@ -86,9 +86,7 @@ proc toNativeURL*(runtime: Runtime, obj: JSValue): url.URL =
 
   ensureMove(target)
 
-proc generateStdIR*(runtime: Runtime) =
-  info "url: generating IR interfaces"
-
+proc generateBindings*(runtime: Runtime) =
   runtime.registerType("URL", JSURL)
 
   # URL constructor (`new URL()` syntax)

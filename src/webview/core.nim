@@ -17,8 +17,8 @@ import
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
   components/js/runtime/vm/heap/manager,
   components/js/runtime/compiler/base,
-  components/js/stdlib/uri,
-  components/scripting/[executor, types]
+  components/scripting/[executor, types],
+  components/scripting/url as jsurl
 
 when hasJITSupport:
   import components/js/internal/assembler/amd64

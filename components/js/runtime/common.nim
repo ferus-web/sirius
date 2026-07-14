@@ -49,7 +49,6 @@ proc registerEcmaTypes*(runtime: Runtime) =
   std_string.generateStdIR(runtime)
   console.generateStdIR(runtime)
   math.generateStdIR(runtime)
-  uri.generateStdIR(runtime)
   errors_ir.generateStdIR(runtime)
   base64.generateStdIR(runtime)
   json.generateStdIR(runtime)
