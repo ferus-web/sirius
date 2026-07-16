@@ -148,11 +148,3 @@ proc parseSimplifiedISO8601*(date: string): Option[float] =
       unreachable
 
   some(timeMs)
-
-proc parseDate*(date: string, isLocalTime: bool): float =
-  var isLocalTime = true
-  var offset = 0
-  var dateString = date
-
-  # Trim leading whitespace.
-  dateString = dateString.internalTrim(strutils.Whitespace, TrimMode.Left)

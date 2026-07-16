@@ -257,7 +257,11 @@ proc parseConstructor(parser: Parser): Option[Statement] =
   if parser.tokenizer.eof or parser.tokenizer.next().kind != TokenKind.LParen:
     return some(constructObject((&next).ident, @[]))
 
-  return some(constructObject((&next).ident, &parser.parseArguments()))
+  let arguments = parser.parseArguments()
+  if !arguments:
+    parser.error Other, "expected arguments for constructor after type name"
+
+  return some(constructObject((&next).ident, &arguments))
 
 proc parseTypeofCall(parser: Parser): Option[PositionedArguments] =
   if parser.tokenizer.eof:
@@ -682,9 +686,11 @@ proc parseDeclaration(
       toCall = parser.parseConstructor()
       break
     of TokenKind.Typeof:
-      toCall = some(
-        call("BALI_TYPEOF".callFunction(), &parser.parseTypeofCall(), mangle = false)
-      )
+      let typeofCall = parser.parseTypeofCall()
+      if !typeofCall:
+        parser.error Other, "invalid usage of typeof"
+
+      toCall = some(call("BALI_TYPEOF".callFunction(), &typeofCall, mangle = false))
       break
     of TokenKind.LBracket:
       ternary = parser.parseArray()
@@ -1102,6 +1108,7 @@ proc parseReassignment(parser: Parser, ident: string): Option[Statement] =
     of TokenKind.Whitespace:
       discard
     of TokenKind.New:
+      # NOTE: Why can't we just use parseConstructor() here instead of duplicating the logic?
       let next = parser.tokenizer.nextExceptWhitespace()
 
       if !next:
@@ -1113,7 +1120,11 @@ proc parseReassignment(parser: Parser, ident: string): Option[Statement] =
       if not parser.tokenizer.eof() and parser.tokenizer.next().kind != TokenKind.LParen:
         parser.error Other, "expected left parenthesis when creating object constructor"
 
-      toCall = some(constructObject((&next).ident, &parser.parseArguments()))
+      let arguments = parser.parseArguments()
+      if !arguments:
+        parser.error Other, "expected arguments for constructor after type name"
+
+      toCall = some(constructObject((&next).ident, &arguments))
       break
     else:
       parser.error UnexpectedToken, $tok.kind
@@ -1680,8 +1691,11 @@ proc parseStatement(parser: Parser): Option[Statement] =
       except CatchableError as exc:
         discard
   of TokenKind.Typeof:
-    return
-      some(call("BALI_TYPEOF".callFunction, &parser.parseTypeofCall(), mangle = false))
+    let typeofCall = parser.parseTypeofCall()
+    if !typeofCall:
+      parser.error Other, "invalid usage of typeof"
+
+    return some(call("BALI_TYPEOF".callFunction, &typeofCall, mangle = false))
   of TokenKind.For:
     return parser.parseForLoop()
   of TokenKind.Try:
