@@ -13,6 +13,7 @@ import
   components/os/[assets, fonts],
   components/net/core,
   components/js/runtime/prelude as js
+import ./[cookie_jar]
 
 logScope:
   topics = "webview/types"
@@ -66,6 +67,8 @@ type
 
     progress*: bool
       # FIXME: There's probably some DOM API we can implement that shares the same thing instead of this hack
+
+    cookieJar*: CookieJar
 
   WebView* = ref WebViewObj
 

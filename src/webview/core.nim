@@ -2,17 +2,17 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[monotimes, options, streams, strformat, strutils, sequtils, tables, unicode]
-import ./[hit_testing, resource_loader, types]
+import ./[cookie_jar, hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
-  components/aux/stream_utils,
+  components/aux/[pretty, stream_utils],
   components/gfx/[core, init, painter, font_loader],
   components/dom/[dom, tags],
   components/html/[parser, dom_utils, data_parser, meta],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
-  components/net/[core, mime],
+  components/net/[cookie_parser, core, mime],
   components/js/grammar/prelude,
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
   components/js/runtime/vm/heap/manager,
@@ -79,6 +79,7 @@ proc initWebView*(opts: WebViewOpts): WebView =
     imageCache: newTable[string, pixie.Image](),
     opts: opts,
     failedPlaceholderImage: newImage(64, 64),
+    cookieJar: loadCookieJar(),
   )
   webview.failedPlaceholderImage.fill(rgb(255, 0, 0))
 
@@ -373,7 +374,22 @@ proc loadImageStream(view: WebView, resp: Response) =
 
   view.loadHTMLStream(newStringStream(viewerTemplate))
 
+proc parseAndHandleCookie(view: WebView, cookieStr: string) =
+  let parsed = parseCookie(view.target, cookieStr)
+  if !parsed:
+    warn "Failed to parse cookie! Is it malformed?", buffer = cookieStr
+    return
+
+  view.cookieJar.insert(&parsed)
+
+proc handleResponseHeaders(view: WebView, headers: HttpHeaders) =
+  for hdr in headers:
+    if cmpIgnoreCase(hdr.name, "set-cookie") == 0:
+      view.parseAndHandleCookie(hdr.value)
+
 proc loadStream(view: WebView, resp: Response) =
+  view.handleResponseHeaders(resp.headers)
+
   let contentType = resp.contentType()
 
   if !contentType:
@@ -602,4 +618,5 @@ proc loop*(view: WebView): int =
       discard # debug "Unhandled surfer event", kind = event.kind
 
   info "Exiting main loop"
+  view.cookieJar.write()
   return 0

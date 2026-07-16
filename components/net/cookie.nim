@@ -12,9 +12,9 @@ type
     Lax
 
   Cookie* = object
-    creationTime*: uint64
+    creationTime*: int64
 
-    expires*: Option[uint64]
+    expires*: Option[int64]
     maxAge*: Option[int64]
     domain*, path*: string
     secure*, httpOnly*: bool
