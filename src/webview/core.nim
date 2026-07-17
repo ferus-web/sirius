@@ -1,7 +1,11 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[monotimes, options, streams, strformat, strutils, sequtils, tables, unicode]
+import
+  std/[
+    algorithm, monotimes, options, streams, strformat, strutils, sequtils, tables,
+    unicode,
+  ]
 import ./[cookie_jar, hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
@@ -12,7 +16,7 @@ import
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
-  components/net/[cookie_parser, core, mime],
+  components/net/[cookie, cookie_parser, core, mime],
   components/js/grammar/prelude,
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
   components/js/runtime/vm/heap/manager,
@@ -81,6 +85,8 @@ proc initWebView*(opts: WebViewOpts): WebView =
     failedPlaceholderImage: newImage(64, 64),
     cookieJar: loadCookieJar(),
   )
+
+  webview.cookieJar.collect()
   webview.failedPlaceholderImage.fill(rgb(255, 0, 0))
 
   webview.app.initialize()
@@ -406,6 +412,20 @@ proc loadStream(view: WebView, resp: Response) =
   else:
     warn "Unhandled content type", typ = &contentType
 
+proc buildRequestHeaders(view: WebView, url: URL): HttpHeaders =
+  let cookies = view.cookieJar.match(url)
+  var cookieBuffer: string # TODO: Preallocate
+
+  let cookiesList = reversed(cookies.sortedByIt(it.path.len))
+
+  for i, cookie in cookiesList:
+    cookieBuffer &= cookie.serialize(last = i == cookiesList.len - 1)
+
+  var headers = emptyHttpHeaders()
+  headers["Set-Cookie"] = ensureMove(cookieBuffer)
+
+  ensureMove(headers)
+
 proc loadUrl(view: WebView, url: URL) =
   info "Loading page", dest = url
 
@@ -419,6 +439,7 @@ proc loadUrl(view: WebView, url: URL) =
   discard view.loader.getAsyncStream(
     url = url,
     timeoutMs = 60000,
+    headers = view.buildRequestHeaders(url),
     finalize = proc(resp: Response, err: TransportError) =
       if err.kind == TransportErrorKind.None:
         view.loadStream(resp)
@@ -618,5 +639,6 @@ proc loop*(view: WebView): int =
       discard # debug "Unhandled surfer event", kind = event.kind
 
   info "Exiting main loop"
+  view.cookieJar.collect()
   view.cookieJar.write()
   return 0
