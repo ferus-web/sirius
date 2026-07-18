@@ -17,7 +17,7 @@ import components/aux/pretty
 when defined(unix):
   import components/impure/nix
 
-import pkg/[chronicles, shakar, url]
+import pkg/[chronicles, shakar], pkg/url as urlparser
 
 logScope:
   topics = "scripting/executor"

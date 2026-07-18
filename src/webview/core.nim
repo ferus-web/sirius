@@ -323,6 +323,15 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
         view.handleHTMLMetaElement(element),
     ),
   )
+  view.dom.url = view.target
+
+  #!fmt: off
+  view.dom.cookies = view.cookieJar
+    .match(view.target)
+    .sortedByIt(it.path.len)
+    .reversed()
+  #!fmt: on
+
   userAgent.close()
 
   let title = getDocumentTitle(view.dom)
@@ -386,7 +395,7 @@ proc parseAndHandleCookie(view: WebView, cookieStr: string) =
     warn "Failed to parse cookie! Is it malformed?", buffer = cookieStr
     return
 
-  view.cookieJar.insert(&parsed)
+  view.dom.cookies &= &parsed
 
 proc handleResponseHeaders(view: WebView, headers: HttpHeaders) =
   for hdr in headers:
@@ -639,6 +648,10 @@ proc loop*(view: WebView): int =
       discard # debug "Unhandled surfer event", kind = event.kind
 
   info "Exiting main loop"
+  print view.dom.cookies
+  if *view.target.hostname:
+    view.cookieJar.domains[&view.target.hostname] = view.dom.cookies
+
   view.cookieJar.collect()
   view.cookieJar.write()
   return 0

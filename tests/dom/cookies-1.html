@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <p id="cookies-str">Cookies go here</p>
+  </body>
+  <script>
+    document.cookie = "foo=bar; Message=SetByJavaScript"
+
+    let label = document.getElementById("cookies-str");
+    label.textContent = document.cookie;
+  </script>
+</html>

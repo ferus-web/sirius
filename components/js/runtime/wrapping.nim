@@ -59,8 +59,10 @@ proc wrap*[T: object](runtime: Runtime, obj: T): JSValue =
 
 proc wrap*[T: object](runtime: Runtime, dest: JSValue, obj: T) =
   for name, field in obj.fieldPairs:
-    if field is Hidden:
+    when field is Hidden:
       setHiddenField(dest, name, runtime.wrap(field))
+    elif field is FieldAccessor:
+      runtime.setFieldAccessor(dest, name, field)
     else:
       dest[name] = runtime.wrap(field)
 

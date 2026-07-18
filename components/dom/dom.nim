@@ -2,7 +2,8 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, hashes]
-import pkg/chame/[htmlparser, tags]
+import components/net/cookie
+import pkg/chame/[htmlparser, tags], pkg/url
 
 export tags
 
@@ -44,6 +45,9 @@ type
 
     edited*: bool
     willDeclarativelyRefresh*: bool
+
+    cookies*: seq[Cookie]
+    url*: URL
 
   Text* = ref object of CharacterData
 

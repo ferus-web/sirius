@@ -42,3 +42,11 @@ func serialize*(cookie: Cookie, last: bool = false): string {.inline.} =
     buffer &= "; "
 
   ensureMove(buffer)
+
+func serialize*(cookies: seq[Cookie]): string {.inline.} =
+  var buffer: string # TODO: prealloc
+
+  for i, cookie in cookies:
+    buffer &= cookie.serialize(last = i == cookies.len - 1)
+
+  ensureMove(buffer)
