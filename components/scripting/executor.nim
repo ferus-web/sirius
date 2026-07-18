@@ -17,7 +17,7 @@ import components/aux/pretty
 when defined(unix):
   import components/impure/nix
 
-import pkg/[chronicles, shakar]
+import pkg/[chronicles, shakar, url]
 
 logScope:
   topics = "scripting/executor"
@@ -86,7 +86,7 @@ proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
   )
   element.script.rt.deathCallback = proc(vm: Interpreter) =
     error "Script execution error"
-    debugEcho &"{element.script.rt.ir.name} on {element.script.baseURL}"
+    debugEcho &"{element.script.rt.ir.name} on {serialize(element.script.baseURL)}"
     debugEcho &"  pc: {vm.currIndex}; jit: {vm.runningCompiled}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"
     debugEcho &"  halt: {vm.halt}; trace: 0x{cast[uint64](vm.trace):X}"
 
