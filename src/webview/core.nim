@@ -283,7 +283,7 @@ proc handleHTMLMetaElement(view: WebView, element: HTMLMetaElement) =
   let httpEquiv = &element.httpEquiv
   case httpEquiv
   of HTTPEquiv.Refresh:
-    let dataOpt = parseRefreshData(&element.content)
+    let dataOpt = parseRefreshData(&element.content, some(view.target))
     if !dataOpt:
       warn "Cannot handle Refresh metadata, failed to parse metadata content",
         message = dataOpt.error()

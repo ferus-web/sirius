@@ -72,7 +72,9 @@ func parseMetadataName*(value: string): Option[MetadataName] =
   else:
     none(MetadataName)
 
-func parseRefreshData*(content: string): Result[RefreshData, string] =
+func parseRefreshData*(
+    content: string, baseURL: Option[URL] = none(URL)
+): Result[RefreshData, string] =
   ## Parse data for a timed redirect.
   ## https://html.spec.whatwg.org/#attr-meta-http-equiv-refresh
 
@@ -160,7 +162,7 @@ func parseRefreshData*(content: string): Result[RefreshData, string] =
 
     func parseStep(): Result[RefreshData, string] =
       # 11. Parse: Set urlRecord to the result of encoding-parsing a URL given urlString, relative to document.
-      let parsed = tryParseURL(urlString)
+      let parsed = tryParseURL(urlString, baseURL)
 
       # 12. If urlRecord is failure, then return.
       if !parsed:
