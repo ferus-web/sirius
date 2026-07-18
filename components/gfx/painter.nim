@@ -6,6 +6,7 @@ import
   pkg/[pixie, shakar, vmath],
   pkg/figdraw/[commons, fignodes, figrender],
   pkg/figdraw/common/[typefaces, fonttypes],
+  pkg/figdraw/utils/drawutils,
   pkg/figdraw/vulkan/vulkan_context,
   pkg/figdraw/windowing/surfershim
 import
@@ -33,6 +34,57 @@ proc textLayout(
     wrap = wrap,
   )
 
+proc drawNodeBorder(
+    ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx, nodeScreenBox: Rect
+): Option[Fig] =
+  let
+    borderColor =
+      if *node.border.color:
+        &node.border.color
+      else:
+        node.color
+    borderWidth =
+      if *node.border.width:
+        ctx.outputManager.computePixels(&node.border.width)
+      else:
+        1.0'f32
+
+  case &node.border.style
+  of BorderStyle.Solid:
+    var containerFig = Fig(
+      kind: nkRectangle, parent: parentIdx, zlevel: 0.ZLevel, screenBox: nodeScreenBox
+    )
+
+    containerFig.stroke = RenderStroke(weight: borderWidth, fill: fill(borderColor))
+    return some(containerFig)
+  of BorderStyle.Dashed:
+    var containerFig = figDashedRoundedRectBorder(
+      nodeScreenBox,
+      default(array[DirectionCorners, uint16]),
+      borderColor,
+      weight = borderWidth,
+      dashLength = 3 * borderWidth,
+        # these are kind of arbitrary, but they seem to look the closest to chromium and epiphany
+      gapLength = 2 * borderWidth,
+      offset = 16.0'f32,
+      cap = scSquare,
+    )
+
+    return some(containerFig)
+  of BorderStyle.Dotted:
+    var containerFig = figDottedRoundedRectBorder(
+      nodeScreenBox,
+      default(CornerRadii),
+      borderColor,
+      weight = borderWidth,
+      gapLength = 2 * borderWidth,
+      offset = 16.0'f32,
+    ) # TODO: This creates arcs. we need a path that doesn't.
+
+    return some(containerFig)
+  else:
+    discard # warn "Unhandled border style", style = &node.border.style
+
 proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) =
   if node == nil:
     return
@@ -51,20 +103,15 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
   if node.backgroundColor.a > 0:
     containerFig.fill = fill(node.backgroundColor)
 
-  if *node.border.style and &node.border.style == BorderStyle.Solid:
-    let bColor =
-      if *node.border.color:
-        &node.border.color
-      else:
-        node.color
-    let bWidth =
-      if *node.border.width:
-        ctx.outputManager.computePixels(&node.border.width)
-      else:
-        1.0'f32
-    containerFig.stroke = RenderStroke(weight: bWidth, fill: fill(bColor))
+  var borderFig: Option[Fig]
+
+  if *node.border.style:
+    borderFig = ctx.drawNodeBorder(node, parentIdx, nodeScreenBox)
 
   let currentIdx = ctx.displayList.addChild(ZLevel(0), parentIdx, containerFig)
+
+  if *borderFig:
+    discard ctx.displayList.addChild(ZLevel(0), parentIdx, &borderFig)
 
   case node.display
   of DisplayMode.Block, DisplayMode.Inline:
