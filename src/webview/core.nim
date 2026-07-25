@@ -162,8 +162,16 @@ proc reflow(view: WebView) =
   propagateStyles(view.tree, view.styleMap, view.fontProvider)
 
   view.renderCtx.tree = view.tree.clone()
-  view.renderCtx.tree.computeLayout(
-    vec2(0, 0), float32(view.app.windowSize.x), view.outputManager, view.fontProvider
+  computeLayout(
+    FlowContext(
+      document: view.dom,
+      availableWidth: float32(view.app.windowSize.x),
+      outputManager: view.outputManager,
+      fontProvider: view.fontProvider,
+      parentExplicitHeight: none(float32),
+    ),
+    node = view.renderCtx.tree,
+    parent = vec2(0, 0),
   )
 
   view.renderCtx.imageCache = view.imageCache
@@ -337,6 +345,10 @@ proc loadHTMLStream(view: WebView, stream: Stream) =
   let title = getDocumentTitle(view.dom)
   if *title:
     view.app.setTitle(&"{&title} — Sirius")
+
+  if (let htmlElem = view.dom.html(); *htmlElem) and
+      (let langAttrib = getAttr(&htmlElem, view.dom.factory, "lang"); *langAttrib):
+    view.dom.language = langAttrib
 
   view.reflow()
   view.renderCtx.viewerPosition = vec2(0, 0)
