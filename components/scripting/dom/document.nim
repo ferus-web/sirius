@@ -37,16 +37,11 @@ proc generateGlobal*(runtime: Runtime, doc: dom.Document): JSValue =
             valueStr = runtime.ToString(value)
             document = &this.getPrivateObject(dom.Document)
 
-          var cookies = newSeqOfCap[Cookie](valueStr.count(';'))
+          let parsed = parseCookie(document.url, valueStr)
+          if !parsed:
+            return
 
-          for pair in valueStr.split(';'):
-            let parsed = parseCookie(document.url, pair)
-            if !parsed:
-              return
-
-            cookies &= &parsed
-
-          document.cookies &= ensureMove(cookies),
+          document.cookies &= &parsed,
       ),
     ),
   )
@@ -100,5 +95,15 @@ proc generateBindings*(runtime: Runtime) =
         elems[i] = runtime.toJSElement(elem)
 
       ret ensureMove(elems)
+    ,
+  )
+
+  runtime.definePrototypeFn(
+    JSDocument,
+    "write",
+    proc(this: JSValue) =
+      let htmlSrc = runtime.ToString(&runtime.argument(1, required = true))
+
+      echo htmlSrc
     ,
   )

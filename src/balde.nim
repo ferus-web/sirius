@@ -6,14 +6,14 @@
 when not isMainModule:
   {.error: "This file is not meant to be separately imported!".}
 
-import std/[strutils, terminal, times, tables, os, options, monotimes, logging, json]
+import std/[strutils, terminal, times, tables, os, options, monotimes, json]
 import components/aux/pretty
 import components/js/grammar/prelude
 import components/js/runtime/prelude
 import
   components/js/runtime/vm/heap/[boehm],
   components/js/runtime/vm/interpreter/interpreter
-import pkg/[colored_logger, jsony, noise, fuzzy, shakar]
+import pkg/[jsony, noise, fuzzy, shakar]
 import ./argparser
 
 when defined(amd64):
@@ -31,8 +31,7 @@ var
   profile = initTable[string, int64]()
 
 proc enableLogging() {.inline.} =
-  addHandler newColoredLogger()
-  setLogFilter(lvlInfo)
+  discard
 
 template profileThis(task: string, body: untyped) =
   var start: MonoTime
@@ -51,7 +50,7 @@ proc die(msg: varargs[string]) {.inline, noReturn.} =
   for m in msg:
     str &= m & ' '
 
-  error(str)
+  stderr.write(str & '\n')
   quit(1)
 
 proc allocRuntime*(
@@ -91,13 +90,13 @@ proc allocRuntime*(
 
   if not success:
     assert(*expStr)
-    error "Failed to enable certain experiments."
+    stderr.write "Failed to enable certain experiments.\n"
     quit(1)
 
   if *expStr and not ctx.enabled("disable-experiment-warning"):
-    info "You have enabled certain experiments."
-    info "By enabling them, you know that the engine will be more unstable than it already is."
-    info "These features are not production ready!"
+    echo "You have enabled certain experiments."
+    echo "By enabling them, you know that the engine will be more unstable than it already is."
+    echo "These features are not production ready!"
 
   runtime
 
@@ -135,13 +134,13 @@ proc allocRuntime*(ctx: Input, file: string): Runtime =
 
   if not success:
     assert(*expStr)
-    error "Failed to enable certain experiments."
+    stderr.write "Failed to enable certain experiments.\n"
     quit(1)
 
   if *expStr and not ctx.enabled("disable-experiment-warning"):
-    info "You have enabled certain experiments."
-    info "By enabling them, you know that the engine will be more unstable than it already is."
-    info "These features are not production ready!"
+    echo "You have enabled certain experiments."
+    echo "By enabling them, you know that the engine will be more unstable than it already is."
+    echo "These features are not production ready!"
 
   runtime
 
@@ -362,9 +361,6 @@ proc execFile(ctx: Input, file: string) {.inline.} =
     echo "* GC Allocations: " & $runtime.realm.heap.metrics.allocatedBytesGc & " bytes"
 
 proc baldeRun(ctx: Input) =
-  if not ctx.enabled("verbose", "v"):
-    setLogFilter(lvlWarn)
-
   enableProfiler = ctx.enabled("enable-profiler", "P")
 
   let arg = ctx.command
@@ -521,7 +517,6 @@ Version: $2
 
 Options:
   --help, -h                              Show this message.
-  --verbose, -v                           Show additional debug logs, useful for debugging the engine.
   --dump-bytecode, -D                     Dump bytecode for the next evaluation.
   --dump-tokens, -T                       Dump tokens for the provided file.
   --dump-ast                              Dump the abstract syntax tree for the JavaScript file.
@@ -557,16 +552,10 @@ proc main() {.inline.} =
     echo "Bali is developed by the Ferus Project. All of the source code is licensed under the BSD-3 license."
     quit(0)
 
-  if input.enabled("verbose", "v"):
-    setLogFilter(lvlAll)
-
   if input.enabled("help", "h"):
     showHelp()
 
   if input.command.len < 1:
-    if not input.enabled("verbose", "v"):
-      setLogFilter(lvlError)
-
     baldeRepl(input)
     quit(0)
 
