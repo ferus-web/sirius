@@ -3,7 +3,7 @@
 ## them into Madhyasthal's specialized ops.
 ##
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak at disroot dot org)
-import std/[algorithm, options, logging, tables]
+import std/[algorithm, options, tables]
 import pkg/[shakar]
 import
   components/js/runtime/compiler/madhyasthal/ir,
@@ -145,7 +145,7 @@ proc patchJumps*(fn: var Function, stream: OpStream) =
 
 proc lowerStream*(fn: var Function, stream: var OpStream): bool =
   template bailout(msg: string) =
-    debug "jit/amd64: midtier jit is bailing out: " & msg
+    # # debug "jit/amd64: midtier jit is bailing out: " & msg
 
     when not defined(baliExplosiveBailouts):
       return false

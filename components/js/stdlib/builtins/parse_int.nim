@@ -1,7 +1,6 @@
 ## `parseInt` builtin.
-##
 
-import std/[strutils, math, options, logging]
+import std/[strutils, math, options]
 import components/js/runtime/vm/prelude
 import components/js/runtime/[arguments, types, bridge, construction]
 import components/js/internal/[trim_string]
@@ -47,12 +46,9 @@ template parseIntFunctionSubstitution*() =
           floating(runtime, NaN)
     )
   except ValueError as exc:
-    warn "builtins.parse_int(" & $value & "): " & exc.msg & " (radix=" & $radix & ')'
     runtime.vm.registers.retVal = some floating(runtime, NaN)
 
 proc parseIntGenerateStdIr*(runtime: Runtime) =
-  info "builtins.parse_int: generating IR interfaces"
-
   # parseInt
   # The parseInt() function parses a string argument and returns an integer of the specified radix (the base in mathematical numeral systems).
   runtime.defineFn(

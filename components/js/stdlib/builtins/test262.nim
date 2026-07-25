@@ -1,7 +1,5 @@
 ## Test262 required builtins/harnesses
-##
-
-import std/[math, options, logging, terminal, hashes]
+import std/[math, options, terminal, hashes]
 import components/js/runtime/vm/prelude
 import components/js/runtime/[bridge]
 import components/js/runtime/abstract/[equating, to_string]
@@ -16,7 +14,7 @@ proc test262Error*(runtime: Runtime, msg: string) =
 type JSAssert* = object
 
 proc generateStdIr*(runtime: Runtime) =
-  info "builtins.test262: generating IR interfaces"
+  # info "builtins.test262: generating IR interfaces"
 
   # $DONOTEVALUATE (stub)
   runtime.defineFn(

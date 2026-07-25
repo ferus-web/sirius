@@ -1,8 +1,9 @@
 ## Base64 encoding/decoding
 ## These aren't part of the ECMAScript standard, but rather the HTML living spec.
-##
+## 
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[options, logging]
+import std/[options]
 import components/js/runtime/[arguments, types, bridge, construction]
 import components/js/runtime/abstract/coercion
 import components/js/stdlib/errors
@@ -11,8 +12,6 @@ import pkg/shakar
 import components/impure/simdutf
 
 proc generateStdIr*(runtime: Runtime) =
-  info "builtins.base64: generating IR interfaces"
-
   # atob
   # Decode a base64 encoded string
   runtime.defineFn(

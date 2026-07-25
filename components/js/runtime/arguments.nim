@@ -1,4 +1,4 @@
-import std/[logging, options, strutils]
+import std/[options, strutils]
 import components/js/runtime/vm/atom
 import components/js/runtime/vm/interpreter/interpreter
 import components/js/runtime/[types]
@@ -16,20 +16,12 @@ proc argument*(
   assert(position > 0, "argument() only accepts naturals.")
 
   if runtime.vm.registers.callArgs.len < position:
-    debug "runtime: argument(): " & $position & " > " &
-      $runtime.vm.registers.callArgs.len
     if required:
-      debug "runtime: argument(): `required` == true, throwing TypeError"
-      when not defined(danger):
-        if message.len < 1:
-          warn "runtime: FIXME: argument() was provided an empty error message for when an atom is required, this can make debugging more difficult for users."
-
       let msg = message.multiReplace({"{nargs}": $runtime.vm.registers.callArgs.len})
 
       typeError(runtime, msg)
       return
     else:
-      debug "runtime: argument(): `required` == false, ignoring and returning `undefined`"
       return some(undefined(runtime.realm.heap))
 
   some(runtime.vm.registers.callArgs[position - 1])

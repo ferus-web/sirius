@@ -1,4 +1,4 @@
-import std/[logging, math, options]
+import std/[math, options]
 import components/js/runtime/vm/prelude
 import pkg/shakar
 import components/js/runtime/[atom_helpers, types]
@@ -7,7 +7,6 @@ import components/js/internal/[trim_string, parse_number]
 
 proc StringToNumber*(runtime: Runtime, value: JSValue): float =
   assert value.kind == String, "StringToNumber() was passed a " & $value.kind
-  debug "runtime: StringToNumber(" & value.crush() & ')'
   let text = runtime.trimString(value, TrimMode.Both)
 
   if text.len < 1:

@@ -1,7 +1,7 @@
 ## Implementation of the `Date` object
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
-import std/[math, strformat, times, logging, options]
+import std/[math, strformat, times, options]
 import pkg/shakar
 import components/js/runtime/vm/atom
 import
@@ -28,7 +28,7 @@ proc parseDateString(runtime: Runtime, dateString: string): float =
   if (let time = parseSimplifiedISO8601(dateString); *time):
     return &time
 
-  warn "date: TODO: implementation-specific date formats are not supported"
+  # # warn "date: TODO: implementation-specific date formats are not supported"
   # TODO: Implement implementation-specific formats. For instance,
   #       Firefox and Chrome support "DD/MM/YYYY HH:mm AM/PM +TZ"
   #       The spec isn't very clear on this, so it's best to implement
@@ -105,8 +105,6 @@ proc toDateString*(tv: float): string {.gcsafe.} =
   fmt"{dateToString(tv)} {timeToString(tv)}{getTimeZoneString(tv)}"
 
 proc generateStdIR*(runtime: Runtime) =
-  info "date: generating IR interfaces"
-
   runtime.registerType("Date", JSDate)
   runtime.defineConstructor(
     "Date",

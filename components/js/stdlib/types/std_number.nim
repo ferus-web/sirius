@@ -1,6 +1,6 @@
 ## Number type
 ## Author: Trayambak Rai (xtrayambak at disroot dot org)
-import std/[math, fenv, logging]
+import std/[math, fenv]
 import
   components/js/runtime/[arguments, bridge, atom_helpers, wrapping, types, construction]
 import components/js/runtime/abstract/[to_number, to_string]
@@ -16,12 +16,14 @@ proc thisNumberValue*(runtime: Runtime, value: JSValue): JSValue =
   ## 21.1.3.7.1 ThisNumberValue ( value )
 
   if value.isNumber:
-    debug "runtime: ThisNumberValue(): value is a number, returning itself."
+    # # debug "runtime: ThisNumberValue(): value is a number, returning itself."
     # 1. If value is a Number, return value.
     return value
 
   if value.isObject and value.contains("@value"):
-    debug "runtime: ThisNumberValue(): value is an object and contains a [[NumberData]] slot, this is a boxed Number."
+    # FIXME: I'm not sure this is valid anymore.
+
+    # # debug "runtime: ThisNumberValue(): value is an object and contains a [[NumberData]] slot, this is a boxed Number."
     # 2. If value is an Object and value has a [[NumberData]] internal slot, then
 
     # a. Let n be value.[[NumberData]].
@@ -33,7 +35,7 @@ proc thisNumberValue*(runtime: Runtime, value: JSValue): JSValue =
     # c. Return n.
     return n
 
-  debug "runtime: ThisNumberValue(): value is neither a boxed Number (or its [[NumberData]] slot was overwritten) and nor is it a regular primitive integral type."
+  # # debug "runtime: ThisNumberValue(): value is neither a boxed Number (or its [[NumberData]] slot was overwritten) and nor is it a regular primitive integral type."
   # 3. Throw a TypeError exception
   runtime.typeError("Cannot obtain number value of object")
 

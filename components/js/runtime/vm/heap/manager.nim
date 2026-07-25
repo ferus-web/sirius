@@ -6,7 +6,6 @@
 ## allocator states Bali manages.
 ##
 ## Copyright (C) 2025 Trayambak Rai
-import std/[logging]
 import components/js/runtime/vm/heap/[boehm, bump_allocator]
 
 type
@@ -25,10 +24,10 @@ type
     metrics*: AllocationMetrics
 
 proc release*(manager: HeapManager) =
-  debug "vm/heap: releasing all* held memory; freeing bump allocator buffer"
+  # # debug "vm/heap: releasing all* held memory; freeing bump allocator buffer"
   manager.bump.release()
 
-  debug "vm/heap: performing full GC collection"
+  # # debug "vm/heap: performing full GC collection"
   boehmGC_fullCollect()
 
 proc allocate*(manager: HeapManager, size: SomeUnsignedInt): pointer =
@@ -52,13 +51,13 @@ proc allocate*(manager: HeapManager, size: SomeUnsignedInt): pointer =
   pntr
 
 proc initHeapManager*(): HeapManager =
-  debug "vm/heap: initializing heap manager"
+  # # debug "vm/heap: initializing heap manager"
   var manager = HeapManager()
 
-  debug "vm/heap: initializing bump allocator"
+  # # debug "vm/heap: initializing bump allocator"
   manager.bump = initBumpAllocator()
 
-  debug "vm/heap: initializing garbage collector state"
+  # # debug "vm/heap: initializing garbage collector state"
   boehmGCinit()
   boehmGC_enable()
 

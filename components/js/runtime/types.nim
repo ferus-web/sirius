@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak at disroot dot org)
 
-import std/[deques, monotimes, options, hashes, logging, sugar, tables, times]
+import std/[deques, monotimes, options, hashes, sugar, tables, times]
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/prelude
 import components/js/grammar/prelude
@@ -158,10 +158,8 @@ proc setExperiment*(opts: var ExperimentOpts, name: string, value: bool): bool =
   ## the experiment is not recognized.
   case name
   else:
-    warn "Unrecognized experiment \"" & name & "\"!"
     return false
 
-  info "Enabling experiment \"" & name & '"'
   true
 
 {.pop.}
@@ -258,8 +256,8 @@ proc markInternal*(
     runtime.realm.values &=
       Value(kind: vkInternal, index: indexS, identifier: ident, ownerStmt: hash(stmt))
 
-    info "Ident \"" & ident & "\" is being internally marked at index " & $indexS &
-      " with statement hash: " & $hash(stmt)
+    # # info "Ident \"" & ident & "\" is being internally marked at index " & $indexS &
+    #  " with statement hash: " & $hash(stmt)
 
   if !index:
     inc runtime.realm.addrIdx
@@ -281,8 +279,8 @@ proc markGlobal*(runtime: Runtime, ident: string, index: Option[uint] = none(uin
 
   runtime.realm.values &= Value(kind: vkGlobal, index: idx, identifier: ident)
 
-  info "Ident \"" & ident & "\" is being globally marked at index " &
-    $runtime.realm.addrIdx
+  # # info "Ident \"" & ident & "\" is being globally marked at index " &
+  #  $runtime.realm.addrIdx
 
   inc runtime.realm.addrIdx
 
@@ -307,8 +305,8 @@ proc markLocal*(
   runtime.realm.values &=
     Value(kind: vkLocal, index: idx, identifier: ident, ownerFunc: hash(fn))
 
-  info "Ident \"" & ident & "\" is being locally marked at index " &
-    $runtime.realm.addrIdx
+  # # info "Ident \"" & ident & "\" is being locally marked at index " &
+  #  $runtime.realm.addrIdx
 
   inc runtime.realm.addrIdx
 
@@ -356,13 +354,11 @@ proc index*(
     if not willHandleResolveFail:
       runtime.ir.throwReferenceError(ident)
 
-    assert(ident != "undefined")
     return runtime.index("undefined", params)
 
   &resolved
 
 proc loadIRAtom*(runtime: Runtime, atom: MAtom): uint =
-  debug "codegen: loading atom with kind: " & $atom.kind
   case atom.kind
   of Integer:
     runtime.ir.loadInt(runtime.realm.addrIdx, atom)

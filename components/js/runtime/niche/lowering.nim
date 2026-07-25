@@ -2,7 +2,7 @@
 ## 
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[options, hashes, logging, strutils, tables, importutils]
+import std/[options, hashes, strutils, tables, importutils]
 import components/aux/pretty
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/prelude
@@ -41,15 +41,15 @@ proc expand*(
   {.cast(gcsafe).}:
     case stmt.kind
     of Call:
-      debug "niche: expand Call statement"
+      # # debug "niche: expand Call statement"
       for i, arg in stmt.arguments:
         if arg.kind == cakAtom:
-          debug "niche: load immutable value to expand Call's immediate arguments: " &
-            arg.atom.crush()
+          # # debug "niche: load immutable value to expand Call's immediate arguments: " &
+          # arg.atom.crush()
           discard runtime.loadIRAtom(arg.atom)
           runtime.markInternal(stmt, $i)
         elif arg.kind == cakImmediateExpr:
-          debug "niche: add code to solve expression to expand Call's immediate expression argument"
+          # # debug "niche: add code to solve expression to expand Call's immediate expression argument"
           runtime.markInternal(stmt, $i)
           runtime.generateBytecode(
             fn,
@@ -59,17 +59,17 @@ proc expand*(
             exprStoreIn = some($i),
           )
     of ConstructObject:
-      debug "niche: expand ConstructObject statement"
+      # # debug "niche: expand ConstructObject statement"
       for i, arg in stmt.args:
         if arg.kind == cakAtom:
-          debug "niche: load immutable value to ConstructObject's immediate arguments: " &
-            arg.atom.crush()
+          # # debug "niche: load immutable value to ConstructObject's immediate arguments: " &
+          # arg.atom.crush()
 
           discard runtime.loadIRAtom(arg.atom)
           let name = $hash(stmt) & '_' & $i
           runtime.markInternal(stmt, name)
         elif arg.kind == cakImmediateExpr:
-          debug "niche: add code to solve expression to expand ConstructObject's immediate expression argument"
+          # # debug "niche: add code to solve expression to expand ConstructObject's immediate expression argument"
           runtime.markInternal(stmt, $i)
           runtime.generateBytecode(
             fn,
@@ -79,10 +79,10 @@ proc expand*(
             parentStmt = some(stmt),
           )
     of CallAndStoreResult:
-      debug "niche: expand CallAndStoreResult statement by expanding child Call statement"
+      # # debug "niche: expand CallAndStoreResult statement by expanding child Call statement"
       runtime.expand(fn, stmt.storeFn, internal)
     of ThrowError:
-      debug "niche: expand ThrowError"
+      # # debug "niche: expand ThrowError"
 
       if *stmt.error.str:
         runtime.generateBytecode(
@@ -152,11 +152,11 @@ proc expand*(
       else:
         unreachable
     of IfStmt:
-      debug "niche: expand IfStmt"
+      # # debug "niche: expand IfStmt"
 
       case stmt.conditionExpr.binLeft.kind
       of AtomHolder:
-        debug "niche: if-stmt: left term is an atom"
+        # # debug "niche: if-stmt: left term is an atom"
         runtime.generateBytecode(
           fn,
           createImmutVal("left_term", stmt.conditionExpr.binLeft.atom),
@@ -176,7 +176,7 @@ proc expand*(
 
       case stmt.conditionExpr.binRight.kind
       of AtomHolder:
-        debug "niche: if-stmt: right term is an atom"
+        # # debug "niche: if-stmt: right term is an atom"
         runtime.generateBytecode(
           fn,
           createImmutVal("right_term", stmt.conditionExpr.binRight.atom),
@@ -194,9 +194,9 @@ proc expand*(
       else:
         discard
     of WhileStmt:
-      debug "niche: expand WhileStmt"
+      # # debug "niche: expand WhileStmt"
       if stmt.whConditionExpr.binLeft.kind == AtomHolder:
-        debug "niche: while-stmt: left term is an atom"
+        # # debug "niche: while-stmt: left term is an atom"
         runtime.generateBytecode(
           fn,
           createImmutVal("left_term", stmt.whConditionExpr.binLeft.atom),
@@ -205,7 +205,7 @@ proc expand*(
         )
 
       if stmt.whConditionExpr.binRight.kind == AtomHolder:
-        debug "niche: while-stmt: right term is an atom"
+        # # debug "niche: while-stmt: right term is an atom"
         runtime.generateBytecode(
           fn,
           createImmutVal("right_term", stmt.whConditionExpr.binRight.atom),
@@ -334,9 +334,6 @@ proc genCreateImmutVal(
       )
 
   if not internal:
-    if fn.name == EntryPointName:
-      debug "emitter: marking index as global because it's in outer-most scope: " & $idx
-
     runtime.markLocal(fn, stmt.imIdentifier, index = some(idx))
   else:
     assert *ownerStmt
@@ -352,9 +349,6 @@ proc genCreateMutVal(
   let idx = runtime.loadIRAtom(stmt.mutAtom.unwrap)
 
   if not internal:
-    if fn.name == EntryPointName:
-      debug "emitter: marking index as global because it's in outer-most scope: " & $idx
-
     runtime.markLocal(fn, stmt.mutIdentifier, index = some(idx))
   else:
     assert *ownerStmt
@@ -380,12 +374,12 @@ proc genCall(
     for i, arg in stmt.arguments:
       case arg.kind
       of cakIdent:
-        debug "interpreter: passing ident parameter to function with ident: " & arg.ident
+        # # debug "interpreter: passing ident parameter to function with ident: " & arg.ident
 
         argumentRegs[i] = runtime.index(arg.ident, defaultParams(fn))
       of cakAtom: # already loaded via the statement expander
         let ident = $i
-        debug "interpreter: passing atom parameter to function with ident: " & ident
+        # # debug "interpreter: passing atom parameter to function with ident: " & ident
         argumentRegs &= runtime.index(ident, internalIndex(stmt))
       of cakFieldAccess:
         let index = runtime.resolveFieldAccess(
@@ -413,8 +407,8 @@ proc genCall(
     # then, invoke it.
     runtime.ir.invoke(fn)
   else:
-    debug "interpreter: generate IR for calling traditional function: " & nam &
-      (if stmt.mangle: " (mangled)" else: newString 0)
+    # # debug "interpreter: generate IR for calling traditional function: " & nam &
+    # (if stmt.mangle: " (mangled)" else: newString 0)
 
     # assert nam != "a"
 
@@ -464,8 +458,8 @@ proc genCallAndStoreResult(
       runtime.markLocal(fn, stmt.storeIdent)
       index = runtime.realm.addrIdx - 1
 
-  debug "emitter: call-and-store result will be stored in ident \"" & stmt.storeIdent &
-    "\" or index " & $index
+    # # debug "emitter: call-and-store result will be stored in ident \"" & stmt.storeIdent &
+  # "\" or index " & $index
   runtime.ir.loadUndefined(index) # load `undefined` on that index
   runtime.ir.readRegister(index, Register.ReturnValue)
   runtime.ir.zeroRetval()
@@ -502,8 +496,8 @@ proc genReassignVal(runtime: Runtime, fn: Function, stmt: Statement) =
   if not stmt.reIdentifier.contains('.'):
     let index = runtime.index(stmt.reIdentifier, defaultParams(fn))
 
-    info "emitter: reassign value at index " & $index & " with ident \"" &
-      stmt.reIdentifier & "\" to " & stmt.reAtom.crush()
+    # info "emitter: reassign value at index " & $index & " with ident \"" &
+    # stmt.reIdentifier & "\" to " & stmt.reAtom.crush()
 
     # TODO: make this use loadIRAtom
     case stmt.reAtom.kind
@@ -541,12 +535,12 @@ proc genReassignVal(runtime: Runtime, fn: Function, stmt: Statement) =
     runtime.ir.resetArgs()
 
 proc genThrowError(runtime: Runtime, fn: Function, stmt: Statement, internal: bool) =
-  info "emitter: add error-throw logic"
+  # info "emitter: add error-throw logic"
 
   if *stmt.error.str:
     let msg = &stmt.error.str
 
-    info "emitter: error string that will be raised: `" & msg & '`'
+    # info "emitter: error string that will be raised: `" & msg & '`'
     runtime.expand(fn, stmt, internal)
 
     runtime.ir.passArgument(runtime.index("error_msg", internalIndex(stmt)))
@@ -573,7 +567,7 @@ proc genBinaryOp(
     parentStmt: Option[Statement] = none(Statement),
     exprStoreIn: Option[string] = none(string),
 ) =
-  info "emitter: emitting IR for binary operation"
+  # info "emitter: emitting IR for binary operation"
   runtime.expand(fn, stmt, internal)
 
   let
@@ -683,7 +677,7 @@ proc genBinaryOp(
   of BinaryOperation.LesserOrEqual:
     runtime.ir.lesserThanEqual(leftIdx, rightIdx)
   else:
-    warn "emitter: unimplemented binary operation: " & $stmt.op
+    discard # warn "emitter: unimplemented binary operation: " & $stmt.op
 
   if *stmt.binStoreIn:
     let address =
@@ -704,10 +698,10 @@ proc genBinaryOp(
     (message: stmt.source, line: stmt.line)
 
 proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
-  info "emitter: emitting bytecode for if statement"
+  # info "emitter: emitting bytecode for if statement"
 
   # if runtime.opts.codegen.deadCodeElimination and conditionalIsDead(stmt):
-  #  debug "emitter: dce tells us that the if statement is unreachable, preventing codegen for it"
+  #  # # debug "emitter: dce tells us that the if statement is unreachable, preventing codegen for it"
   #  return
 
   runtime.expand(fn, stmt)
@@ -716,7 +710,7 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     lhsIdx =
       case stmt.conditionExpr.binLeft.kind
       of IdentHolder:
-        debug "emitter: if-stmt: LHS is ident"
+        # # debug "emitter: if-stmt: LHS is ident"
         runtime.index(stmt.conditionExpr.binLeft.ident, defaultParams(fn))
       of AtomHolder, FieldAccessHolder:
         runtime.index("left_term", internalIndex(stmt))
@@ -727,7 +721,7 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     rhsIdx =
       case stmt.conditionExpr.binRight.kind
       of IdentHolder:
-        debug "emitter: if-stmt: RHS is ident"
+        # # debug "emitter: if-stmt: RHS is ident"
         runtime.index(stmt.conditionExpr.binRight.ident, defaultParams(fn))
       of AtomHolder, FieldAccessHolder:
         runtime.index("right_term", internalIndex(stmt))
@@ -794,8 +788,8 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     (message: stmt.source, line: stmt.line)
 
 proc genCopyValMut(runtime: Runtime, fn: Function, stmt: Statement) =
-  debug "emitter: generate IR for copying value to a mutable address with source: " &
-    stmt.cpMutSourceIdent & " and destination: " & stmt.cpMutDestIdent
+  # # debug "emitter: generate IR for copying value to a mutable address with source: " &
+  # stmt.cpMutSourceIdent & " and destination: " & stmt.cpMutDestIdent
 
   let preExistingDestIndex =
     runtime.index(stmt.cpMutDestIdent, defaultParams(fn), willHandleResolveFail = true)
@@ -827,8 +821,8 @@ proc genCopyValMut(runtime: Runtime, fn: Function, stmt: Statement) =
     )
 
 proc genCopyValImmut(runtime: Runtime, fn: Function, stmt: Statement) =
-  debug "emitter: generate IR for copying value to an immutable address with source: " &
-    stmt.cpImmutSourceIdent & " and destination: " & stmt.cpImmutDestIdent
+  # # debug "emitter: generate IR for copying value to an immutable address with source: " &
+  # stmt.cpImmutSourceIdent & " and destination: " & stmt.cpImmutDestIdent
   runtime.generateBytecode(
     fn, createMutVal(stmt.cpImmutDestIdent, stackNull()), internal = false
   )
@@ -840,14 +834,12 @@ proc genCopyValImmut(runtime: Runtime, fn: Function, stmt: Statement) =
     (message: stmt.source, line: stmt.line)
 
 proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
-  debug "emitter: generate IR for while loop"
+  # # debug "emitter: generate IR for while loop"
   if runtime.opts.codegen.elideLoops and
       stmt.whStmtOnlyMutatesItsState(stmt.whBranch.getValueCaptures()):
-    debug "emitter: while loop only mutates its own state - eliding it away"
+    # # debug "emitter: while loop only mutates its own state - eliding it away"
     if runtime.optimizeAwayStateMutatorLoop(fn, stmt):
       return # we can fully skip creating all of the expensive comparison checks! :D
-    else:
-      debug "emitter: failed to elide state mutator loop :("
 
   runtime.expand(fn, stmt)
 
@@ -869,10 +861,10 @@ proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     lhsIdx =
       case stmt.whConditionExpr.binLeft.kind
       of IdentHolder:
-        debug "emitter: while-stmt: LHS is ident"
+        # # debug "emitter: while-stmt: LHS is ident"
         runtime.index(stmt.whConditionExpr.binLeft.ident, defaultParams(fn))
       of AtomHolder:
-        debug "emitter: while-stmt: LHS is atom"
+        # # debug "emitter: while-stmt: LHS is atom"
         runtime.index("left_term", internalIndex(stmt))
       else:
         unreachable
@@ -881,10 +873,10 @@ proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     rhsIdx =
       case stmt.whConditionExpr.binRight.kind
       of IdentHolder:
-        debug "emitter: while-stmt: RHS is ident"
+        # # debug "emitter: while-stmt: RHS is ident"
         runtime.index(stmt.whConditionExpr.binRight.ident, defaultParams(fn))
       of AtomHolder:
-        debug "emitter: while-stmt: RHS is atom"
+        # # debug "emitter: while-stmt: RHS is atom"
         runtime.index("right_term", internalIndex(stmt))
       else:
         unreachable
@@ -958,25 +950,25 @@ proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     (message: stmt.source, line: stmt.line)
 
 proc genIncrement(runtime: Runtime, fn: Function, stmt: Statement) {.inline.} =
-  debug "emitter: generate IR for increment"
+  # # debug "emitter: generate IR for increment"
   runtime.ir.incrementInt(runtime.index(stmt.incIdent, defaultParams(fn)))
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
 
 proc genDecrement(runtime: Runtime, fn: Function, stmt: Statement) {.inline.} =
-  debug "emitter: generate IR for decrement"
+  # # debug "emitter: generate IR for decrement"
   runtime.ir.decrementInt(runtime.index(stmt.decIdent, defaultParams(fn)))
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
 
 proc genBreak(runtime: Runtime, fn: Function, stmt: Statement) {.inline.} =
-  debug "emitter: generate IR for break"
+  # # debug "emitter: generate IR for break"
   runtime.irHints.breaksGeneratedAt &= runtime.ir.addOp(IROperation(opcode: Jump)) - 1
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
 
 proc genWaste(runtime: Runtime, fn: Function, stmt: Statement) =
-  debug "emitter: generate IR for wasting value"
+  # # debug "emitter: generate IR for wasting value"
   assert(
     not (*stmt.wstAtom and *stmt.wstIdent), "Cannot waste atom and identifier at once!"
   )
@@ -1023,7 +1015,7 @@ proc genAccessArrayIndex(
     parentStmt: Option[Statement],
     storeIn: Option[string] = none(string),
 ) =
-  debug "emitter: generate IR for array indexing"
+  # # debug "emitter: generate IR for array indexing"
   let atomIdx = runtime.index(stmt.arrAccIdent, defaultParams(fn))
   let fieldIndex =
     if *stmt.arrAccIndex:
@@ -1049,7 +1041,7 @@ proc genAccessArrayIndex(
     (message: stmt.source, line: stmt.line)
 
 proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
-  debug "emitter: generate IR for ternary op"
+  # # debug "emitter: generate IR for ternary op"
   if !stmt.ternaryStoreIn:
     return
 
@@ -1118,7 +1110,7 @@ proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
 proc genForLoop(runtime: Runtime, fn: Function, stmt: Statement) =
   # if runtime.opts.codegen.deadCodeElimination and forLoopIsDead(stmt):
   # If the for-loop has no side effects, we can safely elide it.
-  #  debug "emitter: dce tells us that this for-loop has no side effects, preventing codegen"
+  #  # # debug "emitter: dce tells us that this for-loop has no side effects, preventing codegen"
   #  return
 
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
@@ -1175,7 +1167,7 @@ proc genForLoop(runtime: Runtime, fn: Function, stmt: Statement) =
   runtime.ir.jump(conditionalJump)
 
 proc genTryClause(runtime: Runtime, fn: Function, stmt: Statement) =
-  debug "emitter: generate bytecode for try clause"
+  # # debug "emitter: generate bytecode for try clause"
 
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
@@ -1206,7 +1198,7 @@ proc genTryClause(runtime: Runtime, fn: Function, stmt: Statement) =
     runtime.generateBytecodeForScope(&stmt.tryCatchBody, allocateConstants = false)
 
 proc genCompoundAsgn(runtime: Runtime, fn: Function, stmt: Statement) =
-  debug "emitter: generate bytecode for compound assignment"
+  # # debug "emitter: generate bytecode for compound assignment"
   let target = runtime.index(stmt.compAsgnTarget, defaultParams(fn))
   let compounder =
     if *stmt.compAsgnCompounder:
@@ -1235,7 +1227,7 @@ proc genCompoundAsgn(runtime: Runtime, fn: Function, stmt: Statement) =
 proc genDefineFunction(
     runtime: Runtime, fn: Function, stmt, parent: Statement, storeIn: Option[string]
 ) =
-  debug "emitter: generate bytecode for define-function"
+  # # debug "emitter: generate bytecode for define-function"
 
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
@@ -1423,13 +1415,13 @@ proc generateBytecode(
   of CopyFieldToVar:
     runtime.genCopyFieldToVar(fn = fn, stmt = stmt)
   else:
-    warn "emitter: unimplemented bytecode generation directive: " & $stmt.kind
+    discard # warn "emitter: unimplemented bytecode generation directive: " & $stmt.kind
 
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex] =
     (message: stmt.source, line: stmt.line)
 
 proc loadArgumentsOntoStack(runtime: Runtime, fn: Function) =
-  info "niche: loading up function signature arguments onto stack via IR: " & fn.name
+  # info "niche: loading up function signature arguments onto stack via IR: " & fn.name
 
   for i, arg in fn.arguments:
     runtime.markLocal(fn, arg)
@@ -1458,7 +1450,7 @@ proc generateBytecodeForScope(
         ) # FIXME: discriminate between scopes
     name = fn.name
 
-  debug "generateBytecodeForScope(): function name: " & name
+  # # debug "generateBytecodeForScope(): function name: " & name
   if not runtime.realm.clauses.contains(name):
     runtime.realm.clauses.add(name)
     runtime.ir.newModule(

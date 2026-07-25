@@ -22,22 +22,16 @@ proc emitOperation*(gen: IRGenerator, op: IROperation): string {.inline.} =
         result &= '"' & content & "\" "
 
 proc emitModule*(gen: IRGenerator, module: CodeModule): string {.inline.} =
-  when not defined(release):
-    var final =
-      "\n\n# Clause/CodeModule \"" & module.name & "\"\n" & "# Operations: " &
-      $module.operations.len & "\n"
-  else:
-    var final = "\n"
+  var final = "\n\n"
 
-  final &= "CLAUSE " & module.name & '\n'
+  final &= module.name
+  final &= ":\n"
 
   for i, op in module.operations:
-    final &= '\t' & $(i + 1) & ' ' & emitOperation(gen, op)
+    final &= "  " & $(i + 1) & ' ' & emitOperation(gen, op)
 
     if i + 1 < module.operations.len:
       final &= '\n'
-
-  final &= "\nEND " & module.name
 
   final
 

@@ -1,6 +1,6 @@
 ## JSON methods
 
-import std/[json, options, logging, tables]
+import std/[json, options, tables]
 import pkg/[jsony, shakar]
 import components/js/runtime/[arguments, types, bridge, construction]
 import components/js/runtime/abstract/coercion
@@ -71,8 +71,6 @@ proc atomToJsonNode*(runtime: Runtime, atom: JSValue): JsonNode =
   newJNull()
 
 proc generateStdIR*(runtime: Runtime) =
-  info "json: generating IR interfaces"
-
   runtime.registerType("JSON", JSON)
 
   ## 25.5.1 JSON.parse ( text [ , reviver ] )

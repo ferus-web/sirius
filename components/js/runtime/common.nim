@@ -1,7 +1,7 @@
 ## Common routines for the Runtime type.
 ##
 ## Copyright (C) 2025 Trayambak Rai
-import std/[strutils, logging, tables, sugar]
+import std/[strutils, tables, sugar]
 import
   components/js/runtime/[atom_helpers, atom_obj_variant, types, construction],
   components/js/runtime/niche/lowering,
@@ -118,16 +118,14 @@ proc run*(runtime: Runtime) {.gcsafe.} =
   runtime.vm[].feed(runtime.ir.modules)
   runtime.typeRegistrationFinalizer()
 
-  debug "interpreter: setting entry point"
   runtime.vm[].setEntryPoint(lowering.EntryPointName)
 
   # for error in runtime.ast.errors:
   #  runtime.syntaxError($error, if runtime.opts.test262: 0 else: 1)
 
   if runtime.ast.doNotEvaluate and runtime.opts.test262:
-    debug "runtime: `doNotEvaluate` is set to `true` in Test262 mode - skipping execution."
+    # debug "runtime: `doNotEvaluate` is set to `true` in Test262 mode - skipping execution."
     quit(0)
-  debug "interpreter: passing over execution to VM - here goes nothing!"
   runtime.vm[].run()
 
 proc newRuntime*(

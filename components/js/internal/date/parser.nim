@@ -1,7 +1,9 @@
 ## Very cool date parser
 ## Mostly based off of Ladybird/LibJS's implementation
+##
+## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[logging, options, strutils, times]
+import std/[options, strutils, times]
 import components/js/internal/[generic_lexer, trim_string]
 import pkg/shakar
 
@@ -119,7 +121,6 @@ proc parseSimplifiedISO8601*(date: string): Option[float] =
 
   # We parsed a valid simplified ISO 8601 string
   if !year:
-    warn "date: date string has no year component"
     return
 
   var time = dateTime(

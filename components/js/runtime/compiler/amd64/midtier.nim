@@ -1,7 +1,7 @@
 ## Mid-tier JIT compiler for x86-64, utilizing the Madhyasthal pipeline.
 ##
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak at disroot dot org)
-import std/[logging, posix, options, strutils, tables]
+import std/[posix, options, strutils, tables]
 import
   components/js/runtime/compiler/madhyasthal/[ir, lowering, pipeline, optimizer, dumper],
   components/js/runtime/compiler/amd64/[common, native_forwarding],
@@ -432,7 +432,7 @@ proc compileLowered(cgen: MidtierJIT, pipeline: pipeline.Pipeline): Option[JITSe
         ConditionalJump(label: cgen.s.label(), op: i + 2, condition: condBequal)
       cgen.s.jcc(condBequal, BackwardsLabel(EnsureNoInt8Align))
     else:
-      debug "jit/amd64: midtier cannot lower op into x64 code: " & $inst.kind
+      # # debug "jit/amd64: midtier cannot lower op into x64 code: " & $inst.kind
       return
 
   cgen.s.ret()
@@ -459,7 +459,7 @@ proc compile*(
   cgen.stream = OpStream(ops: clause.operations)
 
   if not lowerStream(lowered, cgen.stream):
-    warn "jit/amd64: midtier compiler failed to lower clause, falling back to VM"
+    # # warn "jit/amd64: midtier compiler failed to lower clause, falling back to VM"
     return
 
   var pipeline = Pipeline(fn: ensureMove(lowered))
@@ -482,6 +482,6 @@ proc compile*(
 proc initAMD64MidtierCodegen*(
     vm: pointer, heap: HeapManager, callbacks: VMCallbacks
 ): MidtierJIT =
-  info "jit/amd64: initializing midtier jit"
+  # # info "jit/amd64: initializing midtier jit"
 
   MidtierJIT(vm: vm, heap: heap, callbacks: callbacks, s: initAssemblerX64())

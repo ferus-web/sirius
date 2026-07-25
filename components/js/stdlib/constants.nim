@@ -1,6 +1,5 @@
 ## Constant values (like NaN, undefined, null, etc.)
 
-import std/[logging]
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/[atom, prelude]
 import components/js/runtime/types
@@ -13,7 +12,6 @@ proc generateStdIr*(runtime: Runtime) =
 
   let params = IndexParams(priorities: @[vkGlobal])
 
-  debug "constants: generating constant values"
   let undefined = runtime.index("undefined", params)
   runtime.ir.loadUndefined(undefined)
 

@@ -1,6 +1,8 @@
 ## A neat JavaScript <-> Nim bridge.
+##
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[logging, tables, options, strformat, strutils, hashes, importutils]
+import std/[tables, options, strformat, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
@@ -124,22 +126,21 @@ proc get*(runtime: Runtime, identifier: string): Option[JSValue] =
 proc isA*[T: object](runtime: Runtime, atom: JSValue, typ: typedesc[T]): bool =
   ## This function returns a boolean based off of whether `atom` is a replica of the supplied Nim-native type `typ`.
   ## It checks the `bali_object_type` that's attached to all objects created by `createAtom` (and by extension, `createObjFromType`)
-  debug "runtime: isA(" & atom.crush() & "): checking if atom is a replica of " & $typ
+  # # debug "runtime: isA(" & atom.crush() & "): checking if atom is a replica of " & $typ
 
   if atom.kind != Object:
-    debug "runtime: isA(" & atom.crush() & "): atom is not an object, returning false."
+    # # debug "runtime: isA(" & atom.crush() & "): atom is not an object, returning false."
     return false
 
   let objTypOpt = atom.tagged("bali_object_type")
 
   if !objTypOpt:
-    debug "runtime: isA(" & atom.crush() &
-      "): atom does not contain the tag `bali_object_type`, returning false. This is weird."
+    ## debug "runtime: isA(" & atom.crush() &
+    # "): atom does not contain the tag `bali_object_type`, returning false. This is weird."
     return false
 
   if (&objTypOpt).kind != Integer:
-    warn "runtime: isA(" & atom.crush() &
-      "): atom's `bali_object_type` tag is not an integer! It is a " & $(&objTypOpt).kind
+    return false
 
   let objTyp = &getInt(&objTypOpt)
 
@@ -148,7 +149,7 @@ proc isA*[T: object](runtime: Runtime, atom: JSValue, typ: typedesc[T]): bool =
       continue
 
     if etyp.proto.int == objTyp:
-      debug "runtime: isA(" & atom.crush() & "): atom is a replica of " & $typ
+      # # debug "runtime: isA(" & atom.crush() & "): atom is a replica of " & $typ
       return true
 
   false
@@ -164,15 +165,13 @@ proc getMethod*(
   ##
   ## If a `BytecodeCallable` is found, `getMethod` creates its own wrapper function.
   if v.contains(p):
-    debug "runtime: getMethod(): value has field: " & p
+    # # debug "runtime: getMethod(): value has field: " & p
     let value = runtime.getProperty(v, p)
 
     case value.kind
     of NativeCallable:
-      debug "runtime: getMethod(): method is a native callable"
       return some(value.fn)
     of BytecodeCallable:
-      debug "runtime: getMethod(): method is a bytecode callable; generating wrapper."
       return some(
         proc() =
           runtime.vm.registers.callArgs.add(v)
@@ -184,9 +183,7 @@ proc getMethod*(
             runtime.vm.registers.retVal = some(undefined(runtime.realm.heap))
       )
     else:
-      debug "runtime: getMethod(): field is not callable"
-  else:
-    debug "runtime: getMethod(): value does not have function member: " & p
+      discard
 
 proc getTypeFromName*(runtime: Runtime, name: string): Option[JSType] =
   ## Returns a registered JS type based on its name, if it exists.
@@ -196,7 +193,6 @@ proc getTypeFromName*(runtime: Runtime, name: string): Option[JSType] =
 
 proc defineConstructor*(runtime: Runtime, name: string, fn: NativeFunction) {.inline.} =
   ## Expose a constructor for a type to a JavaScript runtime.
-  debug "runtime: exposing constructor for type: " & name
 
   var found = false
   for i, jtype in runtime.types:

@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[logging, hashes, posix, tables, options, streams]
+import std/[hashes, posix, tables, options, streams]
 import components/js/runtime/compiler/base, components/js/runtime/vm/heap/boehm
 import pkg/[shakar]
 import
@@ -39,7 +39,7 @@ proc dump*(cgen: BaselineJIT, file: string) =
   stream.close()
 
 proc patchJumpPoints*(cgen: BaselineJIT) =
-  warn "TODO: Implement jump-point patching"
+  # # warn "TODO: Implement jump-point patching"
   unreachable
 
   for index, offset in cgen.patchJmpOffsets:
@@ -407,8 +407,8 @@ proc emitNativeCode*(cgen: BaselineJIT, clause: Clause): bool =
 
       prepareAtomAddCall(cgen, &op.arguments[0].getInt())
     else:
-      debug "jit/amd64: cannot compile op: " & $op.opcode
-      debug "jit/amd64: bailing out, this clause will be interpreted"
+      # # debug "jit/amd64: cannot compile op: " & $op.opcode
+      # # debug "jit/amd64: bailing out, this clause will be interpreted"
       return false
 
   cgen.s.ret()
@@ -420,25 +420,25 @@ proc compile*(
     cgen: BaselineJIT, clause: Clause, ignoreCache: bool = false
 ): Option[JITSegment] =
   if cgen.cached.contains(clause.name) and not ignoreCache:
-    debug "jit/amd64: found cached version of JIT'd clause"
+    # # debug "jit/amd64: found cached version of JIT'd clause"
     return some(cgen.cached[clause.name])
 
   cgen.bcToNativeOffsetMap = newSeqOfCap[BackwardsLabel](128)
 
   if emitNativeCode(cgen, clause):
-    info "jit/amd64: compilation successful for clause " & $clause.name
+    # # info "jit/amd64: compilation successful for clause " & $clause.name
     let fn = cast[JITSegment](cgen.s.data)
     cgen.cached[clause.name] = fn
 
     some(fn)
   else:
-    debug "jit/amd64: failed to emit native code for clause."
+    # # debug "jit/amd64: failed to emit native code for clause."
 
     none(JITSegment)
 
 proc initAMD64BaselineCodegen*(
     vm: pointer, heap: HeapManager, callbacks: VMCallbacks
 ): BaselineJIT =
-  info "jit/amd64: initializing baseline jit"
+  # # info "jit/amd64: initializing baseline jit"
 
   BaselineJIT(vm: vm, callbacks: callbacks, heap: heap, s: initAssemblerX64())

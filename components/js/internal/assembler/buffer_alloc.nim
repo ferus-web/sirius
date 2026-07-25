@@ -1,11 +1,8 @@
 ## This file contains routines to allocate memory buffers with the executable bit.
 ## **NOTE**: This should ONLY be used in tandem with a JIT's assembler and no other place!
 ##
-## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
-#!fmt: off
-import std/[logging]
+## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak at disroot dot org)
 import components/js/platform/libc
-#!fmt: on
 
 proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer =
   when defined(windows):

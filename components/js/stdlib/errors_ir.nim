@@ -1,8 +1,7 @@
 ## Implementation of the error throw IR builtin
 ## Refactored here because Nim hates me
-## Authors:
-## Trayambak Rai (xtrayambak at disroot dot org)
-import std/[logging, options]
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
+import std/[options]
 import components/js/runtime/vm/prelude
 import components/js/stdlib/errors_common
 import components/js/runtime/[atom_helpers, arguments, types, bridge, wrapping]
@@ -15,10 +14,10 @@ type JSError* = object
   stack*: string # TODO: error stack implementation
 
 proc generateStdIr*(runtime: Runtime) =
-  info "errors: generate IR interface"
   runtime.registerType(name = "Error", JSError)
   if runtime.deathCallback == nil:
     runtime.deathCallback = DefaultDeathCallback
+
   runtime.definePrototypeFn(
     JSError,
     "toString",

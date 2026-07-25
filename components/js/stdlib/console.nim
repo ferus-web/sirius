@@ -1,6 +1,6 @@
 ## JavaScript console API standard interface
 
-import std/[options, logging, tables]
+import std/[options, tables]
 import components/js/runtime/[arguments, types, bridge]
 import components/js/runtime/abstract/coercion
 import pkg/shakar
@@ -76,6 +76,4 @@ proc consoleLogIR*(runtime: Runtime) =
   # TODO: implement the rest of the spec, mostly related to call traces and profiling later.
 
 proc generateStdIR*(runtime: Runtime) =
-  info "console: generating IR interfaces"
-
   consoleLogIR(runtime)

@@ -12,8 +12,6 @@
 ## while true do
 ##   print [1]
 ## end
-
-import std/[logging]
 import components/js/grammar/prelude
 import components/js/runtime/[types]
 
@@ -25,7 +23,7 @@ type AllocationEliminatorResult* = object
 proc eliminateRedundantLoopAllocations*(
     runtime: Runtime, body: Scope
 ): AllocationEliminatorResult =
-  debug "redundant_loop_allocations: checking if redundant allocations can be eliminated in loop body..."
+  # debug "redundant_loop_allocations: checking if redundant allocations can be eliminated in loop body..."
 
   var elims: AllocationEliminatorResult
   elims.placeBefore = Scope()
@@ -34,12 +32,10 @@ proc eliminateRedundantLoopAllocations*(
   for stmt in body.stmts:
     case stmt.kind
     of CreateImmutVal, CreateMutVal:
-      debug "redundant_loop_allocations: moving " & $stmt.kind &
-        " into place-before scope"
+      # debug "redundant_loop_allocations: moving " & $stmt.kind &
       elims.placeBefore.stmts &= stmt
     else:
-      debug "redundant_loop_allocations: moving " & $stmt.kind &
-        " into modified-body scope"
+      # debug "redundant_loop_allocations: moving " & $stmt.kind &
       elims.modifiedBody.stmts &= stmt
 
   elims
