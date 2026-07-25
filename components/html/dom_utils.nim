@@ -8,6 +8,11 @@ import pkg/shakar
 func hash*(node: dom.Node): hashes.Hash {.inline.} =
   hash(cast[pointer](node))
 
+func html*(doc: dom.Document): Option[dom.Element] =
+  for child in doc.childList:
+    if child of dom.Element and Element(child).tagType() == TAG_HTML:
+      return some(Element(child))
+
 func getAttr*(
     element: dom.Element, factory: dom.AtomFactory, attribKey: string
 ): Option[string] {.inline.} =

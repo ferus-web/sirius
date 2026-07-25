@@ -21,6 +21,7 @@ type
       availableSize: Vec2,
       fontSize: float32,
       alignment: TextAlignment,
+      lang: Option[string],
       text: string,
     ): GlyphArrangement
 

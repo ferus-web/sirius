@@ -28,6 +28,7 @@ proc getLoaderImplementation*(): LoaderImplementation =
         availableSize: Vec2,
         fontSize: float32,
         alignment: TextAlignment,
+        lang: Option[string],
         text: string,
     ): GlyphArrangement {.closure.} =
       # TODO: Rename this to `measureGlyphArrangement` or something like that, this name has outgrown its job
@@ -36,7 +37,10 @@ proc getLoaderImplementation*(): LoaderImplementation =
         [
           (
             FontStyle(
-              font: FigFont(typefaceId: cast[TypefaceId](font.impl), size: fontSize)
+              font: FigFont(
+                typefaceId: cast[TypefaceId](font.impl),
+                size: fontSize, # language: lang.get(otherwise = newString(0)),
+              )
             ),
             text,
           )

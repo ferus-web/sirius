@@ -43,9 +43,11 @@ type
   Document* = ref object of Node
     factory*: AtomFactory
 
+    language*: Option[string]
+
+    # sirius-specific stuff
     edited*: bool
     willDeclarativelyRefresh*: bool
-
     cookies*: seq[Cookie]
     url*: URL
 
