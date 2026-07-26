@@ -1,8 +1,8 @@
 ## DOM types
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, hashes]
-import components/net/cookie
+import std/[options, hashes, tables]
+import components/net/cookie, components/js/runtime/prelude as js
 import pkg/chame/[htmlparser, tags], pkg/url
 
 export tags
@@ -31,9 +31,18 @@ func cmp*(a, b: Atom): int {.inline.} =
 type
   Attribute* = ParsedAttr[Atom]
 
+  EventDispatchEffect = object
+
+  EventListener* = object
+    rt*: js.Runtime
+    callback*: js.JSValue
+    setter*: bool ## was this set via one of the `on*` setters?
+
   Node* = ref object of RootObj
     childList*: seq[Node]
     parentNode* {.cursor.}: Node
+
+    listeners*: Table[string, seq[EventListener]]
 
   CharacterData* = ref object of Node
     data*: string
@@ -65,6 +74,35 @@ type
     document*: Document
 
   DocumentFragment* = ref object of Node
+
+func addEventListener*(node: Node, event: string, listener: EventListener) =
+  # specs? never heard of her
+  if not node.listeners.contains(event):
+    node.listeners[event] = @[listener]
+    return
+
+  if listener.setter:
+    for i, existingListener in node.listeners[event]:
+      if existingListener.setter:
+        # If these are both set via those `on*` setters, overwrite the preexisting one, and be done with it.
+        node.listeners[event][i] = listener
+        return
+
+  # Otherwise, append a new EventListener instead
+  node.listeners[event] &= listener
+
+proc dispatchEvent*(node: Node, event: string, eventObj: JSValue): bool =
+  if not node.listeners.contains(event):
+    # JS-land doesn't care about this event for this node.
+    return
+
+  for listener in node.listeners[event]:
+    # evil rt routing
+    listener.rt.callNoRetval(listener.callback, @[eventObj])
+
+  # TODO: This should ideally check eventObj's internal prevented-default
+  # field, but this'll suffice for now. I want to go to sleep in peace. :^)
+  true
 
 # Mandatory Atom functions
 func `==`*(a, b: Atom): bool {.borrow.}

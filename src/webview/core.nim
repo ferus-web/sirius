@@ -19,6 +19,7 @@ import
   components/net/[cookie, cookie_parser, core, mime],
   components/js/grammar/prelude,
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
+  components/js/runtime/vm/atom,
   components/js/runtime/vm/heap/manager,
   components/js/runtime/compiler/base,
   components/scripting/[executor, types],
@@ -453,7 +454,6 @@ proc loadUrl(view: WebView, url: URL) =
   view.cleanup()
 
   view.target = url
-  view.realm = newRealm()
   # view.app.setCursorShape(Shape.Progress)
 
   view.dom = Document()
@@ -472,6 +472,8 @@ proc loadUrl(view: WebView, url: URL) =
 
 proc loadPage*(view: WebView, target: string) =
   view.target = parseURL(target)
+  view.realm = newRealm()
+    # TODO: Can all scripts in the same context share one realm, hopefully?
   debug "Load page", target = view.target, scheme = view.target.scheme
 
   case getSchemeType(view.target)
@@ -549,6 +551,13 @@ proc handleFocusedDomElement(
   applyCursorState(view, layoutNode)
 
   if clicked:
+    if dispatchEvent(layoutNode.domNode, "click", undefined(view.realm.heap)):
+      # If JS code ends up handling this event and asks us to prevent
+      # default behavior, we must comply (albeit this is not fully implemented yet) 
+
+      # FIXME: return an actual Event object instead of undefined
+      return
+
     if element of tags.HTMLAnchorElement:
       let anchorElement = HTMLAnchorElement(element)
       if *anchorElement.href:

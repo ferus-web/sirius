@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head><title>cookie clicker</title></head>
+  <body>
+    <p id="targ">0</p>
+    <script>
+	let elem = document.getElementById("targ");
+	let i = 0;
+	function x() {
+	  i++;
+	  elem.textContent = i;
+	}
+
+	elem.onclick = x; 
+    </script>
+  </body>
+</html>
