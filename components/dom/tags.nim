@@ -1,5 +1,5 @@
 import std/options
-import components/dom/dom, components/html/meta
+import components/dom/dom, components/html/[form, meta]
 import components/scripting/types
 
 type
@@ -18,6 +18,9 @@ type
     script*: Script
 
   HTMLInputElement* = ref object of dom.Element
+    kind*: Option[InputKind]
+    value*: Option[string]
+
     inputBuffer*: string
 
   HTMLMetaElement* = ref object of dom.Element

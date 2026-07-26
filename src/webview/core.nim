@@ -12,7 +12,7 @@ import
   components/aux/[pretty, stream_utils],
   components/gfx/[core, init, painter, font_loader],
   components/dom/[dom, tags],
-  components/html/[parser, dom_utils, data_parser, meta],
+  components/html/[parser, dom_utils, data_parser, meta, form],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
@@ -486,6 +486,13 @@ proc applyCursorState(view: WebView, layoutNode: LayoutNode) =
   if !layoutNode.cursor:
     return
 
+  # HACK: This is just here to handle button input elements for now. Fix it once the CSS side can handle this.
+  if layoutNode.domNode of tags.HTMLInputElement and
+      HTMLInputElement(layoutNode.domNode).kind in
+      [some(InputKind.Submit), some(InputKind.Button)]:
+    view.app.setCursorShape(Shape.Grabbing)
+    return
+
   # Source: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor
   let cursorMap = toTable {
     "default": Shape.Default,
@@ -533,6 +540,9 @@ proc applyCursorState(view: WebView, layoutNode: LayoutNode) =
     else:
       view.app.setCursorShape(shape)
 
+proc submitInputElement(view: WebView, element: HTMLInputElement) =
+  discard
+
 proc handleFocusedDomElement(
     view: WebView, layoutNode: LayoutNode, element: dom.Element, clicked: bool = false
 ): bool {.discardable.} =
@@ -546,6 +556,19 @@ proc handleFocusedDomElement(
         # doesn't have a href, it should _NOT_ appear as clickable due to `cursor: pointer`
         # in Sirius' UA stylesheet globally applied to all anchors.
         loadURL(view, &view.resolveURLSegment(&anchorElement.href))
+    elif element of tags.HTMLInputElement:
+      let inputElement = HTMLInputElement(element)
+      let kind =
+        if *inputElement.kind:
+          &inputElement.kind
+        else:
+          InputKind.Text
+
+      case kind
+      of InputKind.Submit:
+        submitInputElement(view, inputElement)
+      else:
+        discard
 
     view.keyboardFocusedElement = some(element)
     return true

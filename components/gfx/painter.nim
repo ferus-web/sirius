@@ -14,7 +14,8 @@ import
   components/gfx/types,
   components/layout/[output_manager, types],
   components/dom/[dom, tags],
-  components/os/fonts
+  components/os/fonts,
+  components/html/[form]
 
 privateAccess(VulkanContext)
 
@@ -85,6 +86,84 @@ proc drawNodeBorder(
   else:
     discard # warn "Unhandled border style", style = &node.border.style
 
+proc drawInputElement(
+    ctx: RenderingContext,
+    node: LayoutNode,
+    currentIdx: FigIdx,
+    nodeScreenBox: Rect,
+    width, height: float32,
+) =
+  let fSize = ctx.outputManager.computePixels(&node.fontSize)
+  let fStyle = FontStyle(
+    font: FigFont(typefaceId: cast[TypefaceId](node.fontFamily.impl), size: fSize),
+    color: fill(node.color),
+  )
+  let input = HTMLInputElement(node.domNode)
+  let inputKind =
+    if !input.kind:
+      InputKind.Text
+    else:
+      &input.kind
+
+  case inputKind
+  of InputKind.Text:
+    discard ctx.displayList.addChild(
+      ZLevel(0),
+      currentIdx,
+      Fig(
+        kind: nkText,
+        parent: currentIdx,
+        zlevel: 0.ZLevel,
+        screenBox: nodeScreenBox,
+        textLayout: textLayout(
+          box = rect(0, 0, width, height),
+          spans = [(fStyle, HTMLInputElement(node.domNode).inputBuffer)],
+            # TODO: Placeholders
+          hAlign = Left,
+          vAlign = Top,
+          wrap = true,
+        ),
+      ),
+    )
+  of InputKind.Submit:
+    let text =
+      if *input.value:
+        &input.value
+      else:
+        "Submit Query"
+
+    let buttonBox = ctx.displayList.addChild(
+      ZLevel(0),
+      currentIdx,
+      Fig(
+        kind: nkRectangle,
+        parent: currentIdx,
+        zlevel: 0.ZLevel,
+        screenBox: nodeScreenBox,
+        fill: fill(node.backgroundColor),
+      ),
+    )
+
+    discard ctx.displayList.addChild(
+      ZLevel(0),
+      currentIdx,
+      Fig(
+        kind: nkText,
+        parent: buttonBox,
+        zlevel: 0.ZLevel,
+        screenBox: nodeScreenBox,
+        textLayout: textLayout(
+          box = rect(0, 0, width, height),
+          spans = [(fStyle, text)],
+          hAlign = Left,
+          vAlign = Top,
+          wrap = true,
+        ),
+      ),
+    )
+  else:
+    discard
+
 proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) =
   if node == nil:
     return
@@ -129,29 +208,7 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
       )
 
     if node.domNode != nil and node.domNode of tags.HTMLInputElement:
-      let fSize = ctx.outputManager.computePixels(&node.fontSize)
-      let fStyle = FontStyle(
-        font: FigFont(typefaceId: cast[TypefaceId](node.fontFamily.impl), size: fSize),
-        color: fill(node.color),
-      )
-      discard ctx.displayList.addChild(
-        ZLevel(0),
-        currentIdx,
-        Fig(
-          kind: nkText,
-          parent: currentIdx,
-          zlevel: 0.ZLevel,
-          screenBox: nodeScreenBox,
-          textLayout: textLayout(
-            box = rect(0, 0, width, height),
-            spans = [(fStyle, HTMLInputElement(node.domNode).inputBuffer)],
-              # TODO: Placeholders
-            hAlign = Left,
-            vAlign = Top,
-            wrap = true,
-          ),
-        ),
-      )
+      drawInputElement(ctx, node, currentIdx, nodeScreenBox, width, height)
 
     if node.imageContent != Hash(0) and node.imageBuffer != nil:
       discard ctx.displayList.addChild(

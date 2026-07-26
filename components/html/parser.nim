@@ -5,7 +5,9 @@
 import std/[algorithm, hashes, options, sets, streams, tables]
 import pkg/chame/[htmlparser, tags], pkg/shakar
 import
-  components/dom/prelude, components/html/[dom_utils, meta], components/impure/simdutf
+  components/dom/prelude,
+  components/html/[dom_utils, form, meta],
+  components/impure/simdutf
 
 export tags
 
@@ -157,6 +159,14 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
         meta.media = attr
 
       builder.callbacks.handleMetaElement(meta)
+    of TAG_INPUT:
+      let input = HTMLInputElement(element)
+
+      if (let attr = element.getAttr(builder.factory, "type"); *attr):
+        input.kind = parseInputKind(&attr)
+
+      if (let attr = element.getAttr(builder.factory, "value"); *attr):
+        input.value = attr
     else:
       discard
 
