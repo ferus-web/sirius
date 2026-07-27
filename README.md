@@ -21,7 +21,7 @@ The base was written in a day, so don't expect anything grandiose.
 - [X] HarfBuzz for text shaping
 - [X] JavaScript execution, *very* early DOM bindings
 - [ ] Content caching
-- [ ] Forms support
+- [X] Forms support
 - [ ] CSS Grid Layout
 
 # why not work on ferus?
