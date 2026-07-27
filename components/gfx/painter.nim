@@ -15,7 +15,7 @@ import
   components/layout/[output_manager, types],
   components/dom/[dom, tags],
   components/os/fonts,
-  components/html/[form]
+  components/html/form/types
 
 privateAccess(VulkanContext)
 

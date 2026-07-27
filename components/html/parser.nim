@@ -6,7 +6,8 @@ import std/[algorithm, hashes, options, sets, streams, tables]
 import pkg/chame/[htmlparser, tags], pkg/shakar
 import
   components/dom/prelude,
-  components/html/[dom_utils, form, meta],
+  components/html/[dom_utils, meta],
+  components/html/form/types,
   components/impure/simdutf
 
 export tags
@@ -115,6 +116,8 @@ proc createElement(document: Document, localName: Atom, namespace: Namespace): E
         HTMLInputElement()
       of TAG_META:
         HTMLMetaElement()
+      of TAG_FORM:
+        HTMLFormElement()
       else:
         Element()
     else:
@@ -165,8 +168,15 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
       if (let attr = element.getAttr(builder.factory, "type"); *attr):
         input.kind = parseInputKind(&attr)
 
-      if (let attr = element.getAttr(builder.factory, "value"); *attr):
-        input.value = attr
+      input.value = element.getAttr(builder.factory, "value")
+      input.name = element.getAttr(builder.factory, "name")
+    of TAG_FORM:
+      let form = HTMLFormElement(element)
+
+      if (let attr = element.getAttr(builder.factory, "method"); *attr):
+        form.meth = parseFormMethod(&attr)
+
+      form.action = element.getAttr(builder.factory, "action")
     else:
       discard
 

@@ -12,7 +12,8 @@ import
   components/aux/[pretty, stream_utils],
   components/gfx/[core, init, painter, font_loader],
   components/dom/[dom, tags],
-  components/html/[parser, dom_utils, data_parser, meta, form],
+  components/html/[parser, dom_utils, data_parser, meta],
+  components/html/form/[owner, encoder, types],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
@@ -451,8 +452,6 @@ proc buildRequestHeaders(view: WebView, url: URL): HttpHeaders =
 proc loadUrl(view: WebView, url: URL) =
   info "Loading page", dest = url
 
-  view.cleanup()
-
   view.target = url
   # view.app.setCursorShape(Shape.Progress)
 
@@ -543,7 +542,31 @@ proc applyCursorState(view: WebView, layoutNode: LayoutNode) =
       view.app.setCursorShape(shape)
 
 proc submitInputElement(view: WebView, element: HTMLInputElement) =
-  discard
+  let ownerOpt = element.resetFormOwner()
+  # TODO: onsubmit callback
+
+  if !ownerOpt:
+    return
+
+  # FIXME: This isn't compliant yet. It just works for some cases.
+
+  let owner = &ownerOpt
+  let meth = owner.meth.get(otherwise = FormMethod.Get)
+  var target =
+    if *owner.action:
+      &view.resolveURLSegment(&owner.action)
+    else:
+      view.target
+
+  case meth
+  of FormMethod.Get:
+    target.query = some(&collectAndEncodeForm(owner))
+
+    view.loadURL(ensureMove(target))
+      # sigh... i know this isn't the right way. want to fight me about it?
+  else:
+    warn "Unhandled form method, ignoring submission attempt",
+      meth = meth, action = target
 
 proc handleFocusedDomElement(
     view: WebView, layoutNode: LayoutNode, element: dom.Element, clicked: bool = false
@@ -555,7 +578,7 @@ proc handleFocusedDomElement(
       # If JS code ends up handling this event and asks us to prevent
       # default behavior, we must comply (albeit this is not fully implemented yet) 
 
-      # FIXME: return an actual Event object instead of undefined
+      # FIXME: pass an actual Event object instead of undefined
       return
 
     if element of tags.HTMLAnchorElement:
