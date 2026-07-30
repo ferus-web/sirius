@@ -308,15 +308,14 @@ proc parseTypeofCall(parser: Parser): Option[PositionedArguments] =
 
   some(args)
 
-#[
-proc parseTable(parser: Parser): Option[MAtom] =
+proc parseTable(parser: Parser): Option[KeyValuePairs] =
   # We are assuming that the starting curly bracket (`{`) has been consumed.
   if parser.tokenizer.eof:
     parser.error Other, "expected expression, got EOF"
 
   var
-    table: seq[(MAtom, MAtom)]
-    currentKey: MAtom
+    table: KeyValuePairs
+    currentKey: Statement
 
     metRCurly = false
     state = TableParsingState.Key
@@ -329,22 +328,20 @@ proc parseTable(parser: Parser): Option[MAtom] =
       let key =
         case token.kind
         of TokenKind.Identifier:
-          stackStr(token.ident)
+          atomHolder(stackStr(token.ident))
         of TokenKind.String:
-          stackStr(token.str)
+          atomHolder(stackStr(token.str))
         of TokenKind.Number:
           &parser.parseAtom(token)
         of TokenKind.RCurly:
           metRCurly = true
           break
-          stackNull()
         of TokenKind.Whitespace:
           continue
-          stackNull()
         else:
           parser.error UnexpectedToken, $token.kind & " (expected identifier or string)"
 
-      table.add((key, stackNull()))
+      table[key] = atomHolder(stackNull())
       currentKey = key
       state = TableParsingState.Colon
     of TableParsingState.Colon:
@@ -367,12 +364,13 @@ proc parseTable(parser: Parser): Option[MAtom] =
         if !atom:
           parser.error UnexpectedToken, "expected value, got " & $token.kind
 
-        table &= (currentKey, &atom)
+        table[currentKey] = &atom
         state = TableParsingState.Key
 
   if not metRCurly:
     parser.error Other, "property list must be ended by }"
-]#
+
+  some(ensureMove(table))
 
 proc parseArray(parser: Parser): Option[Statement] =
   # We are assuming that the starting bracket (`[`) has been consumed.
@@ -637,6 +635,7 @@ proc parseDeclaration(
     ternary: Option[Statement]
     toCall: Option[Statement]
     declareFn: Option[Function]
+    keyValuePair: Option[Table[Statement, Statement]]
 
   while not parser.tokenizer.eof and !vIdent and !atom and !toCall:
     let tok = parser.tokenizer.next()
@@ -695,11 +694,9 @@ proc parseDeclaration(
     of TokenKind.LBracket:
       ternary = parser.parseArray()
       break
-    # FIXME: Make table parsing work again
-    #
-    # of TokenKind.LCurly:
-    #  atom = parser.parseTable()
-    #  break
+    of TokenKind.LCurly:
+      keyValuePair = parser.parseTable()
+      break
     of TokenKind.Function:
       let fn = parser.parseFunction(name = some(ident))
       declareFn = fn
@@ -711,8 +708,10 @@ proc parseDeclaration(
     else:
       parser.error UnexpectedToken, $tok.kind
 
-  assert (*atom or *vIdent or *toCall or *ternary or *declareFn or *vFieldAccess),
-    "Attempt to assign a value to nothing (something went wrong)"
+  assert (
+    *atom or *vIdent or *toCall or *ternary or *declareFn or *vFieldAccess or
+    *keyValuePair
+  ), "Attempt to assign a value to nothing (something went wrong)"
 
   if *ternary:
     var tern = &ternary
@@ -722,6 +721,9 @@ proc parseDeclaration(
   if *declareFn:
     return
       some(defineFunction(&declareFn, some(parser.ast.scopes[parser.ast.currentScope])))
+
+  if *keyValuePair:
+    return some(constructObjectShort(ident, &keyValuePair))
 
   if not reassignment:
     if *atom:
@@ -951,7 +953,6 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
           expr.binLeft = &call
 
           args.pushImmExpr(expr)
-          print args
         else:
           parser.ast.appendToCurrentScope(callAndStoreMut(resIdent, &call))
 

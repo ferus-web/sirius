@@ -1320,6 +1320,30 @@ proc genCopyFieldToVar*(runtime: Runtime, fn: Function, stmt: Statement) =
       runtime.index(dest.identifier, defaultParams(fn)), dest.next.identifier, resolved
     )
 
+proc genConstructObjectShort*(runtime: Runtime, fn: Function, stmt: Statement) =
+  let index = runtime.realm.addrIdx
+  runtime.markLocal(fn, &stmt.cosStoreIdent)
+
+  # we're basically going to load an object and keep WFLD'ing into it,
+  # mostly because we do not have a shorthand for this :^)
+  runtime.ir.loadObject(index)
+
+  for key, value in stmt.cosKVPairs:
+    assert(value.kind == AtomHolder)
+      # TODO: this could be an expression or IdentHolder, I guess
+    let valueIndex = runtime.loadIRAtom(value.atom)
+
+    case key.kind
+    of AtomHolder:
+      case key.atom.kind
+      of String:
+        runtime.ir.writeField(index, &key.atom.getStr(), valueIndex)
+      else:
+        unreachable
+        # TODO: Implement non-strings-as-keys. I'm pretty sure our current Object variant cannot handle that.
+    else:
+      unreachable
+
 {.pop.}
 
 proc generateBytecode(
@@ -1414,6 +1438,8 @@ proc generateBytecode(
     runtime.genListIterator(fn = fn, stmt = stmt)
   of CopyFieldToVar:
     runtime.genCopyFieldToVar(fn = fn, stmt = stmt)
+  of ConstructObjectShorthand:
+    runtime.genConstructObjectShort(fn = fn, stmt = stmt)
   else:
     discard # warn "emitter: unimplemented bytecode generation directive: " & $stmt.kind
 

@@ -73,7 +73,7 @@ type
   JSValue* = ptr MAtom
 
 proc hash*(atom: MAtom): Hash =
-  var h: Hash = 0
+  var h: Hash
 
   h = h !& atom.kind.int
 
@@ -96,8 +96,14 @@ proc hash*(atom: MAtom): Hash =
     h = h !& atom.state.hash()
   of Float:
     h = h !& atom.floatVal.hash()
-  else:
+  of NativeCallable:
+    h = h !& atom.fn.hash()
+  of BytecodeCallable:
+    h = h !& atom.clauseName.hash()
+  of Null, Undefined:
     discard
+  of BigInteger:
+    h = h !& cast[Hash](atom.bigint)
 
   !$h
 

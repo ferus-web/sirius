@@ -1,4 +1,4 @@
-import std/[hashes, options]
+import std/[hashes, options, tables]
 import components/js/runtime/vm/atom
 import components/js/runtime/normalize
 import pkg/shakar
@@ -36,6 +36,7 @@ type
     FieldAccessHolder
     ListIterator
     CopyFieldToVar
+    ConstructObjectShorthand
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -92,6 +93,7 @@ type
     function*: string
 
   MixedLiteralChildren* = seq[Statement]
+  KeyValuePairs* = Table[Statement, Statement]
 
   Statement* = ref object
     line*, col*: uint = 1
@@ -200,6 +202,9 @@ type
       cfvarField*: FieldAccess
       cfvarIdentDest*: Option[string]
       cfvarFieldDest*: Option[FieldAccess]
+    of ConstructObjectShorthand:
+      cosStoreIdent*: Option[string]
+      cosKVPairs*: KeyValuePairs
 
 func hash*(access: FieldAccess): Hash {.inline.} =
   hash((access.identifier))
@@ -217,42 +222,51 @@ proc hash*(call: FunctionCall): Hash {.inline.} =
   hash
 
 proc hash*(stmt: Statement): Hash {.inline.} =
-  var hash = Hash(0)
+  var hash: Hash
 
   hash = hash !& stmt.kind.int
-  case stmt.kind
-  of CreateMutVal:
-    hash = hash !& hash((stmt.mutIdentifier, stmt.mutAtom))
-  of CreateImmutVal:
-    hash =
-      hash !&
-      hash((stmt.imIdentifier, cast[int64](stmt.imAtom), cast[int64](stmt.imField)))
-  of Call:
-    hash = hash !& hash((stmt.fn, stmt.arguments))
-  of NewFunction:
-    hash = hash !& hash((stmt.fnName))
-  of BinaryOp:
-    hash = hash !& hash((stmt.op, stmt.binStoreIn))
 
-    if stmt.binLeft != nil:
-      hash = hash !& hash(stmt.binLeft)
+  {.cast(gcsafe).}:
+    case stmt.kind
+    of CreateMutVal:
+      hash = hash !& hash((stmt.mutIdentifier, stmt.mutAtom))
+    of CreateImmutVal:
+      hash =
+        hash !&
+        hash((stmt.imIdentifier, cast[int64](stmt.imAtom), cast[int64](stmt.imField)))
+    of Call:
+      hash = hash !& hash((stmt.fn, stmt.arguments))
+    of NewFunction:
+      hash = hash !& hash((stmt.fnName))
+    of BinaryOp:
+      hash = hash !& hash((stmt.op, stmt.binStoreIn))
 
-    if stmt.binRight != nil:
-      hash = hash !& hash(stmt.binRight)
-  of IfStmt:
-    hash = hash !& hash((stmt.conditionExpr))
-  of AccessField:
-    hash = hash !& hash((stmt.identifier, stmt.field))
-  of AtomHolder:
-    hash = hash !& hash(stmt.atom)
-  of IdentHolder:
-    hash = hash !& hash(stmt.ident)
-  of WhileStmt:
-    hash = hash !& hash((stmt.whConditionExpr, stmt.whBranch))
-  else:
-    discard
+      if stmt.binLeft != nil:
+        hash = hash !& hash(stmt.binLeft)
+
+      if stmt.binRight != nil:
+        hash = hash !& hash(stmt.binRight)
+    of IfStmt:
+      hash = hash !& hash((stmt.conditionExpr))
+    of AccessField:
+      hash = hash !& hash((stmt.identifier, stmt.field))
+    of AtomHolder:
+      hash = hash !& hash(stmt.atom)
+    of IdentHolder:
+      hash = hash !& hash(stmt.ident)
+    of WhileStmt:
+      hash = hash !& hash((stmt.whConditionExpr, stmt.whBranch))
+    else:
+      discard
 
   hash
+
+proc `$`*(stmt: Statement): string =
+  case stmt.kind
+  of AtomHolder:
+    $stmt.atom
+  else:
+    $stmt.kind
 
 proc hash*(fn: Function): Hash {.inline.} =
   when fn is Scope: # FIXME: really dumb fix to prevent a segfault
@@ -311,6 +325,11 @@ proc listIterator*(storesIn: string, iterList: Statement): Statement =
 
 proc fieldHolder*(access: FieldAccess): Statement =
   Statement(kind: FieldAccessHolder, fieldAccessList: access)
+
+proc constructObjectShort*(storeIdent: string, pairs: KeyValuePairs): Statement =
+  Statement(
+    kind: ConstructObjectShorthand, cosStoreIdent: some(storeIdent), cosKVPairs: pairs
+  )
 
 proc defineFunction*(fn: Function, limitedTo: Option[Scope] = none(Scope)): Statement =
   Statement(kind: DefineFunction, defunFn: fn, limitedTo: limitedTo)
