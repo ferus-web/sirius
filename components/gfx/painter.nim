@@ -106,7 +106,7 @@ proc drawInputElement(
       &input.kind
 
   case inputKind
-  of InputKind.Text:
+  of InputKind.Text, InputKind.Search:
     discard ctx.displayList.addChild(
       ZLevel(0),
       currentIdx,
