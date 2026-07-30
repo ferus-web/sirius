@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[options, strutils, tables, sequtils]
+import std/[options, strutils, strformat, tables, sequtils]
 import components/js/grammar/[token, tokenizer, ast, errors, statement]
 import components/js/runtime/vm/atom, components/aux/pretty
 import pkg/[results, yaml, shakar]
@@ -17,6 +17,7 @@ type
     Key
     Colon
     Value
+    PostValue
 
   Parser* = ref object
     tokenizer*: Tokenizer
@@ -352,7 +353,8 @@ proc parseTable(parser: Parser): Option[KeyValuePairs] =
         discard
       else:
         parser.error Other,
-          "expected Colon after property id, got " & $token.kind & " instead"
+          "expected Colon or right-brace after property id, got " & $token.kind &
+            " instead"
     of TableParsingState.Value:
       case token.kind
       of TokenKind.Identifier:
@@ -365,7 +367,17 @@ proc parseTable(parser: Parser): Option[KeyValuePairs] =
           parser.error UnexpectedToken, "expected value, got " & $token.kind
 
         table[currentKey] = &atom
-        state = TableParsingState.Key
+        state = TableParsingState.PostValue
+    of TableParsingState.PostValue:
+      case token.kind
+      of TokenKind.RCurly:
+        metRCurly = true
+        break # we've hit our }, end table parsing
+      of TokenKind.Comma:
+        state = TableParsingState.Key # a new key-value pair is ahead, continue
+      else:
+        parser.error UnexpectedToken,
+          &"{token.kind} (expected right-curly-bracket or comma)"
 
   if not metRCurly:
     parser.error Other, "property list must be ended by }"
