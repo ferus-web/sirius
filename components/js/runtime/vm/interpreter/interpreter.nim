@@ -718,6 +718,7 @@ proc opWriteField(interpreter: var Interpreter, op: ptr Operation) =
       propertyObj = some(idx)
 
   if not *propertyObj:
+    atom.objValues &= undefined(interpreter.heapManager)
     propertyObj = some(
       Property(
         isAccessor: false,
