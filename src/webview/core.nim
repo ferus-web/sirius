@@ -211,6 +211,8 @@ proc handleHTMLLinkElement(
         if not view.opts.disableExternalStylesheets:
           view.stylesheet &= parseStylesheet(newParser(newParserInput(style)))
           view.reflow()
+      else:
+        assert off, $resp.code
     ,
   )
 
@@ -276,15 +278,42 @@ proc executeScript(
   if view.opts.disableScripting:
     return
 
+  let srcAttr = element.getAttr(element.document.factory, "src")
+  let isInline = !srcAttr
+
   var codeBuffer: string # TODO: Prealloc somehow?
-  for child in element.childList:
-    if child of dom.Text:
-      codeBuffer &= Text(child).data
 
   element.script = Script(baseURL: view.target, document: document)
-  executeScript(element, ensureMove(codeBuffer))
 
-  view.scripts &= element
+  if isInline:
+    for child in element.childList:
+      if child of dom.Text:
+        codeBuffer &= Text(child).data
+  else:
+    let
+      resolved = view.resolveURLSegment(&srcAttr)
+      async = *element.getAttr(element.document.factory, "async")
+
+    assert(*resolved, &srcAttr)
+
+    if not async:
+      warn "TODO: Sync script fetch not supported yet, loading script asynchronously",
+        src = &srcAttr
+
+    discard view.loader.getAsyncStream(
+      &resolved,
+      finalize = proc(resp: Response, err: TransportError) =
+        if resp.code == 200:
+          if not view.opts.disableScripting:
+            element.script = Script(baseURL: &resolved, document: document)
+            executeScript(element, resp.body.stream.readAll())
+            view.scripts &= element
+      ,
+    )
+
+  if isInline:
+    executeScript(element, ensureMove(codeBuffer))
+    view.scripts &= element
 
 proc handleHTMLMetaElement(view: WebView, element: HTMLMetaElement) =
   if !element.httpEquiv:

@@ -60,12 +60,17 @@ proc setupRandomState(rng: out uint64) =
     rng = 0'u64
 
 proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
-  echo codeBuffer
+  echo codeBuffer.repr
   let parser = newParser(codeBuffer)
   element.script.ast = parser.parse()
   if element.script.rt == nil:
     element.script.rt = newRuntime(
-      file = "<inline-script>" # TODO: We can probably use more descriptive names?
+      file =
+        if element.script.baseURL.pathname == "/":
+          "<inline-script>"
+        else:
+          element.script.baseURL.pathname
+        # TODO: We can probably use more descriptive names?
     )
 
   setupRandomState(element.script.rt.rng)
