@@ -1224,16 +1224,18 @@ proc parseScope(parser: Parser): seq[Statement] =
 
   stmts
 
-proc parseExprInParenWrap(parser: Parser, token: TokenKind): Option[Statement] =
+proc parseExprInParenWrap(
+    parser: Parser, token: TokenKind, compounding: bool = false
+): Option[Statement] =
   ## Parse an expression that is currently wrapped in parenthesis
   ## like `(x == 32)`. Used when parsing if statements and while loops.
 
   if parser.tokenizer.eof:
     parser.error Other, "expected conditions after control-flow token, got EOF instead"
 
-  if (let tok = parser.tokenizer.nextExceptWhitespace(); *tok):
+  if not compounding and (let tok = parser.tokenizer.nextExceptWhitespace(); *tok):
     if (&tok).kind != TokenKind.LParen:
-      parser.error Other, "expected left parenthesis after " & $token & " token"
+      parser.error Other, &"expected left parenthesis after {token} token"
 
   let copiedTok = parser.tokenizer
   var expr = parser.parseExpression()
@@ -1252,9 +1254,23 @@ proc parseExprInParenWrap(parser: Parser, token: TokenKind): Option[Statement] =
       )
 
   if (let tok = parser.tokenizer.nextExceptWhitespace(); *tok):
-    if (&tok).kind != TokenKind.RParen:
-      parser.error Other,
-        "expected right parenthesis after expression, got " & $(&tok).kind
+    let kind = (&tok).kind
+    case kind
+    of TokenKind.RParen:
+      discard
+    of TokenKind.And:
+      expr.applyThis:
+        this.binLeft = binOp(this.op, this.binLeft, this.binRight)
+        this.op = BinaryOperation.And
+        if (
+          let rhsExpr = parser.parseExprInParenWrap(TokenKind.And, compounding = true)
+          *rhsExpr
+        ):
+          this.binRight = &rhsExpr
+        else:
+          parser.error Other, &"expected right-hand-side expression after &&"
+    else:
+      parser.error Other, &"expected right parenthesis after expression, got {kind}"
 
   expr
 

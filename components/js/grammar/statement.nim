@@ -86,6 +86,8 @@ type
     LesserOrEqual
     NotEqual
     NotTrueEqual
+    And
+    Or
 
   FunctionCall* = object
     field*: Option[FieldAccess]
@@ -410,18 +412,12 @@ proc copyValImmut*(dest, source: string): Statement =
   Statement(kind: CopyValImmut, cpImmutSourceIdent: source, cpImmutDestIdent: dest)
 
 proc binOp*(
-    op: BinaryOperation, left, right: Statement, storeIdent: string = ""
+    op: BinaryOperation,
+    left, right: Statement,
+    storeIdent: Option[string] = none(string),
 ): Statement =
   Statement(
-    kind: BinaryOp,
-    binLeft: left,
-    binRight: right,
-    op: op,
-    binStoreIn:
-      if storeIdent.len > 0:
-        storeIdent.some()
-      else:
-        none(string),
+    kind: BinaryOp, binLeft: left, binRight: right, op: op, binStoreIn: storeIdent
   )
 
 proc reassignVal*(identifier: string, atom: MAtom): Statement =
