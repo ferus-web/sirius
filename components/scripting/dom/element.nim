@@ -51,6 +51,14 @@ proc onkeydownSetter(rt: Runtime, this: JSValue, value: JSValue) =
     KeydownEvent, EventListener(rt: rt, callback: value, setter: true)
   )
 
+proc onsubmitSetter(rt: Runtime, this: JSValue, value: JSValue) =
+  const SubmitEvent = "submit"
+
+  let element = &this.getPrivateObject(dom.Element)
+  element.addEventListener(
+    SubmitEvent, EventListener(rt: rt, callback: value, setter: true)
+  )
+
 proc getElementTextContentAccessor*(runtime: Runtime): FieldAccessor =
   FieldAccessor(
     getter: proc(this: JSValue) =
@@ -94,6 +102,12 @@ proc getOnKeyDownFieldAccessor*(runtime: Runtime): FieldAccessor =
       runtime.onkeydownSetter(this, value)
   )
 
+proc getOnSubmitFieldAccessor*(runtime: Runtime): FieldAccessor =
+  FieldAccessor(
+    setter: proc(this: JSValue, value: JSValue) {.gcsafe.} =
+      runtime.onsubmitSetter(this, value)
+  )
+
 proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
   JSElement(
     internal: hidden(element),
@@ -109,6 +123,7 @@ proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
     tagName: toUpperAscii(element.document.factory.atomToStr(element.localName)),
     onclick: getOnClickFieldAccessor(runtime),
     onkeydown: getOnKeyDownFieldAccessor(runtime),
+    onsubmit: getOnSubmitFieldAccessor(runtime),
   )
 
 proc generateBindings*(runtime: Runtime) =
