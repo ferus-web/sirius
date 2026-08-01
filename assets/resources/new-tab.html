@@ -1,0 +1,73 @@
+<!--
+	This is the about:new page for Sirius.
+  Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+-->
+
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <title>New Tab</title> <!-- yes, we don't have tabs yet. we probably will not for a while. :3 -->
+    <style>
+body {
+  background-color: rgb(30, 32, 38);
+}
+
+#wordmark {
+  text-align: center;
+  font-family: sans-serif;
+  font-size: 32px;
+  color: white;
+  cursor: default;
+}
+
+#ver {
+  text-align: center;
+  font-size: 16px;
+  color: white;
+  cursor: default;
+}
+
+footer {
+  text-align: center;
+  color: white;
+  font-size: 16px;
+}
+
+input {
+  text-align: center;
+  background-color: rgb(50, 52, 58);
+  color: white;
+  width: 512px;
+  height: 64px;
+  margin-left: 20%;
+  font-size: 24px;
+}
+    </style>
+  </head>
+  <body>
+    <h1 id="wordmark">{agent.name}<p id="ver">{agent.version}</p></h1>
+    <form id=search>
+      <!-- TODO: make KeyboardEvent(s) work so we don't need to abuse forms and onsubmit -->
+      <input id="searchbar" type=search></input>
+      <input type=submit value="Search"></input>
+    </form>
+
+    <footer>Sirius is an independent web engine, built from scratch in Nim. Please ignore the off-center input element for my convenience. :3</h2>
+
+    <script>
+const formElement = document.getElementById('search');
+const inputElement = document.getElementById('searchbar');
+
+function submitInput() {
+  let url = inputElement.value;
+  
+  console.log("Navigating to", url);
+  window.open(url);
+}
+
+// TODO: Event.key or something
+// inputElement.onkeydown = submitInput;
+formElement.onsubmit = submitInput;
+    </script>
+  </body>
+</html>

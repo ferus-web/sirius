@@ -6,7 +6,7 @@ import
     algorithm, monotimes, options, streams, strformat, strutils, sequtils, tables,
     unicode,
   ]
-import ./[cookie_jar, hit_testing, resource_loader, types]
+import ./[branding, cookie_jar, hit_testing, resource_loader, types]
 import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
 import
   components/aux/[pretty, stream_utils],
@@ -154,9 +154,13 @@ proc resolveURLSegment*(
   tryParseURL(segment, some(view.target))
 
 proc reflow(view: WebView) =
-  let htmlElem = view.dom.childList.filterIt(
-    it of dom.Element and tagType(Element(it)) == TAG_HTML
-  )[0] # HACK: This is stupid. Do it properly.
+  let htmlElemFiltered =
+    view.dom.childList.filterIt(it of dom.Element and tagType(Element(it)) == TAG_HTML)
+  if htmlElemFiltered.len < 1:
+    # if the DOM is empty, don't attempt to reflow it
+    return
+
+  let htmlElem = htmlElemFiltered[0] # HACK: This is stupid. Do it properly.
 
   view.styleMap = resolveStyling(htmlElem, view.dom.factory, view.stylesheet)
   view.tree =
@@ -498,6 +502,28 @@ proc loadUrl(view: WebView, url: URL) =
         view.showTransportErrorPage(url, err),
   )
 
+proc loadSiriusURL(view: WebView, path: string) =
+  if path == "new":
+    let newTabPage = &view.assetProvider.openAssetStream("resources/new-tab.html")
+
+    loadHTMLStream(
+      view,
+      newStringStream(
+        newTabPage.readAll().multiReplace(
+          {"{agent.name}": branding.AgentName, "{agent.version}": branding.AgentVersion}
+        )
+      ),
+    )
+    return
+
+  assert(off, &"Unknown page sirius:{path}") # TODO: make this a page or something
+
+proc loadNotSpecialURL(view: WebView, target: URL) =
+  # It'd be so much nicer if these were called special URLs, but sadly I didn't write this spec. :(
+
+  if target.scheme == "sirius":
+    loadSiriusURL(view, target.pathname)
+
 proc loadPage*(view: WebView, target: string) =
   view.target = parseURL(target)
   view.realm = newRealm()
@@ -505,8 +531,10 @@ proc loadPage*(view: WebView, target: string) =
   debug "Load page", target = view.target, scheme = view.target.scheme
 
   case getSchemeType(view.target)
-  of SchemeType.Ws, SchemeType.Ftp, SchemeType.Wss, SchemeType.NotSpecial:
+  of SchemeType.Ws, SchemeType.Ftp, SchemeType.Wss:
     assert off, "Not supported"
+  of SchemeType.NotSpecial:
+    loadNotSpecialURL(view, view.target)
   of SchemeType.Http, SchemeType.Https:
     loadURL(view, view.target)
   of SchemeType.File:
@@ -572,7 +600,6 @@ proc applyCursorState(view: WebView, layoutNode: LayoutNode) =
 
 proc submitInputElement(view: WebView, element: HTMLInputElement) =
   let ownerOpt = element.resetFormOwner()
-  # TODO: onsubmit callback
 
   if !ownerOpt:
     return
@@ -580,6 +607,10 @@ proc submitInputElement(view: WebView, element: HTMLInputElement) =
   # FIXME: This isn't compliant yet. It just works for some cases.
 
   let owner = &ownerOpt
+
+  if dispatchEvent(owner, "submit", undefined(view.realm.heap)):
+    return
+
   let meth = owner.meth.get(otherwise = FormMethod.Get)
   var target =
     if *owner.action:
@@ -679,6 +710,11 @@ proc handleKeyboardEvent(view: WebView, event: Event) =
   let keysym = view.app.xkbState.getOneSym(event.key.code + 8)
   if *view.keyboardFocusedElement:
     let element = &view.keyboardFocusedElement
+
+    discard dispatchEvent(element, "keydown", undefined(view.realm.heap))
+    # not sure this is really compliant...
+    # FIXME: pass an actual Event object instead of undefined
+
     if element of HTMLInputElement:
       let inputElement = HTMLInputElement(element)
       if keysym == XKB_Key_Backspace:
@@ -689,8 +725,12 @@ proc handleKeyboardEvent(view: WebView, event: Event) =
           view.reflow()
         return
 
-      inputElement.inputBuffer &= Rune(view.app.xkbState.getUtf32(event.key.code + 8))
-      view.reflow()
+      if keysym != XKB_Key_Shift_L and keysym != XKB_Key_Shift_R and
+          keysym != XKB_Key_Tab and keysym != XKB_Key_Super_L and
+          keysym != XKB_Key_Super_R and keysym != XKB_Key_Return:
+        # FIXME: probably can be cleaner?
+        inputElement.inputBuffer &= Rune(view.app.xkbState.getUtf32(event.key.code + 8))
+        view.reflow()
 
   if keysym == XKB_Key_Down or keysym == XKB_KEY_Page_Down:
     view.renderCtx.viewerPosition.y -= 5
@@ -709,6 +749,9 @@ proc loop*(view: WebView): int =
 
   while not view.app.closureRequested:
     view.poll()
+
+    if not view.progress and (view.target != view.dom.url):
+      view.loadURL(view.dom.url)
 
     let eventOpt = view.app.flushQueue()
     if !eventOpt:
