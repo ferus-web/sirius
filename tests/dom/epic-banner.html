@@ -12,9 +12,9 @@
       var x = 0
       var text = "1";
 
-      setTimeout(function() {
-	if (x == 0) { x = 1; text = msg.toUpperCase(); }
-	else if (x == 1) { x = 0; text = msg.toLowerCase(); }
+      setInterval(function() {
+	if (x == 0) { x = 1; text = data.toUpperCase(); }
+	else { x = 0; text = data.toLowerCase(); }
 
 	msg.textContent = text;
       }, 1000)

@@ -100,22 +100,23 @@ proc expand*(
         else:
           runtime.markInternal(stmt, &stmt.storeIn)
 
-      if stmt.binLeft.kind == AtomHolder:
+      case stmt.binLeft.kind
+      of StatementKind.AtomHolder:
         runtime.generateBytecode(
           fn,
           createImmutVal("left_term", stmt.binLeft.atom),
           ownerStmt = some(stmt),
           internal = true,
         )
-      elif stmt.binLeft.kind == StatementKind.Call:
+      of StatementKind.Call:
         runtime.generateBytecode(
           fn, stmt.binLeft, ownerStmt = some(stmt), internal = true
         )
         runtime.markInternal(stmt, "left_term")
         runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
-      elif stmt.binLeft.kind == IdentHolder:
+      of StatementKind.IdentHolder:
         discard
-      elif stmt.binRight.kind == FieldAccessHolder:
+      of StatementKind.FieldAccessHolder:
         runtime.generateBytecode(
           fn,
           stmt.binLeft,
@@ -123,25 +124,31 @@ proc expand*(
           internal = true,
           exprStoreIn = some("left_term"),
         )
+      of StatementKind.BinaryOp:
+        runtime.markInternal(stmt, "left_term")
+        runtime.generateBytecode(
+          fn, stmt.binLeft, parentStmt = some(stmt), internal = true
+        )
       else:
         unreachable
 
-      if stmt.binRight.kind == AtomHolder:
+      case stmt.binRight.kind
+      of StatementKind.AtomHolder:
         runtime.generateBytecode(
           fn,
           createImmutVal("right_term", stmt.binRight.atom),
           ownerStmt = some(stmt),
           internal = true,
         )
-      elif stmt.binRight.kind == StatementKind.Call:
+      of StatementKind.Call:
         runtime.generateBytecode(
           fn, stmt.binRight, ownerStmt = some(stmt), internal = true
         )
         runtime.markInternal(stmt, "right_term")
         runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
-      elif stmt.binRight.kind == IdentHolder:
+      of StatementKind.IdentHolder:
         discard
-      elif stmt.binRight.kind == FieldAccessHolder:
+      of StatementKind.FieldAccessHolder:
         runtime.generateBytecode(
           fn,
           stmt.binRight,
@@ -149,10 +156,17 @@ proc expand*(
           internal = true,
           exprStoreIn = some("right_term"),
         )
+      of StatementKind.BinaryOp:
+        runtime.markInternal(stmt, "right_term")
+        runtime.generateBytecode(
+          fn, stmt.binRight, parentStmt = some(stmt), internal = true
+        )
       else:
         unreachable
     of IfStmt:
       # # debug "niche: expand IfStmt"
+
+      let x = hash stmt
 
       case stmt.conditionExpr.binLeft.kind
       of AtomHolder:
@@ -171,8 +185,21 @@ proc expand*(
           internal = true,
           exprStoreIn = some("left_term"),
         )
+      of BinaryOp:
+        stmt.conditionExpr.binLeft.binStoreIn = some("left_term")
+        runtime.markInternal(stmt, "left_term")
+        runtime.generateBytecode(
+          fn,
+          stmt.conditionExpr.binLeft,
+          parentStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("left_term"),
+        )
       else:
         discard
+
+      let y = hash stmt
+      assert x == y
 
       case stmt.conditionExpr.binRight.kind
       of AtomHolder:
@@ -188,6 +215,16 @@ proc expand*(
           fn,
           stmt.conditionExpr.binRight,
           ownerStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("right_term"),
+        )
+      of BinaryOp:
+        stmt.conditionExpr.binRight.binStoreIn = some("right_term")
+        runtime.markInternal(stmt, "right_term")
+        runtime.generateBytecode(
+          fn,
+          stmt.conditionExpr.binRight,
+          parentStmt = some(stmt),
           internal = true,
           exprStoreIn = some("right_term"),
         )
@@ -574,8 +611,6 @@ proc genBinaryOp(
     leftTerm = stmt.binLeft
     rightTerm = stmt.binRight
 
-  # TODO: recursive IR generation
-
   var
     leftIdx =
       if leftTerm.kind in {
@@ -635,7 +670,10 @@ proc genBinaryOp(
       if leftTerm.kind == AtomHolder:
         runtime.ir.loadBool(leftIdx, true)
       else:
-        runtime.ir.loadBool(runtime.index(&stmt.binStoreIn, defaultParams(fn)), true)
+        echo stmt.binStoreIn
+        runtime.ir.loadBool(
+          runtime.index(&stmt.binStoreIn, internalIndex(&parentStmt)), true
+        )
     runtime.ir.overrideArgs(equalJmp, @[stackInteger(equalBranch)])
     runtime.ir.jump(equalBranch + 3)
 
@@ -644,7 +682,10 @@ proc genBinaryOp(
       if leftTerm.kind == AtomHolder:
         runtime.ir.loadBool(leftIdx, false)
       else:
-        runtime.ir.loadBool(runtime.index(&stmt.binStoreIn, defaultParams(fn)), false)
+        runtime.ir.loadBool(
+          runtime.index(&stmt.binStoreIn, internalIndex(&parentStmt)), false
+        )
+
     runtime.ir.overrideArgs(unequalJmp, @[stackInteger(unequalBranch)])
   of BinaryOperation.NotEqual:
     runtime.ir.passMultipleArguments(@[leftIdx, rightIdx])
@@ -682,7 +723,7 @@ proc genBinaryOp(
   if *stmt.binStoreIn:
     let address =
       if internal:
-        runtime.index(&stmt.binStoreIn, internalIndex(stmt))
+        runtime.index(&stmt.binStoreIn, internalIndex(&parentStmt))
       else:
         runtime.index(&stmt.binStoreIn, defaultParams(fn))
 
@@ -714,6 +755,8 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
         runtime.index(stmt.conditionExpr.binLeft.ident, defaultParams(fn))
       of AtomHolder, FieldAccessHolder:
         runtime.index("left_term", internalIndex(stmt))
+      of BinaryOp:
+        runtime.index("left_term", internalIndex(stmt))
       else:
         unreachable
         0
@@ -723,7 +766,7 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
       of IdentHolder:
         # # debug "emitter: if-stmt: RHS is ident"
         runtime.index(stmt.conditionExpr.binRight.ident, defaultParams(fn))
-      of AtomHolder, FieldAccessHolder:
+      of AtomHolder, FieldAccessHolder, BinaryOp:
         runtime.index("right_term", internalIndex(stmt))
       else:
         unreachable
@@ -746,6 +789,8 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     runtime.ir.greaterThanEqual(lhsIdx, rhsIdx)
   of BinaryOperation.LesserOrEqual:
     runtime.ir.lesserThanEqual(lhsIdx, rhsIdx)
+  of BinaryOperation.And:
+    discard
   else:
     unreachable
 
@@ -781,6 +826,9 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
   of BinaryOperation.NotEqual:
     runtime.ir.overrideArgs(trueJump, @[stackInteger(getCurrOpNum().uint)])
     runtime.ir.overrideArgs(falseJump, @[stackInteger(falseJump + 2)])
+  of BinaryOperation.And:
+    # jump to the next cond because I hate my life
+    runtime.ir.overrideArgs()
   else:
     unreachable
 

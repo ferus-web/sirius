@@ -241,7 +241,7 @@ proc hash*(stmt: Statement): Hash {.inline.} =
     of NewFunction:
       hash = hash !& hash((stmt.fnName))
     of BinaryOp:
-      hash = hash !& hash((stmt.op, stmt.binStoreIn))
+      hash = hash !& hash((stmt.op))
 
       if stmt.binLeft != nil:
         hash = hash !& hash(stmt.binLeft)
