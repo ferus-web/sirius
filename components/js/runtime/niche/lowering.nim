@@ -828,7 +828,7 @@ proc genIfStmt(runtime: Runtime, fn: Function, stmt: Statement) =
     runtime.ir.overrideArgs(falseJump, @[stackInteger(falseJump + 2)])
   of BinaryOperation.And:
     # jump to the next cond because I hate my life
-    runtime.ir.overrideArgs()
+    discard # runtime.ir.overrideArgs()
   else:
     unreachable
 

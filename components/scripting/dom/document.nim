@@ -7,9 +7,10 @@ import
   components/js/runtime/atom_helpers,
   components/js/runtime/[arguments, bridge, construction, types],
   components/js/runtime/abstract/[coercible, to_number, to_string],
-  components/dom/dom,
+  components/dom/[dom, tags],
   components/html/dom_utils,
   components/scripting/dom/[element],
+  components/scripting/html/element/[htmlinputelement],
   components/net/[cookie, cookie_parser],
   components/aux/pretty
 import pkg/shakar
@@ -46,6 +47,12 @@ proc generateGlobal*(runtime: Runtime, doc: dom.Document): JSValue =
     ),
   )
 
+template bindJSElement(runtime: Runtime, elem: dom.Element) =
+  if elem of HTMLInputElement:
+    ret toJSHTMLInputElement(runtime, elem)
+  else:
+    ret toJSElement(runtime, elem)
+
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType(prototype = JSDocument, name = "Document")
 
@@ -67,7 +74,7 @@ proc generateBindings*(runtime: Runtime) =
         target = document.getElementById(document.factory, id)
 
       if *target:
-        ret toJSElement(runtime, &target)
+        bindJSElement(runtime, &target)
       else:
         ret null(runtime)
     ,
