@@ -417,7 +417,8 @@ proc genCall(
       of cakAtom: # already loaded via the statement expander
         let ident = $i
         # # debug "interpreter: passing atom parameter to function with ident: " & ident
-        argumentRegs &= runtime.index(ident, internalIndex(stmt))
+
+        argumentRegs[i] = runtime.index(ident, internalIndex(stmt))
       of cakFieldAccess:
         let index = runtime.resolveFieldAccess(
           fn, stmt, runtime.index(arg.access.identifier, defaultParams(fn)), arg.access
