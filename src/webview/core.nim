@@ -488,7 +488,7 @@ proc loadUrl(view: WebView, url: URL) =
   view.target = url
   # view.app.setCursorShape(Shape.Progress)
 
-  view.dom = Document()
+  view.dom = Document(url: url)
   discard view.loader.getAsyncStream(
     url = url,
     timeoutMs = 60000,
