@@ -25,6 +25,13 @@ proc generateBindings*(runtime: Runtime) =
 
   runtime.definePrototypeFn(
     JSWindow,
+    "toString",
+    proc(_: JSValue) =
+      ret "[object Window]"
+    ,
+  )
+  runtime.definePrototypeFn(
+    JSWindow,
     "focus",
     proc(this: JSValue) =
       info "Page is requesting focus."
