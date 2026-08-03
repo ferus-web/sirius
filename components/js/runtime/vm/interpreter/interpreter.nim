@@ -1267,7 +1267,7 @@ proc tryInitializeJIT(interp: ptr Interpreter) =
       vm.stack[dest] = &vm.get(source.int),
     resetArgs: proc(vm: var Interpreter) {.cdecl.} =
       jitd "callback", "resetArgs()"
-      vm.registers.callArgs.reset(),
+      vm.registers.callArgs.setLen(0),
     passArgument: proc(vm: var Interpreter, index: uint) {.cdecl.} =
       jitd "callback", "passArgument(index=" & $index & ')'
       vm.registers.callArgs.add(&vm.get(index.int)),

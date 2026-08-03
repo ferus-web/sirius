@@ -85,7 +85,7 @@ proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
       loopAllocationEliminator: false,
       aggressivelyFreeRetvals: false,
       deadCodeElimination: false,
-      jitCompiler: false,
+      jitCompiler: true,
     ),
     jit: JITOpts(),
   )
