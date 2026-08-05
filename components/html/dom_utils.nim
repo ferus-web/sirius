@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[hashes, options, strutils]
-import components/dom/dom
+import components/dom/dom, components/aux/parse_nums
 import pkg/shakar
 
 func hash*(node: dom.Node): hashes.Hash {.inline.} =
@@ -24,15 +24,12 @@ func getAttr*(
 
 func getIntAttr*(
     element: dom.Element, factory: dom.AtomFactory, attribKey: string
-): Option[int] =
+): Option[int64] =
   let attr = getAttr(element, factory, attribKey)
   if !attr:
-    return none(int)
+    return none(int64)
 
-  try:
-    return some(parseInt(&attr))
-  except ValueError:
-    return none(int)
+  tryParseInt(&attr)
 
 func getUintAttr*(
     element: dom.Element, factory: dom.AtomFactory, attribKey: string
@@ -41,10 +38,7 @@ func getUintAttr*(
   if !attr:
     return none(uint)
 
-  try:
-    return some(parseUint(&attr))
-  except ValueError:
-    return none(uint)
+  tryParseUint(&attr, uint)
 
 func getElementById*(
     node: dom.Node, factory: dom.AtomFactory, id: string

@@ -2,7 +2,7 @@
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, strutils, sequtils, times]
-import components/net/cookie
+import components/net/cookie, components/aux/parse_nums
 import pkg/[url, results, shakar]
 
 const ShortMonthNames* =
@@ -33,13 +33,11 @@ func parseCookieDateImpl(
       if not isDigit(c):
         return false
 
-    try:
-      res = cast[uint32](parseUint(token))
-      return true
-    except ValueError:
-      # NOTE: Can we write our own primitive for parseUint that _doesn't_ use
-      # exceptions? I highly doubt this is optimal.
-      return false
+    if (let value = tryParseUint(token, uint32); *value):
+      res = &value
+      true
+    else:
+      false
 
   func parseTime(token: string): bool =
     let parts = token.split(':')
@@ -220,10 +218,9 @@ proc handleMaxAgeAttribute(cookie: var Cookie, attribValue: string) =
     return
 
   let deltaSeconds =
-    try:
-      parseInt(digits)
-    except ValueError:
-      # FIXME: Sigh. more exception slop.
+    if (let value = tryParseInt(attribValue); *value):
+      &value
+    else:
       (if attribValue[0] == '-': int64.low else: int64.high)
 
   cookie.maxAge = some(cast[int64](deltaSeconds))
