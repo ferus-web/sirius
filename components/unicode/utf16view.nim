@@ -26,18 +26,28 @@ type
     Host
 
   UTF16View* = object
-    data: ptr uint16
+    data*: ptr uint16
     size*: uint64
 
-    endianness: UTFEndianness
-
-    cachedCpLength: Option[uint64]
+    endianness*: UTFEndianness
+    cachedCpLength*: Option[uint64]
 
 proc `=destroy`*(view: UTF16View) =
   if view.data == nil:
     return
 
   deallocShared(view.data)
+
+proc toUTF8*(view: UTF16View): string =
+  if view.size < 1:
+    return
+
+  let buffSize = simdutf.utf8LengthFromUtf16(view.data, view.size)
+  var buffer = newString(buffSize)
+
+  discard simdutf.convertUtf16ToUtf8Safe(view.data, view.size, buffer[0].addr, buffSize)
+
+  ensureMove(buffer)
 
 proc newUtf16View*(str: ptr char, size: uint64): UTF16View {.raises: [].} =
   ## Convert a UTF-8 buffer to a `UTF16View`

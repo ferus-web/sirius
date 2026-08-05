@@ -32,13 +32,7 @@ proc generateStdIr*(runtime: Runtime) =
       else:
         runtime.ToString(argument)
 
-    var atom = runtime.createObjFromType(JSString)
-    atom.tag(
-      "internal", (if argument.kind == String: argument
-      else: str(runtime, strVal))
-    )
-    atom["length"] = integer(runtime, newUtf16View(strVal).size.int)
-    ret atom
+    ret newJSString(runtime, strVal)
 
   runtime.defineConstructor("String", stringConstructor)
   runtime.defineFn("String", stringConstructor)
@@ -47,9 +41,7 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "toString",
     proc(str: JSValue) =
-      let value = &str.tagged("internal")
-
-      ret value
+      ret str
     ,
   )
 

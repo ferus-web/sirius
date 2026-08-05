@@ -97,4 +97,9 @@ func count_utf16*(input: ptr uint16, length: uint64): uint64
 func count_utf16le*(input: ptr uint16, length: uint64): uint64
 func count_utf16be*(input: ptr uint16, length: uint64): uint64
 
+func utf8_length_from_utf16*(input: ptr uint16, size: uint64): uint64
+func convert_utf16_to_utf8_safe*(
+  input: ptr uint16, size: uint64, output: ptr char, outputLen: uint64
+): uint64
+
 {.pop.}
