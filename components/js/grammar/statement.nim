@@ -37,6 +37,7 @@ type
     ListIterator
     CopyFieldToVar
     ConstructObjectShorthand
+    PreIncrement
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -159,7 +160,7 @@ type
     of WhileStmt:
       whConditionExpr*: Statement
       whBranch*: Scope
-    of Increment:
+    of Increment, PreIncrement:
       incIdent*: string
     of Decrement:
       decIdent*: string
@@ -284,10 +285,10 @@ proc hash*(scope: Scope): Hash {.inline.} =
 
   hash
 
-proc pushIdent*(args: var PositionedArguments, ident: string) {.inline.} =
+func pushIdent*(args: var PositionedArguments, ident: string) {.inline.} =
   args &= CallArg(kind: cakIdent, ident: ident)
 
-proc createFieldAccess*(splitted: seq[string]): FieldAccess =
+func createFieldAccess*(splitted: seq[string]): FieldAccess =
   ## From a sequence of identifiers (assuming they are in sorted order of accesses),
   ## create a `FieldAccess`, which has a "view" of the top of the field access chain.
   var
@@ -303,46 +304,46 @@ proc createFieldAccess*(splitted: seq[string]): FieldAccess =
 
   top
 
-proc pushFieldAccess*(args: var PositionedArguments, access: FieldAccess) {.inline.} =
+func pushFieldAccess*(args: var PositionedArguments, access: FieldAccess) {.inline.} =
   args &= CallArg(kind: cakFieldAccess, access: access)
 
-proc pushAtom*(args: var PositionedArguments, atom: MAtom) {.inline.} =
+func pushAtom*(args: var PositionedArguments, atom: MAtom) {.inline.} =
   args &= CallArg(kind: cakAtom, atom: atom)
 
-proc pushImmExpr*(args: var PositionedArguments, expr: Statement) {.inline.} =
+func pushImmExpr*(args: var PositionedArguments, expr: Statement) {.inline.} =
   assert expr.kind in
     {BinaryOp, AccessArrayIndex, AtomHolder, DefineFunction, CreateArrayLiteral},
     "Attempt to push invalid expression to arguments: " & $expr.kind
   args &= CallArg(kind: cakImmediateExpr, expr: expr)
 
 {.push checks: off, inline.}
-proc atomHolder*(atom: MAtom): Statement =
+func atomHolder*(atom: MAtom): Statement =
   Statement(kind: AtomHolder, atom: atom)
 
-proc identHolder*(ident: string): Statement =
+func identHolder*(ident: string): Statement =
   Statement(kind: IdentHolder, ident: ident)
 
-proc listIterator*(storesIn: string, iterList: Statement): Statement =
+func listIterator*(storesIn: string, iterList: Statement): Statement =
   Statement(kind: ListIterator, iterStoresIn: some(storesIn), iterList: iterList)
 
-proc fieldHolder*(access: FieldAccess): Statement =
+func fieldHolder*(access: FieldAccess): Statement =
   Statement(kind: FieldAccessHolder, fieldAccessList: access)
 
-proc constructObjectShort*(storeIdent: string, pairs: KeyValuePairs): Statement =
+func constructObjectShort*(storeIdent: string, pairs: KeyValuePairs): Statement =
   Statement(
     kind: ConstructObjectShorthand, cosStoreIdent: some(storeIdent), cosKVPairs: pairs
   )
 
-proc defineFunction*(fn: Function, limitedTo: Option[Scope] = none(Scope)): Statement =
+func defineFunction*(fn: Function, limitedTo: Option[Scope] = none(Scope)): Statement =
   Statement(kind: DefineFunction, defunFn: fn, limitedTo: limitedTo)
 
-proc copyFieldToVar*(dest: string, source: FieldAccess): Statement =
+func copyFieldToVar*(dest: string, source: FieldAccess): Statement =
   Statement(kind: CopyFieldToVar, cfvarField: source, cfvarIdentDest: some(dest))
 
-proc copyFieldToVar*(dest: FieldAccess, source: FieldAccess): Statement =
+func copyFieldToVar*(dest: FieldAccess, source: FieldAccess): Statement =
   Statement(kind: CopyFieldToVar, cfvarField: source, cfvarFieldDest: some(dest))
 
-proc throwError*(
+func throwError*(
     errorStr: Option[string], errorExc: Option[void], errorIdent: Option[string]
 ): Statement =
   if *errorStr and *errorExc and *errorIdent:
@@ -353,28 +354,28 @@ proc throwError*(
 
   Statement(kind: ThrowError, error: (str: errorStr, exc: errorExc, ident: errorIdent))
 
-proc createImmutVal*(name: string, atom: MAtom): Statement =
+func createImmutVal*(name: string, atom: MAtom): Statement =
   Statement(kind: CreateImmutVal, imIdentifier: name, imAtom: atomHolder atom)
 
-proc createImmutVal*(name: string, field: FieldAccess): Statement =
+func createImmutVal*(name: string, field: FieldAccess): Statement =
   Statement(kind: CreateImmutVal, imIdentifier: name, imField: field)
 
-proc breakStmt*(): Statement =
+func breakStmt*(): Statement =
   Statement(kind: Break)
 
-proc returnFunc*(): Statement =
+func returnFunc*(): Statement =
   Statement(kind: ReturnFn)
 
-proc returnFunc*(expr: Statement): Statement =
+func returnFunc*(expr: Statement): Statement =
   Statement(kind: ReturnFn, retExpr: some(expr))
 
-proc waste*(atom: MAtom): Statement =
+func waste*(atom: MAtom): Statement =
   Statement(kind: Waste, wstAtom: atom.some())
 
-proc waste*(ident: string): Statement =
+func waste*(ident: string): Statement =
   Statement(kind: Waste, wstIdent: ident.some())
 
-proc forLoop*(
+func forLoop*(
     initializer, condition, incrementor: Option[Statement], body: Scope
 ): Statement =
   Statement(
@@ -385,33 +386,33 @@ proc forLoop*(
     forLoopBody: body,
   )
 
-proc increment*(ident: string): Statement =
+func increment*(ident: string): Statement =
   Statement(kind: Increment, incIdent: ident)
 
-proc arrayAccess*(ident: string, index: Statement): Statement =
+func arrayAccess*(ident: string, index: Statement): Statement =
   Statement(kind: AccessArrayIndex, arrAccIdent: ident, arrAccIndex: some(index))
 
-proc arrayAccess*(ident: string, index: string): Statement =
+func arrayAccess*(ident: string, index: string): Statement =
   Statement(kind: AccessArrayIndex, arrAccIdent: ident, arrAccIdentIndex: some(index))
 
-proc decrement*(ident: string): Statement =
+func decrement*(ident: string): Statement =
   Statement(kind: Decrement, decIdent: ident)
 
-proc whileStmt*(condition: Statement, body: Scope): Statement =
+func whileStmt*(condition: Statement, body: Scope): Statement =
   Statement(kind: WhileStmt, whConditionExpr: condition, whBranch: body)
 
-proc ifStmt*(condition: Statement, body, elseScope: Scope): Statement =
+func ifStmt*(condition: Statement, body, elseScope: Scope): Statement =
   Statement(
     kind: IfStmt, conditionExpr: condition, branchTrue: body, branchFalse: elseScope
   )
 
-proc copyValMut*(dest, source: string): Statement =
+func copyValMut*(dest, source: string): Statement =
   Statement(kind: CopyValMut, cpMutSourceIdent: source, cpMutDestIdent: dest)
 
-proc copyValImmut*(dest, source: string): Statement =
+func copyValImmut*(dest, source: string): Statement =
   Statement(kind: CopyValImmut, cpImmutSourceIdent: source, cpImmutDestIdent: dest)
 
-proc binOp*(
+func binOp*(
     op: BinaryOperation,
     left, right: Statement,
     storeIdent: Option[string] = none(string),
@@ -420,41 +421,41 @@ proc binOp*(
     kind: BinaryOp, binLeft: left, binRight: right, op: op, binStoreIn: storeIdent
   )
 
-proc reassignVal*(identifier: string, atom: MAtom): Statement =
+func reassignVal*(identifier: string, atom: MAtom): Statement =
   Statement(kind: ReassignVal, reIdentifier: identifier, reAtom: atom)
 
-proc reassignVal*(identifier: string, expr: Statement): Statement =
+func reassignVal*(identifier: string, expr: Statement): Statement =
   Statement(kind: ReassignVal, reIdentifier: identifier, reExpr: expr)
 
-proc returnFunc*(retVal: MAtom): Statement =
+func returnFunc*(retVal: MAtom): Statement =
   Statement(kind: ReturnFn, retVal: some(retVal))
 
-proc returnFunc*(ident: string): Statement =
+func returnFunc*(ident: string): Statement =
   Statement(kind: ReturnFn, retIdent: some(ident))
 
-proc callAndStoreImmut*(ident: string, fn: Statement): Statement =
+func callAndStoreImmut*(ident: string, fn: Statement): Statement =
   var fn = fn
   fn.expectsReturnVal = true
   Statement(kind: CallAndStoreResult, mutable: false, storeIdent: ident, storeFn: fn)
 
-proc callAndStoreMut*(ident: string, fn: Statement): Statement =
+func callAndStoreMut*(ident: string, fn: Statement): Statement =
   var fn = fn
   fn.expectsReturnVal = true
   Statement(kind: CallAndStoreResult, mutable: true, storeIdent: ident, storeFn: fn)
 
-proc createMutVal*(name: string, atom: MAtom): Statement =
+func createMutVal*(name: string, atom: MAtom): Statement =
   Statement(kind: CreateMutVal, mutIdentifier: name, mutAtom: atomHolder atom)
 
-proc identArg*(ident: string): CallArg =
+func identArg*(ident: string): CallArg =
   CallArg(kind: cakIdent, ident: ident)
 
-proc atomArg*(atom: MAtom): CallArg =
+func atomArg*(atom: MAtom): CallArg =
   CallArg(kind: cakAtom, atom: atom)
 
-proc constructObject*(name: string, args: PositionedArguments): Statement =
+func constructObject*(name: string, args: PositionedArguments): Statement =
   Statement(kind: ConstructObject, objName: name, args: args)
 
-proc call*(
+func call*(
     fn: FunctionCall,
     arguments: PositionedArguments,
     mangle: bool = true,
@@ -468,16 +469,16 @@ proc call*(
     expectsReturnVal: expectsReturnVal,
   )
 
-proc callFunction*(name: string): FunctionCall =
+func callFunction*(name: string): FunctionCall =
   FunctionCall(function: name)
 
-proc callFunction*(name: string, ident: string): FunctionCall =
+func callFunction*(name: string, ident: string): FunctionCall =
   FunctionCall(function: name, ident: some(ident))
 
-proc callFunction*(name: string, field: FieldAccess): FunctionCall =
+func callFunction*(name: string, field: FieldAccess): FunctionCall =
   FunctionCall(function: name, field: some field)
 
-proc compoundAssignment*(
+func compoundAssignment*(
     op: BinaryOperation, target: string, compounder: MAtom | Statement
 ): Statement =
   Statement(
@@ -491,7 +492,7 @@ proc compoundAssignment*(
     compAsgnOp: op,
   )
 
-proc compoundAssignment*(
+func compoundAssignment*(
     op: BinaryOperation, target: string, compounder: string
 ): Statement =
   Statement(
@@ -501,12 +502,15 @@ proc compoundAssignment*(
     compAsgnOp: op,
   )
 
-proc createArrayLiteral*(children: MixedLiteralChildren): Statement =
+func createArrayLiteral*(children: MixedLiteralChildren): Statement =
   Statement(kind: CreateArrayLiteral, calChildren: children)
+
+func preIncrement*(ident: string): Statement =
+  Statement(kind: PreIncrement, incIdent: ident)
 
 {.pop.}
 
-proc normalizeIRName*(call: FunctionCall): string =
+func normalizeIRName*(call: FunctionCall): string =
   return normalizeIRName(call.function)
 
 func unwrap*(stmt: Statement): MAtom =

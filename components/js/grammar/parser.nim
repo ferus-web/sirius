@@ -713,7 +713,10 @@ proc parseDeclaration(
       let fn = parser.parseFunction(name = some(ident))
       declareFn = fn
     of TokenKind.Semicolon:
-      if (!atom and !vIdent and !toCall and !ternary and !declareFn):
+      if (
+        !atom and !vIdent and !toCall and !ternary and !declareFn and !vFieldAccess and
+        !keyValuePair
+      ):
         parser.error UnexpectedToken, "expected value, got semicolon instead"
 
       break
@@ -726,9 +729,9 @@ proc parseDeclaration(
   ), "Attempt to assign a value to nothing (something went wrong)"
 
   if *ternary:
-    var tern = &ternary
-    tern.storeIn = some(ident)
-    return some(tern)
+    ternary.applyThis:
+      this.storeIn = some(ident)
+    return ternary
 
   if *declareFn:
     return
@@ -1729,6 +1732,19 @@ proc parseStatement(parser: Parser): Option[Statement] =
     return parser.parseForLoop()
   of TokenKind.Try:
     return parser.parseTryClause()
+  of TokenKind.Increment:
+    if parser.tokenizer.eof:
+      parser.error Other, "expected expression after increment symbol, got EOF"
+
+    let token = parser.tokenizer.nextExceptWhitespace()
+    if !token:
+      parser.error Other, "expected expression after increment symbol"
+
+    let tok = &token
+    if tok.kind != TokenKind.Identifier:
+      parser.error UnexpectedToken, &"invalid increment operand '{tok.kind}'"
+
+    return some(preIncrement(tok.ident))
   else:
     parser.error UnexpectedToken, $token.kind
 

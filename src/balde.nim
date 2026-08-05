@@ -282,7 +282,6 @@ proc execFile(ctx: Input, file: string) {.inline.} =
         readFile(file)
       except IOError as exc:
         die "failed to open file:", exc.msg
-        ""
 
   if ctx.enabled("dump-tokens", "T"):
     let excludeWs = ctx.enabled("no-whitespace")
@@ -304,24 +303,12 @@ proc execFile(ctx: Input, file: string) {.inline.} =
   profileThis "parse source code":
     var ast = parser.parse()
 
-  if ctx.enabled("dump-no-eval"):
-    print ast
-    if ctx.enabled("dump-statistics"):
-      var runtime =
-        allocRuntime(ctx, file = file, ast = ast, dumpIRFor = newSeq[string](0))
-      runtime.dumpStatisticsPretty()
-
-    quit 0
-
   if ctx.enabled("dump-ast"):
     ast.doNotEvaluate = true
 
   profileThis "allocate runtime":
     var runtime =
       allocRuntime(ctx, file = file, ast = ast, dumpIRFor = getDumpIRForList(ctx))
-
-  profileThis "execution time":
-    runtime.run()
 
   if ctx.enabled("dump-ast"):
     var rawMode = ctx.flag("dump-mode")
@@ -338,13 +325,17 @@ proc execFile(ctx: Input, file: string) {.inline.} =
         dmJsonPretty
       else:
         die "invalid mode for dump-mode: " & &rawMode
-        dmPretty
 
     case mode
     of dmPretty:
       print ast
     else:
       die "dump mode not implemented"
+
+    quit(0)
+
+  profileThis "execution time":
+    runtime.run()
 
   if ctx.enabled("dump-statistics"):
     runtime.dumpStatisticsPretty()
@@ -520,7 +511,6 @@ Options:
   --dump-bytecode, -D                     Dump bytecode for the next evaluation.
   --dump-tokens, -T                       Dump tokens for the provided file.
   --dump-ast                              Dump the abstract syntax tree for the JavaScript file.
-  --dump-no-eval                          Dump the abstract syntax tree for the JavaScript file, bypassing the IR generation phase entirely.
   --enable-experiments:<a>;<b>; ... <z>   Enable certain experimental features that aren't stable yet.
   --insert-debug-hooks, -H                Insert some debug hooks that expose JavaScript code to the engine's internals.
   --test262                               Insert some functions similar to those found in Test262.

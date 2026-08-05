@@ -6,7 +6,7 @@ var lastJSError = null;
 function toJSStr(s_p0) {
   var result_33556919 = null;
 
-    var res_33556973 = newSeq__flfgrz_u2516((s_p0).length);
+    var res_33556973 = newSeq__flfgrz_u2516((s_p0).length); // (x).y can't be evaluated properly
     var i_33556974 = 0;
     var j_33556975 = 0;
     Label1: {
