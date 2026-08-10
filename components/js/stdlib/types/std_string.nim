@@ -2,7 +2,7 @@
 ## Wraps around the Mirage atom
 ## Author(s):
 ## Trayambak Rai (xtrayambak at disroot dot org)
-import std/[tables, strutils, hashes, unicode]
+import std/[tables, strutils, options, hashes, unicode]
 import
   components/js/runtime/[arguments, bridge, wrapping, atom_helpers, types, construction]
 import components/js/runtime/abstract/[coercible, to_number, to_string]
@@ -11,6 +11,9 @@ import components/js/internal/[trim_string]
 import components/js/runtime/vm/atom
 import components/unicode/utf16view
 import pkg/shakar
+
+proc getUTF16View(str: JSValue): Option[ptr UTF16View] =
+  str.getPrivateObject(ptr UTF16View)
 
 proc generateStdIr*(runtime: Runtime) =
   runtime.registerType(prototype = JSString, name = "String")
@@ -41,7 +44,7 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "toString",
     proc(str: JSValue) =
-      ret str
+      ret str.getUTF16View().get()[].toUTF8()
     ,
   )
 
@@ -58,8 +61,7 @@ proc generateStdIr*(runtime: Runtime) =
       let
         # 1. Let O be ? RequireObjectCoercible(this value)
         # 2. Let S be ? ToString(O).
-        value =
-          runtime.ToString(runtime.RequireObjectCoercible(&value.tagged("internal")))
+        value = toUtf8((&value.getUTF16View())[])
         needle = runtime.argument(1)
         position = runtime.argument(2)
 
@@ -96,8 +98,7 @@ proc generateStdIr*(runtime: Runtime) =
 
       # 1. Let O be ? RequireObjectCoercible(this value).
       # 2. Let S be ? ToString(O).
-      let value =
-        runtime.ToString(runtime.RequireObjectCoercible(&value.tagged("internal")))
+      let value = toUtf8((&value.getUTF16View())[])
 
       # 3. Let R be S.
       var res = value
@@ -122,7 +123,7 @@ proc generateStdIr*(runtime: Runtime) =
       ## 22.1.3.32 String.prototype.trim ( )
 
       # 1. Let S be the this value.
-      let value = &value.tagged("internal")
+      # let value = toUtf8((&value.getUTF16View())[])
 
       # 2. Return ? TrimString (S, start + end)
       ret runtime.trimString(value, TrimMode.Both)
@@ -134,7 +135,7 @@ proc generateStdIr*(runtime: Runtime) =
     ## B.2.2.15 String.prototype.trimLeft ( )       [ LEGACY VERSION, USE 22.1.3.34 INSTEAD! ]
 
     # 1. Let S be the this value.
-    let value = &value.tagged("internal")
+    # let value = toUtf8((&value.getUTF16View())[])
 
     # 2. Return ? TrimString (S, start)
     ret runtime.trimString(value, TrimMode.Left)
@@ -144,7 +145,7 @@ proc generateStdIr*(runtime: Runtime) =
     ## B.2.2.16 String.prototype.trimRight ( )     [ LEGACY VERSION, USE 22.1.3.33 INSTEAD! ]
 
     # 1. Let S be the this value.
-    let value = &value.tagged("internal")
+    # let value = toUtf8((&value.getUTF16View())[])
 
     # 2. Return ? TrimString (S, start)
     ret runtime.trimString(value, TrimMode.Right)
@@ -161,9 +162,9 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "toLowerCase",
     proc(value: JSValue) =
-      let value = &value.tagged("internal")
+      let value = toUtf8((&value.getUTF16View())[])
 
-      ret strutils.toLowerAscii(runtime.ToString(value))
+      ret strutils.toLowerAscii(value)
     ,
   )
 
@@ -171,9 +172,9 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "toUpperCase",
     proc(value: JSValue) =
-      let value = &value.tagged("internal")
+      let value = toUtf8((&value.getUTF16View())[])
 
-      ret strutils.toUpperAscii(runtime.ToString(value))
+      ret strutils.toUpperAscii(value)
     ,
   )
 
@@ -181,7 +182,7 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "repeat",
     proc(value: JSValue) =
-      let value = runtime.ToString(&value.tagged("internal"))
+      let value = toUtf8((&value.getUTF16View())[])
       var repeatCnt: int
 
       if runtime.argumentCount() > 0:
@@ -225,7 +226,7 @@ proc generateStdIr*(runtime: Runtime) =
         obj = runtime.RequireObjectCoercible(value)
 
         # 2. Let S be ? ToString(O).
-        str = runtime.ToString(obj)
+        str = toUtf8((&obj.getUTF16View())[])
 
         # 3. Let position be ? ToIntegerOrInfinity(pos)
         position = int(runtime.ToNumber(&runtime.argument(1)))
@@ -249,15 +250,15 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "substring",
     proc(value: JSValue) =
-      # 22.1.3.25 String.prototype.substring ( start, end )
+      # 22.1.3.25 Str`ing.prototype.substring ( start, end )
 
       let
         # 1. Let O be ? RequireObjectCoercible(this value).
-        obj = runtime.RequireObjectCoercible(&value.tagged("internal"))
+        obj = runtime.RequireObjectCoercible(value)
 
         # 2. Let S be ? ToString(O).
-        strVal = runtime.ToString(obj)
-        str = newUtf16View(strVal)
+        str = &obj.getUTF16View()
+        strVal = str[].toUTF8()
 
         # 3. Let len be the length of S.
         stringLength =
@@ -322,7 +323,7 @@ proc generateStdIr*(runtime: Runtime) =
       let value = runtime.RequireObjectCoercible(value)
 
       # 2. Let S be ? ToString(O).
-      let str = runtime.ToString(value)
+      let str = (&value.getUTF16View())[].toUTF8()
 
       # 3. Let position be ? ToIntegerOrInfinity(pos).
       let pos = int(runtime.ToNumber(&runtime.argument(1)))
