@@ -32,8 +32,6 @@ Also, its hypermodular nature made it extremely tiring to make minor changes in 
 # then how is this different?
 Most of the unstable, fast-moving components are located at `components/`, so I can make changes to them without pulling my hair out. The stable parts like the CSS3 parser are already separate packages that others rely on, so they stay as-is (albeit Stylus did get a new release to fix some of the aforementioned nasty code from ye olden days).
 
-Also, Sirius is strictly single-processed for now. Multiprocessing is a goal, but it's not going to be implemented for some time.
-
 ## some improvements over ferus
 - Not written by a clueless 14 year old
 - The layout engine is actually properly extensible now, I guess.

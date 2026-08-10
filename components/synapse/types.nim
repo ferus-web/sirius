@@ -8,11 +8,14 @@ const
   ArgcPosition* = 2
 
 type
+  FileDescriptor* = distinct int32
   SharedMemory* = distinct int32 ## A file descriptor pointing to a shm
 
   Encoder* = ref object
-    buffer: string
+    buffer*: string
     argc: uint8
+
+    fds*: seq[int32]
 
   EncodedBuffer* = distinct string
 
@@ -30,8 +33,15 @@ type
 
   Process* = ref ProcessObj
 
+  ZygoteRoutine* = proc(fd: int32)
+
   ClientObj = object
     fd*: int32 ## the end of the socketpair that we (the child) need to hold
+
+    encoder*: Encoder
+    decoder*: Decoder
+
+    running*: bool ## Is the master process still alive?
 
   Client* = ref ClientObj
 
@@ -53,3 +63,5 @@ type
     op*: O
     argc*: uint8
     buffer*: string
+
+    fds*: seq[int32]

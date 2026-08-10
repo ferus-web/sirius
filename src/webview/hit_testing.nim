@@ -7,7 +7,9 @@ import components/layout/types, components/dom/dom
 import ./types
 import pkg/[bumpy, shakar, vmath]
 
-proc hitTest*(view: WebView, node: LayoutNode, pos: vmath.Vec2): Option[LayoutNode] =
+proc hitTest*(
+    view: WebRenderer, node: LayoutNode, pos: vmath.Vec2
+): Option[LayoutNode] =
   proc walk(node: LayoutNode): Option[LayoutNode] =
     let nodeSpatial = rect(
       pos = view.renderCtx.viewerPosition + node.absolutePos, size = node.dimensions

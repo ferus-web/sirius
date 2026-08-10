@@ -12,7 +12,8 @@ import
   components/layout/[output_manager, types],
   components/os/[assets, fonts],
   components/net/core,
-  components/js/runtime/prelude as js
+  components/js/runtime/prelude as js,
+  components/synapse/types
 import ./[cookie_jar]
 
 logScope:
@@ -34,9 +35,11 @@ type
 
     retryQueue*: Deque[tuple[spec: RequestSpec, asset: PendingAsset]]
 
-  WebViewObj = object
+  WebRendererObj = object
     app*: App
     renderCtx*: RenderingContext
+
+    client*: Client
     opts*: WebViewOpts
 
     fontProvider*: FontProvider
@@ -69,6 +72,12 @@ type
       # FIXME: There's probably some DOM API we can implement that shares the same thing instead of this hack
 
     cookieJar*: CookieJar
+
+  WebRenderer* = ref WebRendererObj
+
+  WebViewObj = object
+    opts*: WebViewOpts
+    master*: Master
 
   WebView* = ref WebViewObj
 

@@ -38,6 +38,12 @@ proc writeHandle*(decoder: Decoder, size: uint64): ptr char =
   decoder.buffer.setLen(size)
   decoder.buffer[0].addr
 
+func fd*(msg: Message, index: uint8): Option[int32] =
+  if cast[uint8](msg.fds.len) < index:
+    return none(int32)
+
+  some(msg.fds[index])
+
 proc argument*[T](msg: Message, index: uint8, typ: typedesc[T]): Option[T] =
   if msg.argc <= index:
     return none(T)

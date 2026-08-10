@@ -13,8 +13,11 @@ proc prctl*(
 ): int32 {.importc, header: "<sys/prctl.h>", sideEffect.}
 
 proc getauxval*(typ: uint64): uint64 {.importc, header: "<sys/auxv.h>", sideEffect.}
+proc abort*() {.noReturn, importc, header: "<stdlib.h>".}
 
-let AT_RANDOM* {.importc, header: "<elf.h>".}: uint64
+let
+  AT_RANDOM* {.importc, header: "<elf.h>".}: uint64
+  MSG_CMSG_CLOEXEC* {.importc, header: "<sys/socket.h>".}: int32
 
 when SupportsLinuxPrctls:
   # We barely use any of these, but it's nice to have them here nonetheless.

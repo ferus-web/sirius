@@ -3,8 +3,6 @@ import webview/[core, types], argparser
 
 proc main() {.inline.} =
   let args = parseInput()
-  let target = if args.command.len > 0: args.command else: "sirius:new"
-
   let view = initWebView(
     WebViewOpts(
       disableImageLoading: args.enabled("disable-image-loading"),
@@ -13,8 +11,11 @@ proc main() {.inline.} =
       disableScripting: args.enabled("disable-scripting"),
     )
   )
+
+  let target = if args.command.len > 0: args.command else: "sirius:new"
+
   view.loadPage(target)
-  quit(view.loop())
+  # quit(view.loop())
 
 when isMainModule:
   main()
