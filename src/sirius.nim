@@ -1,5 +1,5 @@
 import std/os
-import webview/[core, types], argparser
+import browser/app, webview/[core, types], argparser
 
 proc main() {.inline.} =
   let args = parseInput()
@@ -15,6 +15,9 @@ proc main() {.inline.} =
   let target = if args.command.len > 0: args.command else: "sirius:new"
 
   view.loadPage(target)
+
+  startBrowserShell(view)
+
   # quit(view.loop())
 
 when isMainModule:

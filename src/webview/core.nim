@@ -17,8 +17,5 @@ proc loadPage*(view: WebView, target: string) =
   view.master.spawn(0, ProcessKind.Renderer, &sockPair)
     # NOTE: the socketpair code will close the file descriptor itself
 
-  while true:
-    discard
-
 proc initWebView*(opts: WebViewOpts): WebView =
   WebView(opts: opts, master: initMaster(zygote.main))

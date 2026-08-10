@@ -22,6 +22,10 @@ mkShell {
     libxcursor
     libxkbcommon
     libxrender
+
+    # browser shell
+    gtk4
+    libadwaita
   ];
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [
@@ -41,5 +45,7 @@ mkShell {
     libxcursor.dev
     libxrender.dev
     libxkbcommon.dev
+    gtk4.dev
+    libadwaita.dev
   ];
 }
