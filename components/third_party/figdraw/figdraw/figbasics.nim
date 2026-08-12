@@ -1,0 +1,164 @@
+import std/[options, math]
+import chroma, stack_strings
+
+import common/uimaths
+import common/fonttypes
+import common/imgutils
+import common/filltypes
+
+export uimaths, fonttypes, imgutils, filltypes
+export options, chroma, stack_strings
+
+const ShadowCount* {.intdefine.} = 4
+
+type
+  FigID* = int64
+  ZLevel* = int8
+
+type
+  Directions* = enum
+    dTop
+    dRight
+    dBottom
+    dLeft
+
+  DirectionCorners* = enum
+    dcTopLeft
+    dcTopRight
+    dcBottomLeft
+    dcBottomRight
+
+  CornerRadii* = array[DirectionCorners, uint16]
+
+  CornerRadii2D*[T] = object
+    ## Per-corner horizontal and vertical radii used by rendering backends.
+    x*, y*: array[DirectionCorners, T]
+
+  FigKind* = enum
+    ## Different types of nodes.
+    nkFrame
+    nkText
+    nkRectangle
+    nkDrawable
+    nkScrollBar
+    nkImage
+    nkMsdfImage
+    nkMtsdfImage
+    nkBackdropBlur
+    nkTransform
+
+  FigFlags* = enum
+    NfClipContent
+    NfDisableRender
+    NfRootWindow
+    NfInactive
+    NfSelectText
+    NfInvertY
+    NfRectMaskContent
+    NfEllipticalCorners
+
+  ShadowStyle* = enum
+    ## Supports drop and inner shadows.
+    NoShadow
+    DropShadow
+    InnerShadow
+
+  StrokeCap* = enum
+    scAuto
+    scRound
+    scButt
+    scSquare
+
+  StrokeJoin* = enum
+    sjAuto
+    sjRound
+    sjBevel
+    sjMiter
+
+  RenderShadow* = object
+    style*: ShadowStyle
+    fill*: Fill
+    blur*: float32
+    spread*: float32
+    x*: float32
+    y*: float32
+
+  RenderStroke* = object
+    weight*: float32
+    fill*: Fill
+    cap*: StrokeCap
+    join*: StrokeJoin
+
+  ImageStyle* = object
+    id*: ImageId
+    fill*: Fill
+
+  MsdfImageStyle* = object
+    id*: ImageId
+    fill*: Fill
+    pxRange*: float32
+    sdThreshold*: float32
+    ## If > 0, render as an outline (annular band) with this stroke width.
+    ## Units are the same as other FigDraw weights and get UI-scaled at render time.
+    strokeWeight*: float32
+
+  BackdropBlurStyle* = object ## Gaussian blur radius in UI units.
+    blur*: float32
+
+  TransformStyle* = object ## Translation in UI units.
+    translation*: Vec2
+    ## Optional 4x4 transform matrix applied after translation.
+    ## Set `useMatrix = true` to apply this matrix.
+    matrix*: Mat4
+    useMatrix*: bool
+
+proc imageStyle*(
+    id: ImageId, imageFill: Fill = fill(rgba(255, 255, 255, 255))
+): ImageStyle =
+  ImageStyle(id: id, fill: imageFill)
+
+proc imageStyle*(
+    image: ImageRef, imageFill: Fill = fill(rgba(255, 255, 255, 255))
+): ImageStyle =
+  imageStyle(image.id, imageFill)
+
+proc cornerToU16(v: SomeNumber): uint16 {.inline.} =
+  when v is SomeFloat:
+    if v <= 0:
+      return 0'u16
+    if v >= high(uint16).float:
+      return high(uint16)
+    round(v).uint16
+  else:
+    if v <= 0:
+      return 0'u16
+    if v >= high(uint16):
+      return high(uint16)
+    v.uint16
+
+converter toCornerRadii*[T: SomeNumber](a: array[4, T]): CornerRadii =
+  for i in 0 ..< 4:
+    result[DirectionCorners(i)] = cornerToU16(a[i])
+
+converter toCornerRadii*[T: SomeNumber](a: array[DirectionCorners, T]): CornerRadii =
+  for c in DirectionCorners:
+    result[c] = cornerToU16(a[c])
+
+func initCornerRadii2D*[T](radii: array[DirectionCorners, T]): CornerRadii2D[T] =
+  ## Promotes circular corner radii to two equal axes.
+  CornerRadii2D[T](x: radii, y: radii)
+
+converter toCornerRadii2D*[T](radii: array[DirectionCorners, T]): CornerRadii2D[T] =
+  ## Preserves source compatibility for circular backend calls.
+  initCornerRadii2D(radii)
+
+func initCornerRadii2D*[T](x, y: array[DirectionCorners, T]): CornerRadii2D[T] =
+  ## Creates independently controlled horizontal and vertical corner radii.
+  CornerRadii2D[T](x: x, y: y)
+
+func isCircular*[T](radii: CornerRadii2D[T]): bool =
+  ## Returns true when every corner has equal horizontal and vertical radii.
+  for corner in DirectionCorners:
+    if radii.x[corner] != radii.y[corner]:
+      return false
+  true

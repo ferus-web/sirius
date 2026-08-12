@@ -1,0 +1,98 @@
+import std/[sequtils, tables, hashes]
+import std/[unicode, strformat]
+import std/os
+import pkg/variant
+
+export sequtils, strformat, tables, hashes
+export variant
+
+import extras, uimaths
+export extras, uimaths
+
+import pkg/chroma
+
+when defined(figdrawNativeDynlib):
+  {.pragma: nativeAbi, exportabi.}
+else:
+  {.pragma: nativeAbi.}
+
+type FigDrawError* = object of CatchableError
+
+type
+  AppMainThreadEff* = object of RootEffect
+  RenderThreadEff* = object of RootEffect
+
+{.push hint[Name]: off.}
+proc AppMainThread*() {.tags: [AppMainThreadEff].} =
+  discard
+
+proc RenderThread*() {.tags: [RenderThreadEff].} =
+  discard
+
+template threadEffects*(arg: typed) =
+  arg()
+
+{.pop.}
+
+when defined(nimscript):
+  {.pragma: runtimeVar, compileTime.}
+else:
+  {.pragma: runtimeVar, global.}
+
+const
+  clearColor* = color(0, 0, 0, 0)
+  whiteColor* = color(1, 1, 1, 1)
+  blackColor* = color(0, 0, 0, 1)
+  blueColor* = color(0, 0, 1, 1)
+
+type AppState* = object
+  running*: bool
+  requestedFrame*: int = 2
+  lastDraw*: int
+  lastTick*: int
+
+  uiScale*: float32
+  pixelScale*: float32
+
+var
+  dataDirStr {.runtimeVar.}: string = os.getCurrentDir() / "data"
+  appUiScale {.runtimeVar.}: float32 = 1.0'f32
+
+proc figDataDir*(): string {.nativeAbi.} =
+  dataDirStr
+
+proc setFigDataDir*(dir: string) {.nativeAbi.} =
+  dataDirStr = dir
+
+proc figUiScale*(): float32 =
+  appUiScale
+
+proc setFigUiScale*(scale: float32) =
+  appUiScale = scale
+
+proc scaled*(a: Rect): Rect =
+  a * appUiScale
+
+proc descaled*(a: Rect): Rect =
+  let a = a / appUiScale
+  result.x = a.x
+  result.y = a.y
+  result.w = a.w
+  result.h = a.h
+
+proc scaled*(a: Vec2): Vec2 =
+  a * appUiScale
+
+proc scaled*(a: IVec2): IVec2 =
+  ivec2(vec2(a) * appUiScale)
+
+proc descaled*(a: Vec2): Vec2 =
+  let a = a / appUiScale
+  result.x = a.x
+  result.y = a.y
+
+proc scaled*(a: float32): float32 =
+  a.float32 * appUiScale
+
+proc descaled*(a: float32): float32 =
+  a / appUiScale
