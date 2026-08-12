@@ -1,3 +1,0 @@
-[submodule "vendor/figdraw"]
-	path = vendor/figdraw
-	url = https://github.com/elcritch/figdraw

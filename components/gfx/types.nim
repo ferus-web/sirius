@@ -1,13 +1,9 @@
 import std/[monotimes, deques, tables]
-import
-  pkg/[pixie, vmath],
-  pkg/figdraw/[figrender, fignodes],
-  pkg/figdraw/windowing/surfershim
-    # FIXME: We should probably not rely on surfer so much. Make this a compile time toggle sometime later? Or maybe not if we don't ever get the GTK4 frontend.
+import pkg/[pixie, vmath], pkg/figdraw/[figrender, fignodes]
 import components/layout/[output_manager, types], components/os/fonts
 
 type RenderingContext* = ref object
-  fig*: figrender.FigRenderer[SurferRenderBackend]
+  fig*: figrender.FigRenderer[int32]
   renderSize*: vmath.Vec2
   tree*: LayoutNode
 

@@ -5,7 +5,8 @@
 import std/[posix, strformat]
 import
   components/synapse/[decoder, types, transport/socketpairs],
-  components/synapse/descriptors/zygote
+  components/synapse/descriptors/zygote,
+  components/os/threads
 import pkg/[chronicles, shakar]
 import ./[renderer, types]
 
@@ -48,6 +49,9 @@ proc main*(master: int32) {.noReturn.} =
   ## the master.
 
   info "Hello world from the zygote process!", masterComm = master
+
+  setThreadName("Zygote")
+
   let client = initClient(master)
   while client.running:
     let msgOpt = client.blockForMessage(ZygoteOp)

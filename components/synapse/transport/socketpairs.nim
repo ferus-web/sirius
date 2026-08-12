@@ -27,7 +27,7 @@ func swap*(socks: var SocketPair) {.inline, raises: [].} =
   swap(socks[0], socks[1])
 
 proc blockForMessage*[O: SomeOrdinal](
-    client: Client, op: typedesc[O]
+    client: Client | Master, op: typedesc[O], fd: Option[int32] = none(int32)
 ): Option[Message[O]] =
   let buffer = client.decoder.writeHandle(MaxPacketSize) # ensure the buffer is 64KB
   zeroMem(buffer, MaxPacketSize)
@@ -42,14 +42,22 @@ proc blockForMessage*[O: SomeOrdinal](
       msg_controllen: cast[posix.SockLen](ctrlBuf.len),
     )
 
-  let readCount = posix.recvmsg(SocketHandle(client.fd), msg.addr, nix.MSG_CMSG_CLOEXEC)
+  let
+    targetFd =
+      when client is Client:
+        client.fd
+      else:
+        &fd
+
+    readCount = posix.recvmsg(SocketHandle(targetFd), msg.addr, nix.MSG_CMSG_CLOEXEC)
   if readCount < 0:
     warn "Failed to read message from file descriptor",
-      fd = client.fd, errno = posix.errno, message = posix.strerror(posix.errno)
+      fd = targetFd, errno = posix.errno, message = posix.strerror(posix.errno)
     return
   elif readCount == 0:
-    info "Master process seems to have exited", fd = client.fd
-    client.running = false
+    info "Process seems to have exited", fd = targetFd
+    when client is Client:
+      client.running = false
     return
 
   discard client.decoder.writeHandle(cast[uint64](readCount))
@@ -85,6 +93,35 @@ proc createSocketPair*(): Result[SocketPair, string] {.sideEffect.} =
 
   info "Created socket pair", master = fds.ours(), other = fds.theirs()
   ok(ensureMove(fds))
+
+proc send*(
+    fd: int32, sharedFds: seq[int32], buffer: EncodedBuffer
+): Result[void, string] =
+  let buffer = cast[string](buffer)
+  var
+    iov = posix.IOVec(
+      iov_base: cast[pointer](buffer[0].addr), iov_len: cast[uint64](buffer.len)
+    )
+    msg = posix.TMsgHdr(msg_iov: iov.addr, msg_iovlen: 1)
+
+  if sharedFds.len > 0:
+    var ctrlBuf = newSeq[char](posix.CMSG_SPACE(cast[uint64](sizeof(int32))))
+    msg.msg_control = ctrlBuf[0].addr
+    msg.msg_controllen = cast[posix.SockLen](ctrlBuf.len)
+
+    let cmsg = posix.CMSG_FIRSTHDR(msg.addr)
+    cmsg.cmsg_level = SOL_SOCKET
+    cmsg.cmsg_type = SCM_RIGHTS
+    cmsg.cmsg_len = CMSG_LEN(cast[uint64](sizeof(int32))) * cast[uint64](sharedFds.len)
+
+    let fds = cast[ptr UncheckedArray[int32]](CMSG_DATA(cmsg))
+    for i, fd in sharedFds:
+      fds[i] = fd
+
+  if posix.sendmsg(SocketHandle(fd), msg.addr, posix.MSG_NOSIGNAL) < 1:
+    return err(&"{posix.strerror(posix.errno)} (errno {posix.errno})")
+
+  ok()
 
 proc initClient*(master: int32): Client =
   # TODO: move this elsewhere.

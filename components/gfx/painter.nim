@@ -7,8 +7,7 @@ import
   pkg/figdraw/[commons, fignodes, figrender],
   pkg/figdraw/common/[typefaces, fonttypes],
   pkg/figdraw/utils/drawutils,
-  pkg/figdraw/vulkan/vulkan_context,
-  pkg/figdraw/windowing/surfershim
+  pkg/figdraw/vulkan/vulkan_context
 import
   components/css/types,
   components/gfx/types,
@@ -350,11 +349,12 @@ proc drawTree*(ctx: RenderingContext) =
   ctx.displayList.layers[ZLevel(0)].nodes[cast[int16](ctx.transformNode)].transform.translation =
     ctx.viewerPosition
 
-  ctx.fig.beginFrame()
+  let vk = VulkanContext(ctx.fig.ctx)
+  vk.beginFrame(frameSize = ctx.renderSize)
   presentDisplayList(ctx)
-  ctx.fig.endFrame()
+  vk.endFrame()
 
-  if lastAtlasSize != VulkanContext(ctx.fig.ctx).atlasSize:
+  if lastAtlasSize != vk.atlasSize:
     for name, _ in ctx.imageCache:
       ctx.reuploadImage(name)
 

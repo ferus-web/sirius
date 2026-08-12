@@ -4,4 +4,5 @@
 
 type RenderOp* {.pure, size: sizeof(uint16).} = enum
   GotoURL
+  DrawFrame
   Close

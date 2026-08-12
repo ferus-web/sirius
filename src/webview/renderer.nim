@@ -4,10 +4,12 @@
 import
   std/[
     algorithm, monotimes, options, streams, strformat, strutils, sequtils, tables,
-    unicode,
+    unicode, os, times,
   ]
 import ./[branding, cookie_jar, hit_testing, resource_loader, types]
-import pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb], pkg/surfer/app
+import
+  pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb],
+  pkg/figdraw/vulkan/vulkan_context
 import
   components/aux/[pretty, stream_utils],
   components/gfx/[core, init, painter, font_loader],
@@ -25,27 +27,14 @@ import
   components/js/runtime/compiler/base,
   components/scripting/[executor, types],
   components/scripting/url as jsurl,
-  components/synapse/transport/socketpairs
+  components/synapse/[client, encoder, decoder, types, transport/socketpairs],
+  components/synapse/descriptors/[renderer, master]
 
 when hasJITSupport:
   import components/js/internal/assembler/amd64
 
 logScope:
   topics = "webview/renderer"
-
-proc waitForRendererInit(webview: WebRenderer) =
-  # A tiny hack because some compositors are incredibly strict about buffer attach timings.
-  # Here, we wait till Surfer signals that the renderer context is ready.
-
-  while true:
-    let event = &webview.app.flushQueue()
-    if event.kind == EventKind.WindowResized:
-      webview.renderCtx = newRenderingContext(webview.app, vec2(event.windowSize))
-      webview.renderCtx.drawTree()
-      break # The OpenGL context is (probably) ready.
-    elif event.kind == EventKind.RedrawRequested:
-      # We should respond to these with a requeue.
-      webview.app.queueRedraw()
 
 proc loadUrl(view: WebRenderer, url: URL)
 
@@ -78,23 +67,25 @@ proc initCoreScript(view: WebRenderer) =
 
 proc initRenderer*(ipcChannel: int32): WebRenderer =
   debug "Initialize Renderer", channel = ipcChannel
-  setThreadName("Renderer")
+  setThreadName("WebRenderer")
+
+  when defined(siriusRendererAttachPeriod):
+    let processId = getCurrentProcessId()
+    for i in countDown(20, 1):
+      echo &"#{i}: sudo gdb -p {processId}" # imagine using doas ;)
+      sleep(1000)
 
   let webview = WebRenderer(
-    app: newApp(title = "Sirius", appId = "xyz.xtrayambak.sirius"),
     outputManager: OutputManager(),
     client: initClient(ipcChannel),
     imageCache: newTable[string, pixie.Image](),
     failedPlaceholderImage: newImage(64, 64),
     cookieJar: loadCookieJar(),
+    renderCtx: newRenderingContext(vec2(640, 480)),
   )
 
   webview.cookieJar.collect()
   webview.failedPlaceholderImage.fill(rgb(255, 0, 0))
-
-  webview.app.initialize()
-  webview.app.createWindow(ivec2(1024, 768), Renderer.Vulkan)
-  waitForRendererInit(webview)
 
   webview.fontProvider = initFontProvider(getLoaderImplementation())
   webview.assetProvider = initAssetProvider(
@@ -172,7 +163,7 @@ proc reflow(view: WebRenderer) =
   computeLayout(
     FlowContext(
       document: view.dom,
-      availableWidth: float32(view.app.windowSize.x),
+      availableWidth: float32(view.renderCtx.renderSize.x),
       outputManager: view.outputManager,
       fontProvider: view.fontProvider,
       parentExplicitHeight: none(float32),
@@ -379,8 +370,9 @@ proc loadHTMLStream(view: WebRenderer, stream: Stream) =
   userAgent.close()
 
   let title = getDocumentTitle(view.dom)
-  if *title:
-    view.app.setTitle(&"{&title} — Sirius")
+  # TODO: Send page title to master
+  # if *title:
+  #  view.app.setTitle(&"{&title} — Sirius")
 
   if (let htmlElem = view.dom.html(); *htmlElem) and
       (let langAttrib = getAttr(&htmlElem, view.dom.factory, "lang"); *langAttrib):
@@ -389,7 +381,7 @@ proc loadHTMLStream(view: WebRenderer, stream: Stream) =
   view.reflow()
   view.renderCtx.viewerPosition = vec2(0, 0)
 
-  view.app.setCursorShape(Shape.Default)
+  # view.app.setCursorShape(Shape.Default)
 
   stream.close()
 
@@ -549,11 +541,12 @@ proc applyCursorState(view: WebRenderer, layoutNode: LayoutNode) =
   if layoutNode.domNode of tags.HTMLInputElement and
       HTMLInputElement(layoutNode.domNode).kind in
       [some(InputKind.Submit), some(InputKind.Button)]:
-    view.app.setCursorShape(Shape.Grabbing)
+    # TODO: Send cursor shapes to master
+    # view.app.setCursorShape(Shape.Grabbing)
     return
 
   # Source: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor
-  let cursorMap = toTable {
+  #[ let cursorMap = toTable {
     "default": Shape.Default,
     "pointer": Shape.Pointer,
     "context-menu": Shape.ContextMenu,
@@ -588,16 +581,16 @@ proc applyCursorState(view: WebRenderer, layoutNode: LayoutNode) =
     "nwse-resize": Shape.NWSEResize,
     "zoom-in": Shape.ZoomIn,
     "zoom-out": Shape.ZoomOut,
-  }
+  } ]#
   let cursor = &layoutNode.cursor
 
-  if cursor in cursorMap:
+  #[ if cursor in cursorMap:
     let shape = cursorMap[cursor]
 
     if shape == Shape.Default and view.progress:
-      view.app.setCursorShape(Shape.Progress)
+      discard # view.app.setCursorShape(Shape.Progress)
     else:
-      view.app.setCursorShape(shape)
+      discard # view.app.setCursorShape(shape) ]#
 
 proc submitInputElement(view: WebRenderer, element: HTMLInputElement) =
   let ownerOpt = element.resetFormOwner()
@@ -671,7 +664,7 @@ proc handleFocusedDomElement(
 
 proc handleFocusedElement(view: WebRenderer, clicked: bool = false) =
   if !view.focusedElement:
-    view.app.setCursorShape(if view.progress: Shape.Progress else: Shape.Default)
+    # view.app.setCursorShape(if view.progress: Shape.Progress else: Shape.Default)
     return
 
   let elem = &view.focusedElement
@@ -710,8 +703,8 @@ proc poll*(view: WebRenderer) =
 
   view.executeOneMacrotask()
 
-proc handleKeyboardEvent(view: WebRenderer, event: Event) =
-  let keysym = view.app.xkbState.getOneSym(event.key.code + 8)
+proc handleKeyboardEvent(view: WebRenderer) =
+  let keysym = XKBKeysym(0) # view.app.xkbState.getOneSym(event.key.code + 8)
   if *view.keyboardFocusedElement:
     let element = &view.keyboardFocusedElement
 
@@ -733,7 +726,8 @@ proc handleKeyboardEvent(view: WebRenderer, event: Event) =
           keysym != XKB_Key_Tab and keysym != XKB_Key_Super_L and
           keysym != XKB_Key_Super_R and keysym != XKB_Key_Return:
         # FIXME: probably can be cleaner?
-        inputElement.inputBuffer &= Rune(view.app.xkbState.getUtf32(event.key.code + 8))
+        # TODO: Bring this back
+        # inputElement.inputBuffer &= Rune(view.app.xkbState.getUtf32(event.key.code + 8))
         view.reflow()
 
   if keysym == XKB_Key_Down or keysym == XKB_KEY_Page_Down:
@@ -751,8 +745,33 @@ proc handleKeyboardEvent(view: WebRenderer, event: Event) =
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"
 
-  while not view.app.closureRequested:
-    view.poll()
+  var lastDmabufFd = -1'i32 # HACK: looks bad tbh.
+  while true:
+    let msg = &view.client.blockForMessage(RenderOp)
+    case msg.op
+    of RenderOp.GotoURL:
+      view.loadPage(&msg.argument(0, string))
+    of RenderOp.DrawFrame:
+      view.renderCtx.drawTree()
+
+      if view.dom.edited:
+        view.reflow()
+        view.dom.edited = false
+
+      let dmabufFd = VulkanContext(view.renderCtx.fig.ctx).exportBufferFd()
+
+      view.client.encoder.encode(MasterOp.FrameDrawn)
+      assert *view.client.send()
+
+      if lastDmabufFd != dmabufFd:
+        view.client.encoder.encode(MasterOp.UseGraphicsFD)
+        view.client.encoder.push(FileDescriptor(dmabufFd))
+        lastDmabufFd = dmabufFd
+        assert *view.client.send()
+    of RenderOp.Close:
+      break
+
+    #[ view.poll()
 
     if not view.progress and (view.target != view.dom.url):
       view.loadURL(view.dom.url)
@@ -764,11 +783,6 @@ proc loop*(view: WebRenderer): int =
     let event = &eventOpt
     case event.kind
     of EventKind.RedrawRequested:
-      view.renderCtx.drawTree()
-
-      if view.dom.edited:
-        view.reflow()
-        view.dom.edited = false
     of EventKind.WindowResized:
       handleWindowResize(view, event.windowSize)
       view.renderCtx.drawTree()
@@ -788,7 +802,7 @@ proc loop*(view: WebRenderer): int =
       if event.cursor.state == ButtonState.Released:
         handleFocusedElement(view, clicked = true)
     else:
-      discard # debug "Unhandled surfer event", kind = event.kind
+      discard # debug "Unhandled surfer event", kind = event.kind ]#
 
   info "Exiting main loop"
   print view.dom.cookies

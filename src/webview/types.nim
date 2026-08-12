@@ -2,7 +2,6 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[deques, options, streams, tables]
-import pkg/surfer/app
 import pkg/[chronicles, pixie, url, vmath]
 import
   components/gfx/types,
@@ -36,7 +35,6 @@ type
     retryQueue*: Deque[tuple[spec: RequestSpec, asset: PendingAsset]]
 
   WebRendererObj = object
-    app*: App
     renderCtx*: RenderingContext
 
     client*: Client
