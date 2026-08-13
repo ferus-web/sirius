@@ -833,6 +833,8 @@ proc loop*(view: WebRenderer): int =
       discard # debug "Unhandled surfer event", kind = event.kind ]#
 
   info "Exiting main loop"
+  VulkanContext(view.renderCtx.fig.ctx).releaseBackendResources()
+
   print view.dom.cookies
   if *view.target.hostname:
     view.cookieJar.domains[&view.target.hostname] = view.dom.cookies

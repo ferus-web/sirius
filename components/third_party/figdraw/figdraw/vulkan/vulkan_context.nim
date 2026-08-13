@@ -30,9 +30,6 @@ const
   blurFragSpv = staticRead("shaders/blur.frag.spv")
   VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT =
     0x00020000.VkExternalMemoryHandleTypeFlags
-  VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO = 1000072000.VkStructureType
-  VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO = 1000072002.VkStructureType
-  VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR = 1000050001.VkStructureType
 
 type
   VkExternalMemoryImageCreateInfo = object
@@ -380,7 +377,7 @@ proc ensureBackdropImage(ctx: VulkanContext, width, height: int32) =
     if ctx.targetFormat != VK_FORMAT_UNDEFINED:
       ctx.targetFormat
     else:
-      VK_FORMAT_B8G8R8A8_UNORM
+      VK_FORMAT_R8G8B8A8_UNORM
   if not ctx.backdropImage.isNilOrEmpty and ctx.backdropImage.view != vkNullImageView and
       not ctx.backdropBlurTempImage.isNilOrEmpty and
       ctx.backdropBlurTempImage.view != vkNullImageView and ctx.backdropWidth == w and
@@ -859,14 +856,14 @@ proc createPipeline(ctx: VulkanContext) =
 
 proc createOffscreenTarget(ctx: VulkanContext, width, height: int32) =
   let pipelineNeedsRecreate =
-    ctx.targetFormat != VK_FORMAT_B8G8R8A8_UNORM or ctx.renderPass == vkNullRenderPass or
+    ctx.targetFormat != VK_FORMAT_R8G8B8A8_UNORM or ctx.renderPass == vkNullRenderPass or
     ctx.pipeline == vkNullPipeline or ctx.pipelineLayout == vkNullPipelineLayout or
     ctx.blurRenderPass == vkNullRenderPass or ctx.blurPipeline == vkNullPipeline or
     ctx.blurPipelineLayout == vkNullPipelineLayout
 
   ctx.destroyOffscreenTarget()
 
-  ctx.targetFormat = VK_FORMAT_B8G8R8A8_UNORM
+  ctx.targetFormat = VK_FORMAT_R8G8B8A8_UNORM
   ctx.targetExtent = VkExtent2D(width: width.uint32, height: height.uint32)
 
   # Create Pipeline first so we have the renderPass for the framebuffers
@@ -876,7 +873,7 @@ proc createOffscreenTarget(ctx: VulkanContext, width, height: int32) =
 
   for i in 0 ..< 2:
     var extInfo = VkExternalMemoryImageCreateInfo(
-      sType: VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+      sType: ExternalMemoryImageCreateInfo,
       pNext: nil,
       handleTypes: VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
     )
@@ -902,7 +899,7 @@ proc createOffscreenTarget(ctx: VulkanContext, width, height: int32) =
     vkGetImageMemoryRequirements(ctx.device, ctx.swapImages[i], req.addr)
 
     var exportInfo = VkExportMemoryAllocateInfo(
-      sType: VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
+      sType: ExportMemoryAllocateInfo,
       pNext: nil,
       handleTypes: VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
     )
@@ -923,7 +920,7 @@ proc createOffscreenTarget(ctx: VulkanContext, width, height: int32) =
     )
 
     var getFdInfo = VkMemoryGetFdInfoKHR(
-      sType: VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
+      sType: MemoryGetFdInfoKHR,
       pNext: nil,
       memory: ctx.swapMemories[i],
       handleType: VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
@@ -3261,6 +3258,7 @@ method endFrame*(ctx: VulkanContext) =
 proc destroyGpu(ctx: VulkanContext) =
   if ctx.isNil:
     return
+
   if ctx.device != vkNullDevice:
     discard vkDeviceWaitIdle(ctx.device)
 
@@ -3588,7 +3586,7 @@ method readPixels*(
     let stride = texW * 4
     let bgrFormat =
       case ctx.targetFormat
-      of VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB: true
+      of VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB: true
       else: false
 
     for row in 0 ..< h:
