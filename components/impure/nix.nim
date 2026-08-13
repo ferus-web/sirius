@@ -2,7 +2,9 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 
-const SupportsLinuxPrctls* = defined(linux)
+const
+  SupportsLinuxPrctls* = defined(linux)
+  SupportsEpoll* = defined(linux)
 
 proc prctl*(
   op: int32,
@@ -84,3 +86,7 @@ when SupportsLinuxPrctls:
     PR_RISCV_SET_ICACHE_FLUSH_CTX*: int32
     PR_FUTEX_HASH*: int32
   {.pop.}
+
+when SupportsEpoll:
+  import std/epoll
+  export epoll

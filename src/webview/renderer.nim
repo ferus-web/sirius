@@ -28,7 +28,8 @@ import
   components/scripting/[executor, types],
   components/scripting/url as jsurl,
   components/synapse/[client, encoder, decoder, types, transport/socketpairs],
-  components/synapse/descriptors/[renderer, master]
+  components/synapse/descriptors/[renderer, master],
+  components/impure/nix
 
 when hasJITSupport:
   import components/js/internal/assembler/amd64
@@ -456,6 +457,8 @@ proc loadStream(view: WebRenderer, resp: Response) =
     view.loadHTMLStream(resp.body.stream)
     return
 
+  view.renderCtx.invalidate()
+
   case &contentType
   of MimeType.HTML:
     view.loadHTMLStream(resp.body.stream)
@@ -464,6 +467,8 @@ proc loadStream(view: WebRenderer, resp: Response) =
     view.loadImageStream(resp)
   else:
     warn "Unhandled content type", typ = &contentType
+
+  view.renderCtx.drawTree()
 
 proc buildRequestHeaders(view: WebRenderer, url: URL): HttpHeaders =
   let cookies = view.cookieJar.match(url)
@@ -492,6 +497,7 @@ proc loadUrl(view: WebRenderer, url: URL) =
     headers = view.buildRequestHeaders(url),
     finalize = proc(resp: Response, err: TransportError) =
       if err.kind == TransportErrorKind.None:
+        info "Loaded document", dest = url
         view.loadStream(resp)
       else:
         error "An error occurred while fetching the requested content",
@@ -746,58 +752,86 @@ proc handleKeyboardEvent(view: WebRenderer) =
     view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
     view.reflow()
 
+proc handleIPCMessage(view: WebRenderer) =
+  let msgOpt = view.client.blockForMessage(RenderOp)
+  if !msgOpt:
+    # The master exited, we probably should, too.
+    view.running = false
+    return
+
+  let msg = &msgOpt
+  case msg.op
+  of RenderOp.GotoURL:
+    view.loadPage(&msg.argument(0, string))
+  of RenderOp.DrawFrame:
+    view.renderCtx.drawTree()
+
+    if view.dom.edited:
+      view.reflow()
+      view.dom.edited = false
+
+    let dmabufFd = VulkanContext(view.renderCtx.fig.ctx).exportBufferFd()
+
+    view.client.encoder.encode(MasterOp.FrameDrawn)
+    discard view.client.send()
+
+    if view.lastDmabufFd != dmabufFd:
+      view.client.encoder.encode(MasterOp.UseGraphicsFD)
+      view.client.encoder.push(FileDescriptor(dmabufFd))
+      # debugecho &"update fd {lastDmabufFd} => {dmabufFd}"
+      view.lastDmabufFd = dmabufFd
+      assert *view.client.send()
+  of RenderOp.Close:
+    view.running = false
+  of RenderOp.ResizeRenderTarget:
+    let dims = &msg.argument(0, vmath.IVec2)
+    if vec2(dims) == view.renderCtx.renderSize:
+      return
+
+    handleWindowResize(view, dims)
+    view.renderCtx.drawTree()
+
+    view.client.encoder.encode(MasterOp.FrameDrawn)
+    assert *view.client.send()
+
+    view.client.encoder.encode(MasterOp.TargetResized)
+    view.client.encoder.push(dims)
+    view.client.encoder.push(VulkanContext(view.renderCtx.fig.ctx).exportBufferStride())
+    assert *view.client.send()
+
+    if view.lastDmabufFd >= 0'i32:
+      view.client.encoder.encode(MasterOp.UseGraphicsFD)
+      view.client.encoder.push(FileDescriptor(view.lastDmabufFd))
+      assert *view.client.send()
+
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"
 
-  var lastDmabufFd = -1'i32 # HACK: looks bad tbh.
-  while true:
-    let msgOpt = view.client.blockForMessage(RenderOp)
-    if !msgOpt:
-      break
+  # we have to set up epoll on the IPC channel to wake up and tend to it whenever
+  # the master sends us any message, since the main WebRenderer thread will be busy
+  # polling itself and doing stuff like handling the JS task queues
+  let efd = nix.epoll_create1(0)
+  assert(efd > -1'i32, "Failed to create epoll fd")
 
-    let msg = &msgOpt
-    case msg.op
-    of RenderOp.GotoURL:
-      view.loadPage(&msg.argument(0, string))
-    of RenderOp.DrawFrame:
-      view.renderCtx.drawTree()
+  var event =
+    nix.EpollEvent(events: nix.EPOLLIN, data: nix.EpollData(fd: view.client.fd))
 
-      if view.dom.edited:
-        view.reflow()
-        view.dom.edited = false
+  assert(
+    nix.epoll_ctl(efd, nix.EPOLL_CTL_ADD, view.client.fd, event.addr) == 0,
+    "Failed to attach epoll listener to IPC channel",
+  )
 
-      let dmabufFd = VulkanContext(view.renderCtx.fig.ctx).exportBufferFd()
+  view.lastDmabufFd = -1'i32
+  view.running = true
+  while view.running:
+    view.poll()
 
-      view.client.encoder.encode(MasterOp.FrameDrawn)
-      discard view.client.send()
+    var ipcEvent: nix.EpollEvent
+    let ipcEventCount =
+      nix.epoll_wait(efd, event.addr, maxevents = 1'i32, timeout = 1'i32)
 
-      if lastDmabufFd != dmabufFd:
-        view.client.encoder.encode(MasterOp.UseGraphicsFD)
-        view.client.encoder.push(FileDescriptor(dmabufFd))
-        # debugecho &"update fd {lastDmabufFd} => {dmabufFd}"
-        lastDmabufFd = dmabufFd
-        assert *view.client.send()
-    of RenderOp.Close:
-      break
-    of RenderOp.ResizeRenderTarget:
-      let dims = &msg.argument(0, vmath.IVec2)
-      handleWindowResize(view, dims)
-      view.renderCtx.drawTree()
-
-      view.client.encoder.encode(MasterOp.FrameDrawn)
-      assert *view.client.send()
-
-      view.client.encoder.encode(MasterOp.TargetResized)
-      view.client.encoder.push(dims)
-      view.client.encoder.push(
-        VulkanContext(view.renderCtx.fig.ctx).exportBufferStride()
-      )
-      assert *view.client.send()
-
-      if lastDmabufFd >= 0'i32:
-        view.client.encoder.encode(MasterOp.UseGraphicsFD)
-        view.client.encoder.push(FileDescriptor(lastDmabufFd))
-        assert *view.client.send()
+    if ipcEventCount > 0:
+      handleIPCMessage(view)
 
     #[ view.poll()
 
