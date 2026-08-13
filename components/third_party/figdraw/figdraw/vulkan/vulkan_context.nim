@@ -3197,9 +3197,9 @@ proc beginFrame*(
   ctx.ensureBackdropImage(width, height)
 
   # HACK: This blocks.
-  #[ checkVkResult vkWaitForFences(
-    ctx.device, 1, ctx.inFlightFence.addr, VkBool32(VkTrue), high(uint64)
-  ) ]#
+  discard vkWaitForFences(
+    ctx.device, 1, ctx.inFlightFence.addr, VkBool32(VkTrue), uint64(16000000)
+  )
   ctx.clearFrameVertexUploads()
 
   checkVkResult vkResetFences(ctx.device, 1, ctx.inFlightFence.addr)
