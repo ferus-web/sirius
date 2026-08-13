@@ -13,6 +13,9 @@ Sent when the master process wants this renderer to exit.
 ### drawFrame
 Sent when the master process wants the WebRenderer to composite a new frame.
 
+### resizeRenderTarget
+Sent when the master process wants the WebRenderer to resize its rendering buffer. This is generally called when the browser viewport is resized.
+
 ## Renderer => Master
 ### setPageTitle
 **Argument 1**: UTF-8 string
