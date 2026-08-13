@@ -370,7 +370,11 @@ proc loadHTMLStream(view: WebRenderer, stream: Stream) =
   userAgent.close()
 
   let title = getDocumentTitle(view.dom)
-  # TODO: Send page title to master
+  if *title:
+    view.client.encoder.encode(MasterOp.SetPageTitle)
+    view.client.encoder.push(&title)
+    assert *view.client.send()
+
   # if *title:
   #  view.app.setTitle(&"{&title} — Sirius")
 

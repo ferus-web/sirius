@@ -14,8 +14,11 @@ logScope:
 
 type BrowserState = ref object
   view: WebView
+
   window: ptr EGtkWidget
   viewport: ptr EGtkWidget
+  headerBar: ptr EGtkWidget
+
   viewportSize*: vmath.IVec2
 
   frameAcked: bool
@@ -93,6 +96,7 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   adw_header_bar_set_title_widget(headerBar, windowTitle)
   gtk_box_append(mainBox, headerBar)
 
+  browser.headerBar = headerBar
   browser.viewport = gtk_picture_new()
   gtk_widget_set_hexpand(browser.viewport, true)
   gtk_widget_set_vexpand(browser.viewport, true)
@@ -105,12 +109,18 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   gtk_box_append(mainBox, browser.viewport)
   gtk_window_present(browser.window)
 
+proc setPageTitle(browser: BrowserState, title: string) =
+  echo "setPageTitle " & title
+  let windowTitle = adw_window_title_new("Sirius", title)
+  adw_header_bar_set_title_widget(browser.headerBar, windowTitle)
+
 proc sourceFn(state: BrowserState, fd: int32) =
   let msgOpt = state.view.master.blockForMessage(MasterOp, fd = some(fd))
   if !msgOpt:
     warn "Received invalid message, ignoring", sender = fd
     return
 
+  # TODO: These should validate their arguments properly instead of just `get()`'ing them
   let msg = &msgOpt
   case msg.op
   of MasterOp.FrameDrawn:
@@ -126,6 +136,8 @@ proc sourceFn(state: BrowserState, fd: int32) =
     info "Render target resized", dims = dims, stride = stride
     state.viewportSize = dims
     state.bufferStride = stride
+  of MasterOp.SetPageTitle:
+    state.setPageTitle(&msg.argument(0, string))
 
 proc startBrowserShell*(view: WebView) =
   let browser = BrowserState(

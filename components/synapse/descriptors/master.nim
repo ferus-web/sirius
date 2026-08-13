@@ -7,4 +7,6 @@ type MasterOp* {.pure, size: sizeof(uint16).} = enum
     ## Sent by the Renderer in response to the master sending a `DrawFrame`. The master will not send any further frame-drawing requests until it receives this.
   UseGraphicsFD
     ## Sent by the Renderer when it wants the master to present a particular DMA-BUF file descriptor via the browser's surface.
-  TargetResized
+  TargetResized ## Sent in acknowledgement to a `resizeRenderTarget` sent by the master.
+  SetPageTitle
+    ## Sent when the renderer wants the master process to set this renderer's page's OS-specific window title.

@@ -19,3 +19,8 @@ The first argument is a DMA-BUF file descriptor.
 Sent in acknowledgement to a `resizeRenderTarget` sent by the master.
 
 The first argument specifies the new size of the buffer, and the second one specifies the stride as set by the GPU driver.
+
+### setPageTitle
+**Argument 1**: UTF-8 string
+
+Sent when the renderer wants the master process to set this renderer's page's OS-specific window title. The master can choose to format this as it wishes to, or to ignore it entirely.
