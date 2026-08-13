@@ -769,7 +769,7 @@ proc loop*(view: WebRenderer): int =
       let dmabufFd = VulkanContext(view.renderCtx.fig.ctx).exportBufferFd()
 
       view.client.encoder.encode(MasterOp.FrameDrawn)
-      assert *view.client.send()
+      discard view.client.send()
 
       if lastDmabufFd != dmabufFd:
         view.client.encoder.encode(MasterOp.UseGraphicsFD)
