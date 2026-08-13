@@ -747,7 +747,11 @@ proc loop*(view: WebRenderer): int =
 
   var lastDmabufFd = -1'i32 # HACK: looks bad tbh.
   while true:
-    let msg = &view.client.blockForMessage(RenderOp)
+    let msgOpt = view.client.blockForMessage(RenderOp)
+    if !msgOpt:
+      break
+
+    let msg = &msgOpt
     case msg.op
     of RenderOp.GotoURL:
       view.loadPage(&msg.argument(0, string))
@@ -766,10 +770,30 @@ proc loop*(view: WebRenderer): int =
       if lastDmabufFd != dmabufFd:
         view.client.encoder.encode(MasterOp.UseGraphicsFD)
         view.client.encoder.push(FileDescriptor(dmabufFd))
+        # debugecho &"update fd {lastDmabufFd} => {dmabufFd}"
         lastDmabufFd = dmabufFd
         assert *view.client.send()
     of RenderOp.Close:
       break
+    of RenderOp.ResizeRenderTarget:
+      let dims = &msg.argument(0, vmath.IVec2)
+      handleWindowResize(view, dims)
+      view.renderCtx.drawTree()
+
+      view.client.encoder.encode(MasterOp.FrameDrawn)
+      assert *view.client.send()
+
+      view.client.encoder.encode(MasterOp.TargetResized)
+      view.client.encoder.push(dims)
+      view.client.encoder.push(
+        VulkanContext(view.renderCtx.fig.ctx).exportBufferStride()
+      )
+      assert *view.client.send()
+
+      if lastDmabufFd >= 0'i32:
+        view.client.encoder.encode(MasterOp.UseGraphicsFD)
+        view.client.encoder.push(FileDescriptor(lastDmabufFd))
+        assert *view.client.send()
 
     #[ view.poll()
 

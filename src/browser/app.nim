@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, posix]
-import pkg/[shakar, chronicles]
+import pkg/[shakar, chronicles, vmath]
 import
   components/synapse/[decoder, master, types, transport/socketpairs],
   components/synapse/descriptors/[master],
@@ -16,23 +16,31 @@ type BrowserState = ref object
   view: WebView
   window: ptr EGtkWidget
   viewport: ptr EGtkWidget
+  viewportSize*: vmath.IVec2
 
   frameAcked: bool
+
   bufferFd*: int32
+  bufferStride*: uint32
 
 proc updateBufferFd*(state: BrowserState, fd: int32) =
+  if fd < 0:
+    return
+
+  if state.bufferFd >= 0'i32:
+    discard posix.close(state.bufferFd)
+
   state.bufferFd = fd
-  echo "updateBufferFd " & $fd
   let builder = gdk_dmabuf_texture_builder_new()
   gdk_dmabuf_texture_builder_set_display(builder, gdk_display_get_default())
 
-  gdk_dmabuf_texture_builder_set_width(builder, 640'u32)
-  gdk_dmabuf_texture_builder_set_height(builder, 480'u32)
+  gdk_dmabuf_texture_builder_set_width(builder, uint32(state.viewportSize.x))
+  gdk_dmabuf_texture_builder_set_height(builder, uint32(state.viewportSize.y))
   gdk_dmabuf_texture_builder_set_fourcc(builder, DRM_FORMAT_ABGR8888)
   gdk_dmabuf_texture_builder_set_modifier(builder, DRM_FORMAT_MOD_LINEAR)
 
   gdk_dmabuf_texture_builder_set_fd(builder, 0, fd)
-  gdk_dmabuf_texture_builder_set_stride(builder, 0, uint32(640 * 4))
+  gdk_dmabuf_texture_builder_set_stride(builder, 0, state.bufferStride)
   gdk_dmabuf_texture_builder_set_offset(builder, 0, 0)
 
   var err: pointer
@@ -41,16 +49,26 @@ proc updateBufferFd*(state: BrowserState, fd: int32) =
   if texture != nil:
     gtk_picture_set_paintable(state.viewport, texture)
     g_object_unref(texture)
-  else:
-    assert off
+  # else:
+  # assert off
 
   g_object_unref(builder)
-  # discard posix.close(fd)
 
 proc onFrameTick(
     widget: ptr EGtkWidget, frameClock: ptr GdkFrameClock, userData: pointer
 ): int32 {.cdecl.} =
   let browser = cast[BrowserState](userData)
+  let currSize = ivec2(gtk_widget_get_width(widget), gtk_widget_get_height(widget) + 1)
+
+  if currSize.x == 0 or currSize.y == 0:
+    return G_SOURCE_CONTINUE
+
+  # echo currSize
+  if currSize != browser.viewportSize:
+    browser.view.master.resizeRenderTarget(
+      &browser.view.master.tabs[0].renderer(), currSize
+    )
+    # browser.updateBufferFd(browser.bufferFd)
 
   if browser.frameAcked:
     # debugecho "send drawFrame call"
@@ -76,6 +94,9 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   gtk_box_append(mainBox, headerBar)
 
   browser.viewport = gtk_picture_new()
+  gtk_widget_set_hexpand(browser.viewport, true)
+  gtk_widget_set_vexpand(browser.viewport, true)
+  gtk_picture_set_can_shrink(browser.viewport, true)
 
   discard gtk_widget_add_tick_callback(
     browser.viewport, onFrameTick, cast[pointer](browser), nil
@@ -93,13 +114,23 @@ proc sourceFn(state: BrowserState, fd: int32) =
   let msg = &msgOpt
   case msg.op
   of MasterOp.FrameDrawn:
+    # debugecho "frame ack"
     state.frameAcked = true
   of MasterOp.UseGraphicsFD:
     let fd = &msg.fd(0)
     state.updateBufferFd(fd)
+  of MasterOp.TargetResized:
+    let
+      dims = &msg.argument(0, vmath.IVec2)
+      stride = &msg.argument(1, uint32)
+    info "Render target resized", dims = dims, stride = stride
+    state.viewportSize = dims
+    state.bufferStride = stride
 
 proc startBrowserShell*(view: WebView) =
-  let browser = BrowserState(view: view, frameAcked: true, bufferFd: -1)
+  let browser = BrowserState(
+    view: view, frameAcked: true, bufferFd: -1, viewportSize: ivec2(640, 480)
+  )
   let app = adw_application_new("xyz.xtrayambak.sirius", 0)
 
   discard g_signal_connect_data(

@@ -262,6 +262,16 @@ const
 proc exportBufferFd*(ctx: VulkanContext): int32 =
   ctx.targetFd
 
+proc exportBufferStride*(ctx: VulkanContext): uint32 =
+  var subresource = VkImageSubresource(
+    aspectMask: VkImageAspectFlags{ColorBit}, mipLevel: 0, arrayLayer: 0
+  )
+  var layout: VkSubresourceLayout
+  vkGetImageSubresourceLayout(
+    ctx.device, ctx.targetImage, subresource.addr, layout.addr
+  )
+  return cast[uint32](layout.rowPitch)
+
 method hasImage*(ctx: VulkanContext, key: Hash): bool =
   key in ctx.entries
 

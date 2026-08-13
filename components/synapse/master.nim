@@ -6,7 +6,7 @@ import
   components/synapse/[decoder, encoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, zygote],
   components/impure/nix
-import pkg/[chronicles, results, shakar]
+import pkg/[chronicles, results, shakar, vmath]
 
 proc spawnZygote*(
     master: Master, zygoteRoutine: ZygoteRoutine
@@ -87,6 +87,16 @@ proc drawFrame*(master: Master, process: Process) =
   # drawFrame
   # (no arguments)
   master.encoder.encode(RenderOp.DrawFrame)
+
+  assert *master.send(process.fd)
+
+proc resizeRenderTarget*(master: Master, process: Process, dims: vmath.IVec2) =
+  assert(process.kind == ProcessKind.Renderer)
+
+  # resizeRenderTarget
+  # Argument 1: vmath.IVec2
+  master.encoder.encode(RenderOp.ResizeRenderTarget)
+  master.encoder.push(dims)
 
   assert *master.send(process.fd)
 

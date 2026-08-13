@@ -1,6 +1,8 @@
 # sirius
 Sirius is a tiny HTML5/CSS3 renderer written in Nim. It isn't anything serious right now, but it can render some HTML and apply CSS.
 
+It's also multiprocessed, but doesn't have sandboxing as of yet.
+
 No build instructions are given since it's an experimental project with zero promises. Expect more tomfooleries occurring here. :^)
 
 The base was written in a day, so don't expect anything grandiose.
