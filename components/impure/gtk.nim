@@ -63,6 +63,7 @@ proc gtk_box_new*(orientation: int32, spacing: int32): ptr EGtkWidget
 proc gtk_box_append*(box: ptr EGtkWidget, child: ptr EGtkWidget)
 proc gtk_window_set_child*(window: ptr EGtkWidget, child: ptr EGtkWidget)
 proc gtk_window_set_default_size*(window: ptr EGtkWidget, width: int32, height: int32)
+proc gtk_window_set_title*(window: ptr EGtkWidget, title: cstring)
 proc gtk_window_present*(window: ptr EGtkWidget)
 
 proc gtk_widget_get_width*(widget: ptr EGtkWidget): int32
@@ -73,6 +74,12 @@ proc gtk_picture_set_can_shrink*(picture: ptr EGtkWidget, canShrink: bool)
 
 proc gtk_picture_new*(): ptr EGtkWidget
 proc gtk_picture_set_paintable*(picture: ptr EGtkWidget, paintable: pointer)
+
+proc gtk_entry_new*(): ptr EGtkWidget
+proc gtk_entry_set_placeholder_text*(entry: ptr EGtkWidget, text: cstring)
+proc gtk_editable_get_text*(editable: ptr EGtkWidget): cstring
+
+proc gtk_widget_set_size_request*(widget: ptr EGtkWidget, h, v: int32)
 
 proc gtk_widget_add_tick_callback*(
   widget: ptr EGtkWidget,

@@ -2,8 +2,20 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[importutils]
-import pkg/flatty, pkg/flatty/[binny, objvar]
+import pkg/[flatty, shakar], pkg/flatty/[binny, objvar]
 import components/synapse/types
+
+func toFlatty*[T: SomeOrdinal](s: var string, x: set[T]) =
+  toFlatty(
+    s,
+    (
+      when sizeof(T) == 1: cast[uint8](x)
+      elif sizeof(T) == 2: cast[uint16](x)
+      elif sizeof(T) == 4: cast[uint32](x)
+      elif sizeof(T) == 8: cast[uint64](x)
+      else: unreachable
+    ),
+  )
 
 func initEncoder*(capacity: Natural = 4096): Encoder =
   privateAccess(types.Encoder)

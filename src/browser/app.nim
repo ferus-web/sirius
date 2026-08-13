@@ -1,8 +1,8 @@
 ## GTK4 browser shell implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, posix]
-import pkg/[shakar, chronicles, vmath]
+import std/[options, posix, strformat]
+import pkg/[shakar, results, chronicles, vmath, url]
 import
   components/synapse/[decoder, master, types, transport/socketpairs],
   components/synapse/descriptors/[master],
@@ -17,7 +17,7 @@ type BrowserState = ref object
 
   window: ptr EGtkWidget
   viewport: ptr EGtkWidget
-  headerBar: ptr EGtkWidget
+  urlBar: ptr EGtkWidget
 
   viewportSize*: vmath.IVec2
 
@@ -26,14 +26,37 @@ type BrowserState = ref object
   bufferFd*: int32
   bufferStride*: uint32
 
-proc updateBufferFd*(state: BrowserState, fd: int32) =
-  if fd < 0:
+proc userNavigationRequest(state: BrowserState, target: string) =
+  # TODO: Document the algorithm behind this somewhere
+
+  # 1. If `target` can be parsed as a URL with no errors, the happy path is to be executed: navigate directly to its parsed representation.
+  let parsedHappy = tryParseURL(target)
+  if *parsedHappy:
+    state.view.master.gotoURL(0, &parsedHappy)
     return
 
-  if state.bufferFd >= 0'i32:
-    discard posix.close(state.bufferFd)
+  template navigateTo(src: string) =
+    let parsed = tryParseURL(src)
+    if *parsed:
+      state.view.master.gotoURL(0, &parsed)
+      return
 
-  state.bufferFd = fd
+  # 2. Otherwise, try to correct the input as per the error observed during initial parsing. This is mostly based off of my inference as to where most people go wrong (or even just slightly off) while typing URLs :P
+  # a. If the scheme is missing, prepend "https://" to the URL.
+  if parsedHappy.error() == ParseError.MissingSchemeNonRelativeUrl:
+    navigateTo &"https://{target}"
+
+  # TODO: maybe there are other common gotchas we could add here?
+
+  # 3. If all normalization attempts fail, navigate to the user's preferred search engine,
+  # with `target` becoming the search query.
+
+  # TODO: do that.
+
+proc refreshViewport(state: BrowserState) =
+  if state.bufferFd < 0:
+    return
+
   let builder = gdk_dmabuf_texture_builder_new()
   gdk_dmabuf_texture_builder_set_display(builder, gdk_display_get_default())
 
@@ -42,7 +65,7 @@ proc updateBufferFd*(state: BrowserState, fd: int32) =
   gdk_dmabuf_texture_builder_set_fourcc(builder, DRM_FORMAT_ABGR8888)
   gdk_dmabuf_texture_builder_set_modifier(builder, DRM_FORMAT_MOD_LINEAR)
 
-  gdk_dmabuf_texture_builder_set_fd(builder, 0, fd)
+  gdk_dmabuf_texture_builder_set_fd(builder, 0, state.bufferFd)
   gdk_dmabuf_texture_builder_set_stride(builder, 0, state.bufferStride)
   gdk_dmabuf_texture_builder_set_offset(builder, 0, 0)
 
@@ -52,10 +75,18 @@ proc updateBufferFd*(state: BrowserState, fd: int32) =
   if texture != nil:
     gtk_picture_set_paintable(state.viewport, texture)
     g_object_unref(texture)
-  # else:
-  # assert off
 
   g_object_unref(builder)
+
+proc updateBufferFd*(state: BrowserState, fd: int32) =
+  if fd < 0:
+    return
+
+  if state.bufferFd >= 0'i32:
+    discard posix.close(state.bufferFd)
+
+  state.bufferFd = fd
+  state.refreshViewport()
 
 proc onFrameTick(
     widget: ptr EGtkWidget, frameClock: ptr GdkFrameClock, userData: pointer
@@ -92,11 +123,33 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   adw_application_window_set_content(browser.window, mainBox)
 
   let headerBar = adw_header_bar_new()
-  let windowTitle = adw_window_title_new("Sirius", "")
-  adw_header_bar_set_title_widget(headerBar, windowTitle)
+
+  browser.urlBar = gtk_entry_new()
+  gtk_entry_set_placeholder_text(browser.urlBar, "Enter URL")
+  gtk_widget_set_size_request(browser.urlBar, 400, -1)
+  gtk_widget_set_hexpand(browser.urlBar, true)
+  gtk_widget_set_vexpand(browser.urlBar, false)
+
+  discard g_signal_connect_data(
+    browser.urlBar,
+    "activate",
+    cast[pointer](proc(entry: ptr EGtkWidget, userData: pointer) {.cdecl.} =
+      let browser = cast[BrowserState](userData)
+      let urlPtr = $gtk_editable_get_text(entry)
+
+      browser.userNavigationRequest(urlPtr)),
+    cast[pointer](browser),
+    nil,
+    0,
+  )
+
+  adw_header_bar_set_title_widget(headerBar, browser.urlBar)
+
+  # let windowTitle = adw_window_title_new("Sirius", "")
+  # adw_header_bar_set_title_widget(headerBar, windowTitle)
   gtk_box_append(mainBox, headerBar)
 
-  browser.headerBar = headerBar
+  # browser.headerBar = headerBar
   browser.viewport = gtk_picture_new()
   gtk_widget_set_hexpand(browser.viewport, true)
   gtk_widget_set_vexpand(browser.viewport, true)
@@ -110,9 +163,7 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   gtk_window_present(browser.window)
 
 proc setPageTitle(browser: BrowserState, title: string) =
-  echo "setPageTitle " & title
-  let windowTitle = adw_window_title_new("Sirius", title)
-  adw_header_bar_set_title_widget(browser.headerBar, windowTitle)
+  gtk_window_set_title(browser.window, title)
 
 proc sourceFn(state: BrowserState, fd: int32) =
   let msgOpt = state.view.master.blockForMessage(MasterOp, fd = some(fd))
@@ -126,6 +177,7 @@ proc sourceFn(state: BrowserState, fd: int32) =
   of MasterOp.FrameDrawn:
     # debugecho "frame ack"
     state.frameAcked = true
+    state.refreshViewport()
   of MasterOp.UseGraphicsFD:
     let fd = &msg.fd(0)
     state.updateBufferFd(fd)

@@ -6,7 +6,7 @@ import
   components/synapse/[decoder, encoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, zygote],
   components/impure/nix
-import pkg/[chronicles, results, shakar, vmath]
+import pkg/[chronicles, results, shakar, vmath, url]
 
 proc spawnZygote*(
     master: Master, zygoteRoutine: ZygoteRoutine
@@ -97,6 +97,16 @@ proc resizeRenderTarget*(master: Master, process: Process, dims: vmath.IVec2) =
   # Argument 1: vmath.IVec2
   master.encoder.encode(RenderOp.ResizeRenderTarget)
   master.encoder.push(dims)
+
+  assert *master.send(process.fd)
+
+proc gotoURL*(master: Master, tab: uint32, target: url.URL) =
+  let process = &master.tabs[tab].renderer()
+
+  # gotoURL
+  # Argument 1: string
+  master.encoder.encode(RenderOp.GotoURL)
+  master.encoder.push(target.serialize())
 
   assert *master.send(process.fd)
 

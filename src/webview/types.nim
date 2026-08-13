@@ -71,6 +71,9 @@ type
 
     cookieJar*: CookieJar
 
+    lastDmabufFd*: int32
+    running*: bool
+
   WebRenderer* = ref WebRendererObj
 
   WebViewObj = object

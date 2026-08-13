@@ -3,7 +3,7 @@
 
 ## Master => Renderer
 ### gotoURL
-**Argument 1**: URL
+**Argument 1**: string
 
 Sent when the master process wants this renderer to navigate to a particular URL.
 
