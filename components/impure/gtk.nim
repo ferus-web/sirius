@@ -26,7 +26,9 @@ proc g_unix_fd_add*(
 {.pop.}
 
 {.push importc, header: "<gtk/gtk.h>".}
-let G_SOURCE_CONTINUE*: int32
+let
+  G_SOURCE_CONTINUE*: int32
+  GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES*: int32
 
 {.pop.}
 
@@ -98,6 +100,9 @@ proc g_signal_connect_data*(
   destroyData: pointer,
   connectFlags: int32,
 ): culong
+
+proc gtk_event_controller_scroll_new*(axes: int32): ptr EGtkWidget
+proc gtk_widget_add_controller*(widget: ptr EGtkWidget, controller: ptr EGtkWidget)
 
 proc g_application_run*(app: ptr AdwApplication, argc: int32, argv: ptr cstring): int32
 proc g_object_unref*(obj: pointer)

@@ -15,3 +15,6 @@ Sent when the master process wants the WebRenderer to composite a new frame.
 
 ### resizeRenderTarget
 Sent when the master process wants the WebRenderer to resize its rendering buffer. This is generally called when the browser viewport is resized.
+
+### viewportScroll
+**Argument 1**: Vec2

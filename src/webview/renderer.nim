@@ -803,6 +803,9 @@ proc handleIPCMessage(view: WebRenderer) =
       view.client.encoder.encode(MasterOp.UseGraphicsFD)
       view.client.encoder.push(FileDescriptor(view.lastDmabufFd))
       assert *view.client.send()
+  of RenderOp.ViewportScroll:
+    let scrollVel = &msg.argument(0, vmath.Vec2)
+    view.renderCtx.scrollVelocity = scrollVel.y * 0.25'f32 # TODO: horizontal scrolling
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

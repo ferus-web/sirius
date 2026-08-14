@@ -7,3 +7,4 @@ type RenderOp* {.pure, size: sizeof(uint16).} = enum
   DrawFrame
   ResizeRenderTarget
   Close
+  ViewportScroll

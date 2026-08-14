@@ -113,6 +113,12 @@ proc onFrameTick(
 
   return G_SOURCE_CONTINUE
 
+proc onScroll(
+    widget: ptr EGtkWidget, dx, dy: float64, userData: pointer
+): bool {.cdecl.} =
+  let browser = cast[BrowserState](userData)
+  browser.view.master.scrollViewport(0, vec2(dx, dy))
+
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
 
@@ -154,6 +160,14 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   gtk_widget_set_hexpand(browser.viewport, true)
   gtk_widget_set_vexpand(browser.viewport, true)
   gtk_picture_set_can_shrink(browser.viewport, true)
+
+  let scrollCtrl = gtk_event_controller_scroll_new(3)
+
+  discard g_signal_connect_data(
+    scrollCtrl, "scroll", cast[pointer](onScroll), cast[pointer](browser), nil, 0
+  )
+
+  gtk_widget_add_controller(browser.viewport, scrollCtrl)
 
   discard gtk_widget_add_tick_callback(
     browser.viewport, onFrameTick, cast[pointer](browser), nil

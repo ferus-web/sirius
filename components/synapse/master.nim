@@ -110,6 +110,16 @@ proc gotoURL*(master: Master, tab: uint32, target: url.URL) =
 
   assert *master.send(process.fd)
 
+proc scrollViewport*(master: Master, tab: uint32, velocity: vmath.Vec2) =
+  let process = &master.tabs[tab].renderer()
+
+  # viewportScroll
+  # Argument 1: vmath.Vec2
+  master.encoder.encode(RenderOp.ViewportScroll)
+  master.encoder.push(velocity)
+
+  discard master.send(process.fd)
+
 proc initMaster*(zygoteRoutine: ZygoteRoutine): Master =
   let master =
     Master(encoder: initEncoder(MaxPacketSize), decoder: initDecoder(MaxPacketSize))
