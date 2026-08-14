@@ -50,12 +50,12 @@ proc blockForMessage*[O: SomeOrdinal](
         &fd
 
     readCount = posix.recvmsg(SocketHandle(targetFd), msg.addr, nix.MSG_CMSG_CLOEXEC)
+
   if readCount < 0:
     warn "Failed to read message from file descriptor",
       fd = targetFd, errno = posix.errno, message = posix.strerror(posix.errno)
     return
   elif readCount == 0:
-    info "Process seems to have exited", fd = targetFd
     when client is Client:
       client.running = false
     return

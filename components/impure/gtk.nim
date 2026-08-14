@@ -30,6 +30,8 @@ let
   G_SOURCE_CONTINUE*: int32
   G_SOURCE_REMOVE*: int32
   GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES*: int32
+  GTK_ORIENTATION_VERTICAL*: int32
+  GTK_ALIGN_CENTER*: int32
 
 {.pop.}
 
@@ -64,6 +66,7 @@ proc adw_header_bar_set_title_widget*(bar: ptr EGtkWidget, titleWidget: ptr EGtk
 
 proc gtk_box_new*(orientation: int32, spacing: int32): ptr EGtkWidget
 proc gtk_box_append*(box: ptr EGtkWidget, child: ptr EGtkWidget)
+proc gtk_box_remove*(box: ptr EGtkWidget, child: ptr EGtkWidget)
 proc gtk_window_set_child*(window: ptr EGtkWidget, child: ptr EGtkWidget)
 proc gtk_window_set_default_size*(window: ptr EGtkWidget, width: int32, height: int32)
 proc gtk_window_set_title*(window: ptr EGtkWidget, title: cstring)
@@ -73,6 +76,11 @@ proc gtk_widget_get_width*(widget: ptr EGtkWidget): int32
 proc gtk_widget_get_height*(widget: ptr EGtkWidget): int32
 proc gtk_widget_set_hexpand*(widget: ptr EGtkWidget, expand: bool)
 proc gtk_widget_set_vexpand*(widget: ptr EGtkWidget, expand: bool)
+proc gtk_widget_set_halign*(widget: ptr EGtkWidget, align: int32)
+proc gtk_widget_set_valign*(widget: ptr EGtkWidget, align: int32)
+proc gtk_widget_add_css_class*(widget: ptr EGtkWidget, class: cstring)
+proc gtk_widget_get_parent*(widget: ptr EGtkWidget): ptr EGtkWidget
+
 proc gtk_picture_set_can_shrink*(picture: ptr EGtkWidget, canShrink: bool)
 
 proc gtk_picture_new*(): ptr EGtkWidget
@@ -101,6 +109,11 @@ proc g_signal_connect_data*(
   destroyData: pointer,
   connectFlags: int32,
 ): culong
+
+proc gtk_image_new_from_icon_name*(name: cstring): ptr EGtkWidget
+proc gtk_image_set_pixel_size*(widget: ptr EGtkWidget, size: int32)
+
+proc gtk_label_new*(text: cstring): ptr EGtkWidget
 
 proc gtk_event_controller_scroll_new*(axes: int32): ptr EGtkWidget
 proc gtk_widget_add_controller*(widget: ptr EGtkWidget, controller: ptr EGtkWidget)

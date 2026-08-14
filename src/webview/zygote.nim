@@ -27,13 +27,14 @@ proc spawnChildProcess(master: int32, msg: Message[ZygoteOp]) =
 
   let pid = posix.fork()
   if pid < 0:
+    discard posix.close(fd)
     raise newException(
       Defect,
       &"Failed to fork zygote to create process {processKind} with channel {fd}: {posix.strerror(posix.errno)}",
     )
   elif pid == 0:
-    discard
-      posix.close(master) # The Renderer process mustn't be able to talk to the master.
+    discard posix.close(master)
+      # The Renderer process mustn't be able to talk to the master using the Zygote's channel.
 
     case processKind
     of ProcessKind.Renderer:

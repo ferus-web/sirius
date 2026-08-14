@@ -19,6 +19,8 @@ type BrowserState = ref object
   viewport: ptr EGtkWidget
   urlBar: ptr EGtkWidget
 
+  tab: uint32
+
   viewportSize*: vmath.IVec2
 
   frameAcked: bool
@@ -188,11 +190,59 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
 proc setPageTitle(browser: BrowserState, title: string) =
   gtk_window_set_title(browser.window, title)
 
-proc sourceFn(state: BrowserState, fd: int32) =
+proc showDeadTabPage(browser: BrowserState) =
+  let parentBox = gtk_widget_get_parent(browser.viewport)
+  if parentBox == nil:
+    return
+
+  gtk_box_remove(parentBox, browser.viewport)
+
+  let crashBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 24)
+  gtk_widget_set_hexpand(crashBox, true)
+  gtk_widget_set_vexpand(crashBox, true)
+
+  gtk_widget_set_halign(crashBox, GTK_ALIGN_CENTER)
+  gtk_widget_set_valign(crashBox, GTK_ALIGN_CENTER)
+
+  let icon = gtk_image_new_from_icon_name("computer-fail-symbolic")
+  gtk_image_set_pixel_size(icon, 128)
+  gtk_widget_add_css_class(icon, "dim-label")
+  gtk_box_append(crashBox, icon)
+
+  let label = gtk_label_new("Your tab crashed. Oopsies.")
+  gtk_widget_add_css_class(label, "title-2")
+  gtk_box_append(crashBox, label)
+
+  gtk_box_append(parentBox, crashBox)
+
+  browser.setPageTitle("Oopsies.")
+
+proc handleDeadChild(state: BrowserState, fd: int32) =
+  let processOpt = findAssociatedClientByFd(state.view.master, fd)
+  if !processOpt:
+    warn "Unassociated file descriptor was signalled as dead?", fd = fd
+    return
+
+  let (tab, process) = &processOpt
+  warn "Process has died unexpectedly.", tab = tab, kind = process.kind, channel = fd
+
+  case process.kind
+  of ProcessKind.Renderer:
+    if tab == state.tab:
+      # TODO: whenever we get tabbed browsing, we should probably track this properly
+      # TODO: also, maybe we should try to recover the renderer in the future?
+
+      showDeadTabPage(state)
+  else:
+    unreachable
+
+proc handleIPCMessage(state: BrowserState, fd: int32): bool =
   let msgOpt = state.view.master.blockForMessage(MasterOp, fd = some(fd))
   if !msgOpt:
-    warn "Received invalid message, ignoring", sender = fd
-    return
+    warn "Received no message, did this process die?", sender = fd
+    handleDeadChild(state, fd)
+
+    return false
 
   # TODO: These should validate their arguments properly instead of just `get()`'ing them
   let msg = &msgOpt
@@ -214,6 +264,20 @@ proc sourceFn(state: BrowserState, fd: int32) =
   of MasterOp.SetPageTitle:
     state.setPageTitle(&msg.argument(0, string))
 
+  true
+
+proc attachPollingForTab*(browser: BrowserState, tab: uint32) =
+  let sourceFd = g_unix_fd_add(
+    (&browser.view.master.tabs[tab].renderer()).fd,
+    cast[GIOCondition](cast[int32](G_IO_IN) or cast[int32](G_IO_HUP)),
+    proc(fd: int32, condition: GIOCondition, userData: pointer): int32 {.cdecl.} =
+      if handleIPCMessage(cast[BrowserState](userData), fd):
+        G_SOURCE_CONTINUE
+      else:
+        G_SOURCE_REMOVE,
+    cast[pointer](browser),
+  )
+
 proc startBrowserShell*(view: WebView) =
   let browser = BrowserState(
     view: view, frameAcked: true, bufferFd: -1, viewportSize: ivec2(640, 480)
@@ -225,14 +289,7 @@ proc startBrowserShell*(view: WebView) =
   )
 
   # TODO: do this for every tab that we have once we have that working
-  let sourceFd = g_unix_fd_add(
-    (&view.master.tabs[0].renderer()).fd,
-    cast[GIOCondition](cast[int32](G_IO_IN) or cast[int32](G_IO_HUP)),
-    proc(fd: int32, condition: GIOCondition, userData: pointer): int32 {.cdecl.} =
-      sourceFn(cast[BrowserState](userData), fd)
-      G_SOURCE_CONTINUE,
-    cast[pointer](browser),
-  )
+  browser.attachPollingForTab(0)
 
   discard g_application_run(app, 0, nil)
   g_object_unref(app)

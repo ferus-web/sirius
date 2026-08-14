@@ -66,7 +66,13 @@ proc spawn*(master: Master, tab: uint32, kind: static ProcessKind, socks: Socket
 
   assert *master.send(master.zygote.fd)
 
-  master.tabs[tab].processes &= Process(fd: socks.ours(), kind: kind)
+  discard posix.close(socks.theirs())
+
+  let ourFd = socks.ours()
+  let flags = posix.fcntl(ourFd, posix.F_GETFL, 0'i32)
+  assert(posix.fcntl(ourFd, posix.F_SETFL, flags or posix.O_NONBLOCK) >= 0'i32)
+
+  master.tabs[tab].processes &= Process(fd: ourFd, kind: kind)
 
 func renderer*(tab: Tab): Option[Process] =
   ## Get the Renderer process for this tab.
@@ -119,6 +125,14 @@ proc scrollViewport*(master: Master, tab: uint32, velocity: vmath.Vec2) =
   master.encoder.push(velocity)
 
   discard master.send(process.fd)
+
+func findAssociatedClientByFd*(
+    master: Master, fd: int32
+): Option[tuple[tab: uint32, process: Process]] =
+  for i, tab in master.tabs:
+    for process in tab.processes:
+      if process.fd == fd:
+        return some((tab: cast[uint32](i), process: process))
 
 proc initMaster*(zygoteRoutine: ZygoteRoutine): Master =
   let master =
