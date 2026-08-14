@@ -29,9 +29,12 @@ proc g_unix_fd_add*(
 let
   G_SOURCE_CONTINUE*: int32
   G_SOURCE_REMOVE*: int32
+
   GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES*: int32
   GTK_ORIENTATION_VERTICAL*: int32
   GTK_ALIGN_CENTER*: int32
+
+  GDK_BUTTON_PRIMARY*: int32
 
 {.pop.}
 
@@ -80,6 +83,11 @@ proc gtk_widget_set_halign*(widget: ptr EGtkWidget, align: int32)
 proc gtk_widget_set_valign*(widget: ptr EGtkWidget, align: int32)
 proc gtk_widget_add_css_class*(widget: ptr EGtkWidget, class: cstring)
 proc gtk_widget_get_parent*(widget: ptr EGtkWidget): ptr EGtkWidget
+proc gtk_widget_grab_focus*(widget: ptr EGtkWidget): int32
+proc gtk_widget_set_focusable*(widget: ptr EGtkWidget, focusable: bool)
+
+proc gtk_gesture_click_new*(): ptr EGtkWidget
+proc gtk_gesture_single_set_button*(gesture: ptr EGtkWidget, btn: int32)
 
 proc gtk_picture_set_can_shrink*(picture: ptr EGtkWidget, canShrink: bool)
 

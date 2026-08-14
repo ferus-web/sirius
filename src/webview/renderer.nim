@@ -776,6 +776,8 @@ proc handleIPCMessage(view: WebRenderer) =
       view.focusedElement = hitTest(view, view.renderCtx.tree, view.cursor)
 
     handleFocusedElement(view, clicked = false)
+  of RenderOp.CursorClick:
+    handleFocusedElement(view, clicked = true)
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

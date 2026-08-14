@@ -136,6 +136,14 @@ proc cursorMotion*(master: Master, tab: uint32, position: vmath.Vec2) =
 
   discard master.send(process.fd)
 
+proc cursorClick*(master: Master, tab: uint32) =
+  let process = &master.tabs[tab].renderer()
+
+  # cursorClick
+  master.encoder.encode(RenderOp.CursorClick)
+
+  discard master.send(process.fd)
+
 func findAssociatedClientByFd*(
     master: Master, fd: int32
 ): Option[tuple[tab: uint32, process: Process]] =

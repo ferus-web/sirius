@@ -135,6 +135,12 @@ proc onCursorMotion(
   let browser = cast[BrowserState](userData)
   browser.view.master.cursorMotion(browser.tab, vec2(x, y))
 
+proc onCursorClick(
+    widget: ptr EGtkWidget, nPress: int32, x, y: float64, userData: pointer
+) {.cdecl.} =
+  let browser = cast[BrowserState](userData)
+  browser.view.master.cursorClick(browser.tab)
+
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
 
@@ -177,6 +183,8 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   gtk_widget_set_vexpand(browser.viewport, true)
   gtk_picture_set_can_shrink(browser.viewport, true)
 
+  gtk_widget_set_focusable(browser.viewport, true)
+
   let scrollCtrl = gtk_event_controller_scroll_new(3)
   discard g_signal_connect_data(
     scrollCtrl, "scroll", cast[pointer](onScroll), cast[pointer](browser), nil, 0
@@ -193,11 +201,20 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
     browser.viewport, onFrameTick, cast[pointer](browser), nil
   )
 
+  let clickGest = gtk_gesture_click_new()
+  gtk_gesture_single_set_button(clickGest, GDK_BUTTON_PRIMARY)
+  discard g_signal_connect_data(
+    clickGest, "pressed", cast[pointer](onCursorClick), cast[pointer](browser), nil, 0
+  )
+  gtk_widget_add_controller(browser.viewport, clickGest)
+
   gtk_box_append(mainBox, browser.viewport)
   gtk_window_present(browser.window)
 
+  discard gtk_widget_grab_focus(browser.viewport)
+
 proc setPageTitle(browser: BrowserState, title: string) =
-  gtk_window_set_title(browser.window, title)
+  gtk_window_set_title(browser.window, &"{title} — Sirius")
 
 proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
   gtk_widget_set_cursor_from_name(browser.viewport, cstring($predef))
