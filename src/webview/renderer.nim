@@ -806,6 +806,15 @@ proc handleIPCMessage(view: WebRenderer) =
   of RenderOp.ViewportScroll:
     let scrollVel = &msg.argument(0, vmath.Vec2)
     view.renderCtx.scrollVelocity = scrollVel.y * 0.25'f32 # TODO: horizontal scrolling
+  of RenderOp.CursorMotion:
+    let cursorPos = &msg.argument(0, vmath.Vec2)
+    view.cursor = cursorPos
+
+    let lastFocused = view.focusedElement
+    if view.renderCtx.tree != nil:
+      view.focusedElement = hitTest(view, view.renderCtx.tree, view.cursor)
+
+    handleFocusedElement(view, clicked = false)
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

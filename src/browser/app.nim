@@ -124,11 +124,15 @@ proc onFrameTick(
 
   return G_SOURCE_CONTINUE
 
-proc onScroll(
-    widget: ptr EGtkWidget, dx, dy: float64, userData: pointer
-): bool {.cdecl.} =
+proc onScroll(widget: ptr EGtkWidget, dx, dy: float64, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
   browser.scrollDelta += vec2(dx, dy)
+
+proc onCursorMotion(
+    widget: ptr EGtkWidget, x, y: float64, userData: pointer
+) {.cdecl.} =
+  let browser = cast[BrowserState](userData)
+  browser.view.master.cursorMotion(browser.tab, vec2(x, y))
 
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
@@ -173,12 +177,16 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   gtk_picture_set_can_shrink(browser.viewport, true)
 
   let scrollCtrl = gtk_event_controller_scroll_new(3)
-
   discard g_signal_connect_data(
     scrollCtrl, "scroll", cast[pointer](onScroll), cast[pointer](browser), nil, 0
   )
-
   gtk_widget_add_controller(browser.viewport, scrollCtrl)
+
+  let motionCtrl = gtk_event_controller_motion_new()
+  discard g_signal_connect_data(
+    motionCtrl, "motion", cast[pointer](onCursorMotion), cast[pointer](browser), nil, 0
+  )
+  gtk_widget_add_controller(browser.viewport, motionCtrl)
 
   discard gtk_widget_add_tick_callback(
     browser.viewport, onFrameTick, cast[pointer](browser), nil

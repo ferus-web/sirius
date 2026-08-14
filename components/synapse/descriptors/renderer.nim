@@ -8,3 +8,4 @@ type RenderOp* {.pure, size: sizeof(uint16).} = enum
   ResizeRenderTarget
   Close
   ViewportScroll
+  CursorMotion

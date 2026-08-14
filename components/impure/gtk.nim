@@ -116,6 +116,8 @@ proc gtk_image_set_pixel_size*(widget: ptr EGtkWidget, size: int32)
 proc gtk_label_new*(text: cstring): ptr EGtkWidget
 
 proc gtk_event_controller_scroll_new*(axes: int32): ptr EGtkWidget
+proc gtk_event_controller_motion_new*(): ptr EGtkWidget
+
 proc gtk_widget_add_controller*(widget: ptr EGtkWidget, controller: ptr EGtkWidget)
 
 proc g_application_run*(app: ptr AdwApplication, argc: int32, argv: ptr cstring): int32

@@ -126,6 +126,16 @@ proc scrollViewport*(master: Master, tab: uint32, velocity: vmath.Vec2) =
 
   discard master.send(process.fd)
 
+proc cursorMotion*(master: Master, tab: uint32, position: vmath.Vec2) =
+  let process = &master.tabs[tab].renderer()
+
+  # cursorMotion
+  # Argument 1: vmath.Vec2
+  master.encoder.encode(RenderOp.CursorMotion)
+  master.encoder.push(position)
+
+  discard master.send(process.fd)
+
 func findAssociatedClientByFd*(
     master: Master, fd: int32
 ): Option[tuple[tab: uint32, process: Process]] =

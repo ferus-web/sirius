@@ -18,3 +18,12 @@ Sent when the master process wants the WebRenderer to resize its rendering buffe
 
 ### viewportScroll
 **Argument 1**: Vec2
+
+Sent by the master process when it wants the viewport to scroll in or away from a particular direction, as signalled by argument 1 (velocity).
+
+### cursorMotion
+**Argument 1**: Vec2
+
+Sent when the user moves their cursor around in the browser.
+
+**Note**: Argument 1 (position) contains the coordinates relative to the viewport, so it can be directly applied to the rendered scene without accounting for the browser chrome.
