@@ -26,6 +26,8 @@ type BrowserState = ref object
   bufferFd*: int32
   bufferStride*: uint32
 
+  scrollDelta: vmath.Vec2
+
 proc userNavigationRequest(state: BrowserState, target: string) =
   # TODO: Document the algorithm behind this somewhere
 
@@ -109,6 +111,13 @@ proc onFrameTick(
     browser.view.master.drawFrame(&browser.view.master.tabs[0].renderer())
     browser.frameAcked = false
 
+  if browser.scrollDelta.x != 0'f32 or browser.scrollDelta.y != 0'f32:
+    # TODO: maybe if only one of them (likely) got changed, we can only send the one
+    # changed via specialized horizontal/vertical IPC calls so we only ship one f32 instead
+    # of two, even when not required?
+    browser.view.master.scrollViewport(0, browser.scrollDelta)
+    browser.scrollDelta.reset()
+
   gtk_widget_queue_draw(widget)
 
   return G_SOURCE_CONTINUE
@@ -117,7 +126,7 @@ proc onScroll(
     widget: ptr EGtkWidget, dx, dy: float64, userData: pointer
 ): bool {.cdecl.} =
   let browser = cast[BrowserState](userData)
-  browser.view.master.scrollViewport(0, vec2(dx, dy))
+  browser.scrollDelta += vec2(dx, dy)
 
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)

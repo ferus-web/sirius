@@ -28,6 +28,7 @@ proc g_unix_fd_add*(
 {.push importc, header: "<gtk/gtk.h>".}
 let
   G_SOURCE_CONTINUE*: int32
+  G_SOURCE_REMOVE*: int32
   GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES*: int32
 
 {.pop.}
@@ -150,3 +151,7 @@ proc gdk_dmabuf_texture_builder_build*(
 
 {.pop.}
 {.pop.}
+
+func `==`*(a, b: GIOCondition): bool {.borrow.}
+func `or`*(a, b: GIOCondition): GIOCondition {.borrow.}
+func `and`*(a, b: GIOCondition): GIOCondition {.borrow.}
