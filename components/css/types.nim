@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
 import components/style/types
-import pkg/chroma
+import pkg/[chroma, url]
 
 type
   ## Types for the CSS Text Decoration Module Level 3 specification
@@ -86,3 +86,52 @@ type
     Justify
     MatchParent
     JustifyAll
+
+type
+  ## Types for the CSS Basic User Interface Module Level 3
+  ## https://www.w3.org/TR/css-ui-3
+  CursorPredefined* {.pure, size: sizeof(uint8).} = enum
+    ## https://www.w3.org/TR/css-ui-3/#predefined-cursors
+    Auto = "auto"
+    Default = "default"
+    None = "none"
+    ContextMenu = "context-menu"
+    Help = "help"
+    Pointer = "pointer"
+    Progress = "progress"
+    Wait = "wait"
+    Cell = "cell"
+    Crosshair = "crosshair"
+    Text = "text"
+    VerticalText = "vertical-text"
+    Alias = "alias"
+    Copy = "copy"
+    Move = "move"
+    NoDrop = "no-drop"
+    NotAllowed = "not-allowed"
+    Grab = "grab"
+    Grabbing = "grabbing"
+    EResize = "e-resize"
+    NResize = "n-resize"
+    NEResize = "ne-resize"
+    NWResize = "nw-resize"
+    SResize = "s-resize"
+    SEResize = "se-resize"
+    SWResize = "sw-resize"
+    WResize = "w-resize"
+    EWResize = "ew-resize"
+    NSResize = "ns-resize"
+    NESWResize = "nesw-resize"
+    NWSEResize = "nwse-resize"
+    ColResize = "col-resize"
+    RowResize = "row-resize"
+    AllScroll = "all-scroll"
+    ZoomIn = "zoom-in"
+    ZoomOut = "zoom-out"
+
+  CursorImage* = object
+    url*: URL
+
+  Cursor* = object ## https://www.w3.org/TR/css-ui-3/#cursor
+    image*: Option[CursorImage]
+    predefined*: Option[CursorPredefined]

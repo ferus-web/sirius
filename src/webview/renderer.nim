@@ -14,6 +14,7 @@ import
   components/aux/[pretty, stream_utils],
   components/gfx/[core, init, painter, font_loader],
   components/dom/[dom, tags],
+  components/css/types,
   components/html/[parser, dom_utils, data_parser, meta],
   components/html/form/[owner, encoder, types],
   components/style/[parser, matching],
@@ -551,56 +552,16 @@ proc applyCursorState(view: WebRenderer, layoutNode: LayoutNode) =
   if layoutNode.domNode of tags.HTMLInputElement and
       HTMLInputElement(layoutNode.domNode).kind in
       [some(InputKind.Submit), some(InputKind.Button)]:
-    # TODO: Send cursor shapes to master
-    # view.app.setCursorShape(Shape.Grabbing)
+    view.client.encoder.encode(MasterOp.SetPCursorShape)
+    view.client.encoder.push(CursorPredefined.Grabbing)
+    assert *view.client.send()
     return
 
-  # Source: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor
-  #[ let cursorMap = toTable {
-    "default": Shape.Default,
-    "pointer": Shape.Pointer,
-    "context-menu": Shape.ContextMenu,
-    "help": Shape.Help,
-    "progress": Shape.Progress,
-    "wait": Shape.Wait,
-    "cell": Shape.Cell,
-    "crosshair": Shape.Crosshair,
-    "text": Shape.Text,
-    "vertical-text": Shape.VerticalText,
-    "alias": Shape.Alias,
-    "copy": Shape.Copy,
-    "move": Shape.Move,
-    "no-drop": Shape.NoDrop,
-    "not-allowed": Shape.NotAllowed,
-    "grab": Shape.Grab,
-    "grabbing": Shape.Grabbing,
-    "all-scroll": Shape.AllScroll,
-    "col-resize": Shape.ColResize,
-    "row-resize": Shape.RowResize,
-    "n-resize": Shape.NResize,
-    "e-resize": Shape.EResize,
-    "s-resize": Shape.SResize,
-    "w-resize": Shape.WResize,
-    "ne-resize": Shape.NEResize,
-    "nw-resize": Shape.NWResize,
-    "se-resize": Shape.SEResize,
-    "sw-resize": Shape.SWResize,
-    "ew-resize": Shape.EWResize,
-    "ns-resize": Shape.NSResize,
-    "nesw-resize": Shape.NESWResize,
-    "nwse-resize": Shape.NWSEResize,
-    "zoom-in": Shape.ZoomIn,
-    "zoom-out": Shape.ZoomOut,
-  } ]#
   let cursor = &layoutNode.cursor
-
-  #[ if cursor in cursorMap:
-    let shape = cursorMap[cursor]
-
-    if shape == Shape.Default and view.progress:
-      discard # view.app.setCursorShape(Shape.Progress)
-    else:
-      discard # view.app.setCursorShape(shape) ]#
+  if *cursor.predefined:
+    view.client.encoder.encode(MasterOp.SetPCursorShape)
+    view.client.encoder.push(&cursor.predefined)
+    assert *view.client.send()
 
 proc submitInputElement(view: WebRenderer, element: HTMLInputElement) =
   let ownerOpt = element.resetFormOwner()

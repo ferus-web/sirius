@@ -10,3 +10,5 @@ type MasterOp* {.pure, size: sizeof(uint16).} = enum
   TargetResized ## Sent in acknowledgement to a `resizeRenderTarget` sent by the master.
   SetPageTitle
     ## Sent when the renderer wants the master process to set this renderer's page's OS-specific window title.
+  SetPCursorShape
+    ## Sent when the renderer believes the user is hovering over an element with a set predefined-cursor shape as per the CSS Basic UI Module Level 3 specifications. 

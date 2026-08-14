@@ -91,6 +91,7 @@ proc gtk_entry_set_placeholder_text*(entry: ptr EGtkWidget, text: cstring)
 proc gtk_editable_get_text*(editable: ptr EGtkWidget): cstring
 
 proc gtk_widget_set_size_request*(widget: ptr EGtkWidget, h, v: int32)
+proc gtk_widget_set_cursor_from_name*(widget: ptr EGtkWidget, cursor: cstring)
 
 proc gtk_widget_add_tick_callback*(
   widget: ptr EGtkWidget,

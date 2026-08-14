@@ -3,7 +3,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[hashes, options, sequtils, strformat, strutils, tables]
 import
-  components/css/[level1, text, text_decoration, types],
+  components/css/[level1, text, text_decoration, ui, types],
   components/dom/[dom, tags],
   components/html/dom_utils,
   components/style/types,
@@ -441,8 +441,12 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       if (let color = evaluateColor(prop); *color):
         layoutNode.backgroundColor = &color
     elif attr == CursorAttr:
-      if prop.kind == CSSValueKind.String and prop.str != "auto":
-        layoutNode.cursor = some(prop.str)
+      # TODO: Move this into its own function (`applyCursorAttr` maybe?)
+      if prop.kind == CSSValueKind.String:
+        let value = toLowerAscii(prop.str)
+        if value != "auto":
+          layoutNode.cursor =
+            some(Cursor(predefined: getCursorPredefinedProperty(value)))
     elif attr == LineHeightAttr:
       layoutNode.lineHeight = some(prop)
     elif attr == PaddingAttr:

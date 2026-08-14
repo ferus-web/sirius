@@ -7,6 +7,7 @@ import
   components/synapse/[decoder, master, types, transport/socketpairs],
   components/synapse/descriptors/[master],
   components/impure/gtk
+import components/css/types
 import ../webview/[core, types]
 
 logScope:
@@ -198,6 +199,9 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
 proc setPageTitle(browser: BrowserState, title: string) =
   gtk_window_set_title(browser.window, title)
 
+proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
+  gtk_widget_set_cursor_from_name(browser.viewport, cstring($predef))
+
 proc showDeadTabPage(browser: BrowserState) =
   let parentBox = gtk_widget_get_parent(browser.viewport)
   if parentBox == nil:
@@ -271,6 +275,8 @@ proc handleIPCMessage(state: BrowserState, fd: int32): bool =
     state.bufferStride = stride
   of MasterOp.SetPageTitle:
     state.setPageTitle(&msg.argument(0, string))
+  of MasterOp.SetPCursorShape:
+    state.setPCursorShape(&msg.argument(0, CursorPredefined))
 
   true
 

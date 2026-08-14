@@ -27,7 +27,7 @@ type
     margins*: LayoutMargins
     padding*: LayoutPadding
     fontFamily*: fonts.Font
-    cursor*: Option[string]
+    cursor*: Option[Cursor]
     fontSize*: Option[CSSValue]
     color*, backgroundColor*: chroma.ColorRGBA
     lineHeight*: Option[CSSValue]
