@@ -1,7 +1,7 @@
 ## Core routines for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import pkg/[chronicles, results, shakar]
+import pkg/[chronicles, results, shakar, url]
 import components/synapse/[master, types, transport/socketpairs]
 import ./[types, zygote]
 
@@ -16,6 +16,9 @@ proc loadPage*(view: WebView, target: string) =
   view.master.tabs &= Tab()
   view.master.spawn(0, ProcessKind.Renderer, &sockPair)
     # NOTE: the socketpair code will close the file descriptor itself
+
+  if (let parsed = tryParseUrl(target); *parsed):
+    view.master.gotoURL(0, &parsed)
 
 proc initWebView*(opts: WebViewOpts): WebView =
   WebView(opts: opts, master: initMaster(zygote.main))
