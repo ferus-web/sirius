@@ -210,7 +210,8 @@ proc handleHTMLLinkElement(
           view.stylesheet &= parseStylesheet(newParser(newParserInput(style)))
           view.reflow()
       else:
-        assert off, $resp.code
+        warn "Failed to fetch stylesheet, got non-200 response code.",
+          code = resp.code, url = resp.url
     ,
   )
 
