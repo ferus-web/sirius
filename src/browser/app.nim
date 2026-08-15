@@ -1,7 +1,7 @@
 ## GTK4 browser shell implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, posix, strformat]
+import std/[options, posix, strformat, strutils]
 import pkg/[shakar, results, chronicles, vmath, url]
 import
   components/synapse/[decoder, master, types, transport/socketpairs],
@@ -214,7 +214,7 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   discard gtk_widget_grab_focus(browser.viewport)
 
 proc setPageTitle(browser: BrowserState, title: string) =
-  gtk_window_set_title(browser.window, &"{title} — Sirius")
+  gtk_window_set_title(browser.window, &"{title.strip()} — Sirius")
 
 proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
   gtk_widget_set_cursor_from_name(browser.viewport, cstring($predef))
