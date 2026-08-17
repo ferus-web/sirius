@@ -54,7 +54,7 @@ proc getLoaderImplementation*(): LoaderImplementation =
         ),
           # TODO: Handle others, also the Start/End ones aren't computed correctly afaik.
         vAlign = Top, # TODO: Probably should do something about this
-        wrap = true,
-        minContent = false,
+        wrap = false,
+        minContent = true,
       ),
   )

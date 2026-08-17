@@ -19,6 +19,10 @@ type
   LayoutPadding* = object
     top*, right*, bottom*, left*: Option[CSSValue]
 
+  TextRun* = object
+    pos*: vmath.Vec2
+    arrangement*: GlyphArrangement
+
   LayoutNode* = ref object
     domNode*: dom.Node ## The associated DOM node with this element
     children*: seq[LayoutNode]
@@ -46,6 +50,8 @@ type
 
     relativePos*, absolutePos*: vmath.Vec2
     dimensions*: vmath.Vec2
+
+    textRuns*: seq[TextRun]
 
 proc clone*(node: LayoutNode): LayoutNode =
   if node == nil:

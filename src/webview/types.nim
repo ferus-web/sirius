@@ -12,7 +12,8 @@ import
   components/os/[assets, fonts],
   components/net/core,
   components/js/runtime/prelude as js,
-  components/synapse/types
+  components/synapse/types,
+  components/css/types
 import ./[cookie_jar]
 
 logScope:
@@ -73,6 +74,8 @@ type
 
     lastDmabufFd*: int32
     running*: bool
+
+    lastCursorPredef*: CursorPredefined
 
   WebRenderer* = ref WebRendererObj
 

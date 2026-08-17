@@ -169,6 +169,7 @@ proc reflow(view: WebRenderer) =
       outputManager: view.outputManager,
       fontProvider: view.fontProvider,
       parentExplicitHeight: none(float32),
+      bfc: BlockFloatingContext(),
     ),
     node = view.renderCtx.tree,
     parent = vec2(0, 0),
@@ -543,7 +544,12 @@ proc loadPage*(view: WebRenderer, target: string) =
   of SchemeType.Http, SchemeType.Https:
     loadURL(view, view.target)
   of SchemeType.File:
-    loadFile(view, view.target.host & view.target.pathname)
+    loadFile(
+      view,
+      view.target.host &
+        (if view.target.pathname.len > 1: view.target.pathname
+        else: newString(0)),
+    )
 
 proc applyCursorState(view: WebRenderer, layoutNode: LayoutNode) =
   if !layoutNode.cursor:
@@ -560,9 +566,12 @@ proc applyCursorState(view: WebRenderer, layoutNode: LayoutNode) =
 
   let cursor = &layoutNode.cursor
   if *cursor.predefined:
-    view.client.encoder.encode(MasterOp.SetPCursorShape)
-    view.client.encoder.push(&cursor.predefined)
-    assert *view.client.send()
+    let predef = &cursor.predefined
+    if view.lastCursorPredef != predef:
+      view.client.encoder.encode(MasterOp.SetPCursorShape)
+      view.client.encoder.push(predef)
+      view.lastCursorPredef = predef
+      discard view.client.send()
 
 proc submitInputElement(view: WebRenderer, element: HTMLInputElement) =
   let ownerOpt = element.resetFormOwner()

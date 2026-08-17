@@ -224,49 +224,78 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
         ),
       )
   of DisplayMode.Anonymous:
-    var arrangement = node.arrangement
-    for i, _ in arrangement.spanColors:
-      arrangement.spanColors[i] = fill(node.color)
+    for run in node.textRuns:
+      var arrangement = run.arrangement
+      for i, _ in arrangement.spanColors:
+        arrangement.spanColors[i] = fill(node.color)
 
-    discard ctx.displayList.addChild(
-      ZLevel(0),
-      currentIdx,
-      Fig(
-        kind: nkText,
-        parent: currentIdx,
-        zlevel: ZLevel(0),
-        screenBox: nodeScreenBox,
-        textLayout: ensureMove(arrangement),
-      ),
-    )
-
-    if node.textDecoration.line notin {
-      TextDecorationLine.None, TextDecorationLine.Blink
-    }:
-      var yLevel = posY
-
-      case node.textDecoration.line
-      of TextDecorationLine.Underline:
-        yLevel += height
-      of TextDecorationLine.Overline:
-        discard
-      of TextDecorationLine.LineThrough:
-        yLevel += height * 0.5'f32
-      of TextDecorationLine.Blink, TextDecorationLine.None:
-        unreachable
+      let
+        runPosX = posX + run.pos.x
+        runPosY = posY + run.pos.y
+        runWidth = arrangement.bounding.w
+        runHeight = arrangement.bounding.h
+        runScreenBox = rect(runPosX, runPosY, runWidth, runHeight)
 
       discard ctx.displayList.addChild(
         ZLevel(0),
         currentIdx,
         Fig(
-          kind: nkRectangle,
+          kind: nkText,
           parent: currentIdx,
-          zlevel: 0.ZLevel,
-          screenBox: rect(posX, yLevel, width, 2'f32),
-          fill: fill(node.color),
+          zlevel: ZLevel(0),
+          screenBox: runScreenBox,
+          textLayout: ensureMove(arrangement),
         ),
       )
 
+      if node.textDecoration.line notin
+          {TextDecorationLine.None, TextDecorationLine.Blink}:
+        var i = 0
+        while i < node.textRuns.len:
+          let startRun = node.textRuns[i]
+          var endRun = startRun
+          let lineY = startRun.pos.y
+          var maxLineHeight = startRun.arrangement.bounding.h
+
+          # Find all subsequent runs that are on the exact Y val
+          var j = i + 1
+          while j < node.textRuns.len and abs(node.textRuns[j].pos.y - lineY) < 0.5'f32:
+            endRun = node.textRuns[j]
+            maxLineHeight = max(maxLineHeight, endRun.arrangement.bounding.h)
+            inc j
+
+          let
+            # then we basically just calculate the contiguous chunk across the Y level
+            lineStartX = posX + startRun.pos.x
+            lineEndX = posX + endRun.pos.x + endRun.arrangement.bounding.w
+            lineWidth = lineEndX - lineStartX
+            linePosY = posY + lineY
+
+          var yLevel = linePosY
+
+          case node.textDecoration.line
+          of TextDecorationLine.Underline:
+            yLevel += maxLineHeight
+          of TextDecorationLine.Overline:
+            discard
+          of TextDecorationLine.LineThrough:
+            yLevel += maxLineHeight * 0.5'f32
+          of TextDecorationLine.Blink, TextDecorationLine.None:
+            unreachable
+
+          discard ctx.displayList.addChild(
+            ZLevel(0),
+            currentIdx,
+            Fig(
+              kind: nkRectangle,
+              parent: currentIdx,
+              zlevel: 0.ZLevel,
+              screenBox: rect(lineStartX, yLevel, lineWidth, 2'f32),
+              fill: fill(node.color),
+            ),
+          )
+
+          i = j
   for childNode in node.children:
     buildFigNodes(ctx, childNode, currentIdx)
 
