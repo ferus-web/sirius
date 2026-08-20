@@ -107,7 +107,11 @@ proc parseDeclaration*(parser: Parser): Option[Declaration] =
 
     case value.kind
     of tkFunction:
-      values.list &= &parser.parseFunction(value)
+      let fn = parser.parseFunction(value)
+      if !fn:
+        break
+
+      values.list &= &fn
     of tkDimension, tkIdent, tkPercentage, tkQuotedString, tkIDHash, tkHash:
       let value = parser.parseValueFromToken(value)
       if *value:
