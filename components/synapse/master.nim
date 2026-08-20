@@ -33,6 +33,7 @@ proc spawnZygote*(
     discard posix.close(pair.theirs()) # We don't need the master=>zygote fd.
 
     {.cast(raises: []).}:
+      # TODO: Can we clear the call stack prior to this and treat it like our entrypoint?
       # HACK: Exceptions in here reallu aren't our problem, but feel free to correct me :P
       zygoteRoutine(pair.ours())
 
