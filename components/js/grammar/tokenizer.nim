@@ -321,8 +321,11 @@ func consumeString*(tokenizer: var Tokenizer): Token =
   while not tokenizer.eof():
     let c = &tokenizer.charAt()
 
-    if c == closesWith and not ignoreNextQuote:
-      break
+    if c == closesWith:
+      if not ignoreNextQuote:
+        break
+
+      ignoreNextQuote = false
 
     if c == '\\':
       if not tokenizer.eof and &tokenizer.charAt(1) == 'u':
