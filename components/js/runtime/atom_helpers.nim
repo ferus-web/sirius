@@ -38,6 +38,11 @@ proc `[]=`*(atom: JSValue, name: string, value: sink JSValue) =
       ValueError, "Cannot set field on property '" & name & "' as it is an accessor."
     )
 
+proc getSimpleProperty*(atom: JSValue, name: string): JSValue =
+  ## Simple property access, doesn't resolve getter/setters
+
+  atom.objValues[atom.objFields[name].index]
+
 proc setHiddenField*(atom: JSValue, name: string, value: sink JSValue) =
   if atom.kind != Object:
     raise newException(ValueError, $atom.kind & " does not have field access methods")
