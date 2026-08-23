@@ -1,7 +1,6 @@
 ## String type
-## Wraps around the Mirage atom
-## Author(s):
-## Trayambak Rai (xtrayambak at disroot dot org)
+## 
+## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[tables, strutils, options, hashes, unicode]
 import
   components/js/runtime/[arguments, bridge, wrapping, atom_helpers, types, construction]

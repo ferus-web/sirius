@@ -18,7 +18,7 @@ proc floating*(runtime: Runtime, value: SomeFloat | SomeInteger): JSValue =
 proc str*(runtime: Runtime, value: string): JSValue =
   str(runtime.realm.heap, value)
 
-proc sequence*(runtime: Runtime, value: seq[MAtom]): JSValue =
+proc sequence*(runtime: Runtime, value: seq[JSValue]): JSValue =
   sequence(runtime.realm.heap, value)
 
 proc undefined*(runtime: Runtime): JSValue =

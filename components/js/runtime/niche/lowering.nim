@@ -1630,7 +1630,7 @@ proc generateInternalIR*(runtime: Runtime) =
       if idx < 0 or idx > vec.len - 1:
         ret undefined(runtime)
 
-      ret vec[idx].addr # TODO: add indexing for tables/object fields
+      ret vec[idx] # TODO: add indexing for tables/object fields
     ,
   )
 

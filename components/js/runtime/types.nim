@@ -395,7 +395,7 @@ proc loadIRAtom*(runtime: Runtime, atom: MAtom): uint =
 
     for item in atom.sequence:
       inc runtime.realm.addrIdx
-      let idx = runtime.loadIRAtom(item)
+      let idx = runtime.loadIRAtom(item[])
       runtime.ir.appendList(result, idx)
   of Undefined:
     runtime.ir.loadUndefined(runtime.realm.addrIdx)

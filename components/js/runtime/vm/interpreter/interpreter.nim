@@ -554,7 +554,7 @@ proc opAddList(interpreter: var Interpreter, op: ptr Operation) =
     inc interpreter.currIndex
     return # TODO: type errors
 
-  list.sequence.add((&source)[])
+  list.sequence &= &source
 
   interpreter.stack[pos] = list
   inc interpreter.currIndex

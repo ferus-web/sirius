@@ -52,7 +52,7 @@ proc generateStdIR*(runtime: Runtime) =
       # 3. For each element e of S.[[SetData]], do
       for i, _ in setVal:
         # a. If e is not EMPTY and SameValueZero(e, value) is true, then
-        if runtime.isStrictlyEqual(setVal[i].addr, value):
+        if runtime.isStrictlyEqual(setVal[i], value):
           # i. Return S.
           ret setAtom
 
@@ -61,7 +61,7 @@ proc generateStdIR*(runtime: Runtime) =
         value = floating(runtime, 0f)
 
       # 5. Append value to S.[[SetData]].
-      setVal.add(value[])
+      setVal.add(value)
       setAtom.tag("internal", sequence(runtime, setVal))
 
       # 6. Return S.
@@ -114,7 +114,7 @@ proc generateStdIR*(runtime: Runtime) =
         # a. If e is not empty and SameValue(e, value) is true, then
         # FIXME: Non-compliant.
 
-        if isStrictlyEqual(runtime, data[i].addr, value):
+        if isStrictlyEqual(runtime, data[i], value):
           index = i
           break
 
@@ -150,7 +150,7 @@ proc generateStdIR*(runtime: Runtime) =
       for i, _ in data:
         # i. If e is not empty and SameValue(e, value) is true, return true.
         # FIXME: Non-compliant.
-        if isStrictlyEqual(runtime, data[i].addr, value):
+        if isStrictlyEqual(runtime, data[i], value):
           ret true
 
       # 5. Return false.
@@ -170,7 +170,7 @@ proc generateStdIR*(runtime: Runtime) =
 
       # 3. For each element e of S.[[SetData]], do
       # a. Replace the element of S.[[SetData]] whose value is e with an element whose value is empty.
-      setAtom.tag("internal", sequence(runtime, newSeq[MAtom](0)))
+      setAtom.tag("internal", sequence(runtime, newSeq[JSValue](0)))
 
       # 4. Return undefined.
       ret undefined(runtime)

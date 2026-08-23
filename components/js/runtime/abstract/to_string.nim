@@ -59,7 +59,7 @@ proc ToString*(runtime: Runtime, value: JSValue): string {.gcsafe.} =
 
     # FIXME: not spec compliant!
     for i, _ in value.sequence:
-      buffer &= runtime.ToString(value.sequence[i].addr)
+      buffer &= runtime.ToString(value.sequence[i])
       if i < value.sequence.len - 1:
         buffer &= ", "
 

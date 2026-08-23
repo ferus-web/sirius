@@ -51,7 +51,7 @@ type
     of Integer:
       integer*: int
     of Sequence:
-      sequence*: seq[MAtom]
+      sequence*: seq[JSValue]
     of Boolean:
       state*: bool
     of Object:
@@ -188,11 +188,11 @@ proc getNumeric*(atom: MAtom | JSValue): Option[float64] {.inline.} =
 
   none(float64)
 
-proc getSequence*(atom: MAtom | JSValue): Option[seq[MAtom]] {.inline.} =
+proc getSequence*(atom: MAtom | JSValue): Option[seq[JSValue]] {.inline.} =
   if atom.kind == Sequence:
     return some(atom.sequence)
 
-  none(seq[MAtom])
+  none(seq[JSValue])
 
 proc getNativeCallable*(atom: MAtom | JSValue): Option[proc()] {.inline.} =
   if atom.kind == NativeCallable:
@@ -342,13 +342,13 @@ proc null*(heap: HeapManager): JSValue {.inline, cdecl.} =
 func stackNull*(): MAtom =
   MAtom(kind: Null)
 
-proc sequence*(heap: HeapManager, s: seq[MAtom]): JSValue {.inline, cdecl.} =
+proc sequence*(heap: HeapManager, s: seq[JSValue]): JSValue {.inline, cdecl.} =
   var mem = newJSValue(heap, Sequence)
   mem.sequence = s
 
   ensureMove(mem)
 
-func stackSequence*(s: seq[MAtom]): MAtom {.inline.} =
+func stackSequence*(s: seq[JSValue]): MAtom {.inline.} =
   MAtom(kind: Sequence, sequence: s)
 
 proc bigint*(

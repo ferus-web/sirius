@@ -21,7 +21,7 @@ proc convertJsonNodeToAtom*(runtime: Runtime, node: JsonNode): JSValue =
   elif node.kind == JArray:
     var arr = sequence(runtime, @[])
     for elem in node.getElems():
-      arr.sequence &= convertJsonNodeToAtom(runtime, elem)[]
+      arr.sequence &= convertJsonNodeToAtom(runtime, elem)
 
     return arr
   elif node.kind == JFloat:
@@ -57,7 +57,7 @@ proc atomToJsonNode*(runtime: Runtime, atom: JSValue): JsonNode =
     var arr = newJArray()
 
     for i, _ in atom.sequence:
-      arr &= atomToJsonNode(runtime, atom.sequence[i].addr)
+      arr &= atomToJsonNode(runtime, atom.sequence[i])
 
     return arr
   elif atom.kind == Object:
