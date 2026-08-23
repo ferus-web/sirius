@@ -270,3 +270,94 @@ proc generateBindings*(runtime: Runtime) =
       ret element
     ,
   )
+
+  runtime.definePrototypeFn(
+    JSArray,
+    "indexOf",
+    proc(this: JSValue) =
+      # 23.1.3.17 Array.prototype.indexOf ( searchElement [ , fromIndex ] )
+      # This method compares searchElement to the elements of the array, in ascending order, using the IsStrictlyEqual algorithm, and if found at one or more indices, returns the smallest such index; otherwise, it returns -1𝔽.
+      # This method performs the following steps when called:
+
+      let searchElement = &runtime.argument(1, required = true)
+
+      # 1. Let O be ? ToObject(this value).
+      let obj = this # TODO: ToObject
+
+      # 2. Let len be ? LengthOfArrayLike(O).
+      let length = LengthOfArrayLike(runtime, obj)
+
+      # 3. If len = 0, return -1𝔽.
+      if length == 0:
+        ret -1
+
+      # 4. Let n be ? ToIntegerOrInfinity(fromIndex).
+      # 5. Assert: If fromIndex is undefined, then n is 0.
+      let fromIndex = &runtime.argument(2, required = false)
+      var n =
+        if fromIndex.isUndefined:
+          0'f
+        else:
+          runtime.ToNumber(fromIndex)
+
+      # 6. If n = +∞, return -1𝔽.
+      if n == Inf:
+        ret -1
+
+      # 7. If n = -∞, set n to 0.
+      if n == -Inf:
+        n = 0'f
+
+      var k: uint32
+
+      # 8. If n ≥ 0, then
+      if n >= 0'f:
+        # a. Let k be n.
+        k = uint32(n)
+      else:
+        # 9. Else,
+        # a. Let k be len + n.
+        k = length + uint32(n)
+
+        # b. If k < 0, set k to 0.
+        if k < 0:
+          k = 0
+
+      # 10. Repeat, while k < len,
+      while k < length:
+        # a. Let Pk be ! ToString(𝔽(k)).
+        # b. Let kPresent be ? HasProperty(O, Pk).
+        # c. If kPresent is true, then
+        # i. Let elementK be ? Get(O, Pk).
+        let elem = runtime.indexArray(obj, k)
+
+        # ii. If IsStrictlyEqual(searchElement, elementK) is true, return 𝔽(k).
+        if isStrictlyEqual(runtime, searchElement, elem):
+          ret k
+
+        # d. Set k to k + 1.
+        inc k
+
+      # 11. Return -1𝔽.
+      ret -1
+    ,
+  )
+
+  runtime.definePrototypeFn(
+    JSArray,
+    "toString",
+    proc(this: JSValue) =
+      # 23.1.3.36 Array.prototype.toString ( )
+      # This method performs the following steps when called:
+
+      # 1. Let array be ? ToObject(this value).
+      let arr = this # TODO: ToObject
+
+      # 2. Let func be ? Get(array, "join").
+      let fun = runtime.getMethod(arr, "join")
+
+      # 3. If IsCallable(func) is false, set func to the intrinsic function %Object.prototype.toString%.
+
+      runtime.vm.registers.callArgs = @[arr]
+      (&fun)(),
+  )

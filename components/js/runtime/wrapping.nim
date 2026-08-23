@@ -75,10 +75,10 @@ proc wrap*(runtime: Runtime, val: seq[JSValue]): JSValue =
   sequence(runtime.realm.heap, ensureMove(atoms))
 
 proc wrap*[T](runtime: Runtime, val: seq[T]): JSValue =
-  var atoms = newSeq[MAtom](val.len)
+  var atoms = newSeq[JSValue](val.len)
 
   for i, value in val:
-    atoms[i] = runtime.wrap(value)[]
+    atoms[i] = runtime.wrap(value)
 
   sequence(runtime.realm.heap, ensureMove(atoms))
 
