@@ -325,7 +325,7 @@ proc handleHTMLMetaElement(view: WebRenderer, element: HTMLMetaElement) =
     let dataOpt = parseRefreshData(&element.content, some(view.target))
     if !dataOpt:
       warn "Cannot handle Refresh metadata, failed to parse metadata content",
-        message = dataOpt.error()
+        message = dataOpt.error(), metadata = &element.content
       return
 
     let data = &dataOpt
