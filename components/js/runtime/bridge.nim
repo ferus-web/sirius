@@ -88,7 +88,7 @@ proc dumpStatistics*(runtime: Runtime): RuntimeStats =
 proc setProperty*[V: not JSValue, T](
     runtime: Runtime, prototype: typedesc[T], name: string, value: V
 ) {.inline.} =
-  runtime.setProperty(prototype = prototype, name = name, value = value.wrap())
+  runtime.setProperty(prototype = prototype, name = name, value = wrap(runtime, value))
 
 proc defineFn*(runtime: Runtime, name: string, fn: NativeFunction) =
   ## Expose a native function to a JavaScript runtime.
