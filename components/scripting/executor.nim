@@ -22,7 +22,15 @@ import pkg/[chronicles, shakar], pkg/url as urlparser
 logScope:
   topics = "scripting/executor"
 
-proc registerWebBindings(elem: tags.HTMLScriptElement) =
+type HostScriptingCallbacks* = object
+  ## Callbacks that the host exposes for bindings to call, in order to talk to it.
+  window*: WindowHostCallbacks
+
+export WindowHostCallbacks
+
+proc registerWebBindings(
+    elem: tags.HTMLScriptElement, callbacks: HostScriptingCallbacks
+) =
   ## Register all the types for web specifications that we support.
 
   # we have to register ECMA types earlier, as otherwise bindings below would fail as they rely on ECMA primitives existing
@@ -38,7 +46,7 @@ proc registerWebBindings(elem: tags.HTMLScriptElement) =
   navigator.generateBindings(elem.script.rt)
   navigator.generateGlobal(elem.script.rt)
 
-  window.generateBindings(elem.script.rt)
+  window.generateBindings(elem.script.rt, callbacks.window)
   window.generateGlobal(elem.script.rt, doc)
 
   url.generateBindings(elem.script.rt)
@@ -61,7 +69,11 @@ proc setupRandomState(rng: out uint64) =
     # TODO: Implement this for Windows and stuff. For now, we'll let the state be zero.
     rng = 0'u64
 
-proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
+proc executeScript*(
+    element: tags.HTMLScriptElement,
+    codeBuffer: string,
+    callbacks: HostScriptingCallbacks,
+) =
   echo codeBuffer.repr
   let parser = newParser(codeBuffer)
   element.script.ast = parser.parse()
@@ -109,5 +121,5 @@ proc executeScript*(element: tags.HTMLScriptElement, codeBuffer: string) =
       stdout.write &"\n    0x{cast[uint64](arg):X} ({(if arg != nil: $arg.kind else: \"\")})  \n"
     debugEcho "]"
 
-  registerWebBindings(element)
+  registerWebBindings(element, callbacks)
   element.script.rt.run()

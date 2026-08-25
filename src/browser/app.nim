@@ -265,6 +265,30 @@ proc handleDeadChild(state: BrowserState, fd: int32) =
   else:
     unreachable
 
+proc showAlertMessage(state: BrowserState, message: Option[string]) =
+  let text =
+    if *message:
+      &message
+    else:
+      newString(0)
+
+  let dialog = adw_alert_dialog_new(
+    "This page says:",
+      # TODO: Tab should prooobably track the current URL where its renderer is at.
+    text.cstring,
+  )
+
+  adw_alert_dialog_add_response(dialog, "ok", "OK")
+
+  adw_alert_dialog_set_default_response(dialog, "ok")
+  adw_alert_dialog_set_close_response(dialog, "ok")
+
+  #[ discard g_signal_connect_data(
+    dialog, "response", cast[pointer](onAlertDismissed), cast[pointer](state), nil, 0
+  )]#
+
+  adw_dialog_present(dialog, state.window)
+
 proc handleIPCMessage(state: BrowserState, fd: int32): bool =
   let msgOpt = state.view.master.blockForMessage(MasterOp, fd = some(fd))
   if !msgOpt:
@@ -294,6 +318,8 @@ proc handleIPCMessage(state: BrowserState, fd: int32): bool =
     state.setPageTitle(&msg.argument(0, string))
   of MasterOp.SetPCursorShape:
     state.setPCursorShape(&msg.argument(0, CursorPredefined))
+  of MasterOp.AlertMessage:
+    state.showAlertMessage(msg.argument(0, string))
 
   true
 

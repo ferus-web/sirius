@@ -2,7 +2,7 @@
 ## https://html.spec.whatwg.org/#the-window-object
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/options
+import std/[strutils, options]
 import
   components/dom/dom,
   components/js/runtime/prelude,
@@ -13,14 +13,23 @@ import pkg/[chronicles, results, shakar, url]
 logScope:
   topics = "html/window"
 
-type JSWindow* = object
-  status*: string
-  document*: JSValue
+type
+  WindowHostCallbacks* = object
+    alert*: proc(message: Option[string]) {.gcsafe.}
+
+  JSWindow* = object
+    status*: string
+    document*: JSValue
 
 proc generateGlobal*(runtime: Runtime, document: JSValue) =
   discard runtime.setGlobal("window", JSWindow(status: "", document: document))
 
-proc generateBindings*(runtime: Runtime) =
+proc generateBindings*(runtime: Runtime, callbacks: WindowHostCallbacks) =
+  assert(
+    callbacks.alert != nil,
+    "WindowHostCallbacks::alert must not be NULL while generating bindings for Window",
+  )
+
   runtime.registerType(name = "Window", prototype = JSWindow)
 
   runtime.definePrototypeFn(
@@ -78,4 +87,27 @@ proc generateBindings*(runtime: Runtime) =
       # TODO: Implement the rest of the spec.
       warn "TODO: window.open() steps 5-18"
       document.url = &urlRecord,
+  )
+  runtime.definePrototypeFn(
+    JSWindow,
+    "alert",
+    proc(this: JSValue) =
+      # https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-alert
+      # The alert() and alert(message) method steps are:
+
+      # 1. If we cannot show simple dialogs for this, then return.
+      # 2. If the method was invoked with no arguments, then let message be the empty string; otherwise, let message be the method's first argument.
+      # 3. Set message to the result of normalizing newlines given message.
+      var message =
+        if runtime.argumentCount < 1:
+          none(string)
+        else:
+          some(strip(runtime.ToString(&runtime.argument(1, required = true))))
+
+      # 5. Let userPromptHandler be WebDriver BiDi user prompt opened with this, "alert", and message.
+      # 6. If userPromptHandler is "none":
+      # i. Show message to the user, treating U+000A LF as a line break.
+      # ii. Optionally, pause while waiting for the user to acknowledge the message.
+      # 7. Invoke WebDriver BiDi user prompt closed with this, "alert", and true.
+      callbacks.alert(message),
   )

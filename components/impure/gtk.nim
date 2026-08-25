@@ -132,6 +132,12 @@ proc gtk_widget_add_controller*(widget: ptr EGtkWidget, controller: ptr EGtkWidg
 proc g_application_run*(app: ptr AdwApplication, argc: int32, argv: ptr cstring): int32
 proc g_object_unref*(obj: pointer)
 
+proc adw_alert_dialog_new*(heading, body: cstring): ptr EGtkWidget
+proc adw_alert_dialog_add_response*(dialog: ptr EGtkWidget, id, label: cstring)
+proc adw_alert_dialog_set_default_response*(dialog: ptr EGtkWidget, id: cstring)
+proc adw_alert_dialog_set_close_response*(dialog: ptr EGtkWidget, id: cstring)
+proc adw_dialog_present*(dialog: ptr EGtkWidget, window: ptr EGtkWidget)
+
 proc gdk_display_get_default*(): pointer
 proc gdk_dmabuf_texture_builder_new*(): ptr GdkDmabufTextureBuilder
 proc gdk_dmabuf_texture_builder_set_display*(

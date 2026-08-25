@@ -40,6 +40,20 @@ logScope:
 
 proc loadUrl(view: WebRenderer, url: URL)
 
+proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
+  HostScriptingCallbacks(
+    window: WindowHostCallbacks(
+      alert: proc(message: Option[string]) {.gcsafe.} =
+        # TODO: Ideally, we should block here too in a way that JS doesn't continue executing, but other stuff like resizing does.
+        # TODO: Also, in the future, we should probably implement a rate-limiter here. Currently, a rogue script can keep spamming `window.alert()` until the entire surface is covered.
+        renderer.client.encoder.encode(MasterOp.AlertMessage)
+        if *message:
+          renderer.client.encoder.push(&message)
+
+        discard renderer.client.send()
+    )
+  )
+
 proc initCoreScript(view: WebRenderer) =
   proc registerCoreBindings(view: WebRenderer) =
     view.coreScript.script.rt.defineFn(
@@ -64,7 +78,7 @@ proc initCoreScript(view: WebRenderer) =
     )
   )
   view.registerCoreBindings()
-  view.coreScript.executeScript(readAll(stream))
+  view.coreScript.executeScript(readAll(stream), getHostScriptingCallbacks(view))
   stream.close()
 
 proc initRenderer*(ipcChannel: int32): WebRenderer =
@@ -306,13 +320,15 @@ proc executeScript(
         if resp.code == 200:
           if not view.opts.disableScripting:
             element.script = Script(baseURL: &resolved, document: document)
-            executeScript(element, resp.body.stream.readAll())
+            executeScript(
+              element, resp.body.stream.readAll(), getHostScriptingCallbacks(view)
+            )
             view.scripts &= element
       ,
     )
 
   if isInline:
-    executeScript(element, ensureMove(codeBuffer))
+    executeScript(element, ensureMove(codeBuffer), getHostScriptingCallbacks(view))
     view.scripts &= element
 
 proc handleHTMLMetaElement(view: WebRenderer, element: HTMLMetaElement) =
