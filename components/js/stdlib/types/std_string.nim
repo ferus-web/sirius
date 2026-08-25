@@ -111,7 +111,7 @@ proc generateStdIr*(runtime: Runtime) =
         res &= nextString
 
       # 5. Return R.
-      ret res
+      ret newJSString(runtime, ensureMove(res))
     ,
   )
 

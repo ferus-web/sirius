@@ -32,7 +32,7 @@ proc newJSString*(rt: Runtime, native: string): JSValue =
       if size > 0:
         simdutf.utf16LengthFromUtf8(native[0].addr, size)
       else:
-        1'u64
+        0'u64
 
   let view =
     cast[ptr UTF16View](rt.realm.heap.allocate(cast[uint64](sizeof(UTF16View))))
