@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Event object</title></head>
+  <body>
+    <p id="targ">0</p>
+    <script>
+	let elem = document.getElementById("targ");
+	let i = 0;
+	function x(event) {
+	  let x = new String(event.screenX);
+	  let y = new String(event.screenY);
+	  let z = "";
+	  z = z.concat(x, ", ", y);
+
+	  console.log(z.length)
+	  
+	  elem.textContent = z;
+	}
+
+	elem.onclick = x; 
+    </script>
+  </body>
+</html>

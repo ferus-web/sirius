@@ -629,7 +629,19 @@ proc handleFocusedDomElement(
   applyCursorState(view, layoutNode)
 
   if clicked:
-    if dispatchEvent(layoutNode.domNode, "click", MouseEvent()):
+    let coords = ivec2(view.cursor)
+
+    if dispatchEvent(
+      layoutNode.domNode,
+      "click",
+      newMouseEvent(
+        screenCoords = coords,
+        clientCoords = coords,
+        layerCoords = coords,
+        button = 0, # TODO: Make this and `buttons` non-magicky...
+        buttons = 1,
+      ),
+    ):
       # If JS code ends up handling this event and asks us to prevent
       # default behavior, we must comply (albeit this is not fully implemented yet) 
       return
