@@ -27,6 +27,7 @@ import
   components/js/runtime/vm/heap/manager,
   components/js/runtime/compiler/base,
   components/scripting/[executor, types],
+  components/scripting/dom/[mouse_event],
   components/scripting/url as jsurl,
   components/synapse/[client, encoder, decoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, master],
@@ -628,11 +629,9 @@ proc handleFocusedDomElement(
   applyCursorState(view, layoutNode)
 
   if clicked:
-    if dispatchEvent(layoutNode.domNode, "click", undefined(view.realm.heap)):
+    if dispatchEvent(layoutNode.domNode, "click", MouseEvent()):
       # If JS code ends up handling this event and asks us to prevent
       # default behavior, we must comply (albeit this is not fully implemented yet) 
-
-      # FIXME: pass an actual Event object instead of undefined
       return
 
     if element of tags.HTMLAnchorElement:

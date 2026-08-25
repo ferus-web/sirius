@@ -91,14 +91,14 @@ func addEventListener*(node: Node, event: string, listener: EventListener) =
   # Otherwise, append a new EventListener instead
   node.listeners[event] &= listener
 
-proc dispatchEvent*(node: Node, event: string, eventObj: JSValue): bool =
+proc dispatchEvent*[T](node: Node, event: string, eventObj: T): bool =
   if not node.listeners.contains(event):
     # JS-land doesn't care about this event for this node.
     return
 
   for listener in node.listeners[event]:
     # evil rt routing
-    listener.rt.callNoRetval(listener.callback, @[eventObj])
+    listener.rt.callNoRetval(listener.callback, @[listener.rt.wrap(eventObj)])
 
   # TODO: This should ideally check eventObj's internal prevented-default
   # field, but this'll suffice for now. I want to go to sleep in peace. :^)
