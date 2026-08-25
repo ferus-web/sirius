@@ -308,7 +308,7 @@ proc generateStdIr*(runtime: Runtime) =
         ret runtime.newJSString(newString(0))
 
       # 10. Return the substring of S from from to to.
-      ret runtime.newJSString(strVal[fromVal .. toVal])
+      ret runtime.newJSString(strVal[fromVal ..< toVal])
     ,
   )
 
