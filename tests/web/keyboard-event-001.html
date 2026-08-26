@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Event object</title></head>
+  <body>
+    <p id="targ">start typing here :3</p>
+    <script>
+	let elem = document.getElementById("targ");
+	let i = 0;
+	function x(event) {
+	  console.log("press", event.key)
+	}
+
+	elem.onkeydown = x;
+    </script>
+  </body>
+</html>

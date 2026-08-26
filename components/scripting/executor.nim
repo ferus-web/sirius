@@ -9,7 +9,7 @@ import
   components/js/runtime/prelude,
   components/js/runtime/vm/interpreter/interpreter
 import
-  components/scripting/dom/[document, element, event],
+  components/scripting/dom/[document, element, event, mouse_event, keyboard_event],
   components/scripting/[url, timeouts],
   components/scripting/html/[navigator, window]
 import components/aux/pretty
@@ -52,6 +52,8 @@ proc registerWebBindings(
   url.generateBindings(elem.script.rt)
 
   event.generateBindings(elem.script.rt)
+  mouse_event.generateBindings(elem.script.rt)
+  keyboard_event.generateBindings(elem.script.rt)
 
 proc setupRandomState(rng: out uint64) =
   when defined(unix):
