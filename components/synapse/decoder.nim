@@ -52,7 +52,7 @@ proc argument*[T](msg: Message, index: uint8, typ: typedesc[T]): Option[T] =
   var pos = 3'u32
   var arg: uint8
 
-  while arg <= size and pos + 4 < size:
+  while arg <= index and pos + 4 < cast[uint32](msg.buffer.len):
     let argSize = msg.buffer.readUint32(cast[int64](pos))
     if arg == index:
       return decode(msg.buffer, start = pos + 4, stop = pos + 4 + argSize - 1, typ)
