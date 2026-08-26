@@ -27,7 +27,7 @@ import
   components/js/runtime/vm/heap/manager,
   components/js/runtime/compiler/base,
   components/scripting/[executor, types],
-  components/scripting/dom/[mouse_event],
+  components/scripting/dom/[mouse_event, keyboard_event],
   components/scripting/url as jsurl,
   components/synapse/[client, encoder, decoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, master],
@@ -711,18 +711,18 @@ proc poll*(view: WebRenderer) =
 
   view.executeOneMacrotask()
 
-proc handleKeyboardEvent(view: WebRenderer) =
-  let keysym = XKBKeysym(0) # view.app.xkbState.getOneSym(event.key.code + 8)
+proc handleKeyboardEvent(view: WebRenderer, key, keycode: string, repeat: bool) =
   if *view.keyboardFocusedElement:
     let element = &view.keyboardFocusedElement
 
-    discard dispatchEvent(element, "keydown", undefined(view.realm.heap))
-    # not sure this is really compliant...
-    # FIXME: pass an actual Event object instead of undefined
+    if dispatchEvent(
+      element, "keydown", newKeyboardEvent(key = key, code = keycode, repeat = repeat)
+    ):
+      return
 
     if element of HTMLInputElement:
       let inputElement = HTMLInputElement(element)
-      if keysym == XKB_Key_Backspace:
+      if key == "Backspace":
         if inputElement.inputBuffer.len > 0:
           inputElement.inputBuffer =
             inputElement.inputBuffer[0 ..< inputElement.inputBuffer.len - 1]
@@ -730,23 +730,14 @@ proc handleKeyboardEvent(view: WebRenderer) =
           view.reflow()
         return
 
-      if keysym != XKB_Key_Shift_L and keysym != XKB_Key_Shift_R and
-          keysym != XKB_Key_Tab and keysym != XKB_Key_Super_L and
-          keysym != XKB_Key_Super_R and keysym != XKB_Key_Return:
-        # FIXME: probably can be cleaner?
-        # TODO: Bring this back
-        # inputElement.inputBuffer &= Rune(view.app.xkbState.getUtf32(event.key.code + 8))
+      if key notin [
+        "Enter", "Escape", "Backspace", "Tab", "ArrowUp", "ArrowDown", "ArrowLeft",
+        "ArrowRight", "Shift", "Control", "Alt",
+      ]:
+        inputElement.inputBuffer &= key
         view.reflow()
 
-  if keysym == XKB_Key_Down or keysym == XKB_KEY_Page_Down:
-    view.renderCtx.viewerPosition.y -= 5
-  elif keysym == XKB_Key_Up or keysym == XKB_KEY_Page_Up:
-    view.renderCtx.viewerPosition.y += 5
-  elif keysym == XKB_Key_Left:
-    view.renderCtx.viewerPosition.x += 5
-  elif keysym == XKB_Key_Right:
-    view.renderCtx.viewerPosition.x -= 5
-  elif keysym == XKB_Key_Tab:
+  if key == "Tab":
     view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
     view.reflow()
 
@@ -815,6 +806,13 @@ proc handleIPCMessage(view: WebRenderer) =
     handleFocusedElement(view, clicked = false)
   of RenderOp.CursorClick:
     handleFocusedElement(view, clicked = true)
+  of RenderOp.KeyPressed:
+    handleKeyboardEvent(
+      view,
+      key = &msg.argument(0, string),
+      keycode = &msg.argument(1, string),
+      repeat = &msg.argument(2, bool),
+    )
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

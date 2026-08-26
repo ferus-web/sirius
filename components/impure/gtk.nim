@@ -36,6 +36,123 @@ let
 
   GDK_BUTTON_PRIMARY*: int32
 
+  GDK_NO_MODIFIER_MASK*, GDK_SHIFT_MASK*, GDK_LOCK_MASK*, GDK_CONTROL_MASK*,
+    GDK_ALT_MASK*, GDK_META_MASK*, GDK_SUPER_MASK*: uint32
+
+  GDK_KEY_BackSpace*: uint32
+  GDK_KEY_Tab*: uint32
+  GDK_KEY_Linefeed*: uint32
+  GDK_KEY_Clear*: uint32
+  GDK_KEY_Return*: uint32
+  GDK_KEY_Pause*: uint32
+  GDK_KEY_Scroll_Lock*: uint32
+  GDK_KEY_Sys_Req*: uint32
+  GDK_KEY_Escape*: uint32
+  GDK_KEY_Delete*: uint32
+  GDK_KEY_ISO_Left_Tab*: uint32
+  GDK_KEY_space*: uint32
+  GDK_KEY_Home*: uint32
+  GDK_KEY_Left*: uint32
+  GDK_KEY_Up*: uint32
+  GDK_KEY_Right*: uint32
+  GDK_KEY_Down*: uint32
+  GDK_KEY_Prior*: uint32
+  GDK_KEY_Page_Up*: uint32
+  GDK_KEY_Next*: uint32
+  GDK_KEY_Page_Down*: uint32
+  GDK_KEY_End*: uint32
+  GDK_KEY_Begin*: uint32
+  GDK_KEY_Select*: uint32
+  GDK_KEY_Print*: uint32
+  GDK_KEY_Execute*: uint32
+  GDK_KEY_Insert*: uint32
+  GDK_KEY_Undo*: uint32
+  GDK_KEY_Redo*: uint32
+  GDK_KEY_Menu*: uint32
+  GDK_KEY_Find*: uint32
+  GDK_KEY_Cancel*: uint32
+  GDK_KEY_Help*: uint32
+  GDK_KEY_Break*: uint32
+  GDK_KEY_Mode_switch*: uint32
+  GDK_KEY_Num_Lock*: uint32
+  GDK_KEY_KP_Space*: uint32
+  GDK_KEY_KP_Tab*: uint32
+  GDK_KEY_KP_Enter*: uint32
+  GDK_KEY_KP_F1*: uint32
+  GDK_KEY_KP_F2*: uint32
+  GDK_KEY_KP_F3*: uint32
+  GDK_KEY_KP_F4*: uint32
+  GDK_KEY_KP_Home*: uint32
+  GDK_KEY_KP_Left*: uint32
+  GDK_KEY_KP_Up*: uint32
+  GDK_KEY_KP_Right*: uint32
+  GDK_KEY_KP_Down*: uint32
+  GDK_KEY_KP_Prior*: uint32
+  GDK_KEY_KP_Page_Up*: uint32
+  GDK_KEY_KP_Next*: uint32
+  GDK_KEY_KP_Page_Down*: uint32
+  GDK_KEY_KP_End*: uint32
+  GDK_KEY_KP_Begin*: uint32
+  GDK_KEY_KP_Insert*: uint32
+  GDK_KEY_KP_Delete*: uint32
+  GDK_KEY_KP_Equal*: uint32
+  GDK_KEY_KP_Multiply*: uint32
+  GDK_KEY_KP_Add*: uint32
+  GDK_KEY_KP_Separator*: uint32
+  GDK_KEY_KP_Subtract*: uint32
+  GDK_KEY_KP_Decimal*: uint32
+  GDK_KEY_KP_Divide*: uint32
+  GDK_KEY_KP_0*: uint32
+  GDK_KEY_KP_1*: uint32
+  GDK_KEY_KP_2*: uint32
+  GDK_KEY_KP_3*: uint32
+  GDK_KEY_KP_4*: uint32
+  GDK_KEY_KP_5*: uint32
+  GDK_KEY_KP_6*: uint32
+  GDK_KEY_KP_7*: uint32
+  GDK_KEY_KP_8*: uint32
+  GDK_KEY_KP_9*: uint32
+  GDK_KEY_F1*: uint32
+  GDK_KEY_F2*: uint32
+  GDK_KEY_F3*: uint32
+  GDK_KEY_F4*: uint32
+  GDK_KEY_F5*: uint32
+  GDK_KEY_F6*: uint32
+  GDK_KEY_F7*: uint32
+  GDK_KEY_F8*: uint32
+  GDK_KEY_F9*: uint32
+  GDK_KEY_F10*: uint32
+  GDK_KEY_F11*: uint32
+  GDK_KEY_F12*: uint32
+  GDK_KEY_F13*: uint32
+  GDK_KEY_F14*: uint32
+  GDK_KEY_F15*: uint32
+  GDK_KEY_F16*: uint32
+  GDK_KEY_F17*: uint32
+  GDK_KEY_F18*: uint32
+  GDK_KEY_F19*: uint32
+  GDK_KEY_F20*: uint32
+  GDK_KEY_F21*: uint32
+  GDK_KEY_F22*: uint32
+  GDK_KEY_F23*: uint32
+  GDK_KEY_F24*: uint32
+  GDK_KEY_Shift_L*: uint32
+  GDK_KEY_Shift_R*: uint32
+  GDK_KEY_Control_L*: uint32
+  GDK_KEY_Control_R*: uint32
+  GDK_KEY_Caps_Lock*: uint32
+  GDK_KEY_Shift_Lock*: uint32
+  GDK_KEY_Meta_L*: uint32
+  GDK_KEY_Meta_R*: uint32
+  GDK_KEY_Alt_L*: uint32
+  GDK_KEY_Alt_R*: uint32
+  GDK_KEY_Super_L*: uint32
+  GDK_KEY_Super_R*: uint32
+  GDK_KEY_Hyper_L*: uint32
+  GDK_KEY_Hyper_R*: uint32
+
+proc gdk_keyval_to_unicode*(keyval: uint32): uint32
+
 {.pop.}
 
 {.push importc, header: "<drm/drm_fourcc.h>".}
@@ -126,6 +243,8 @@ proc gtk_label_new*(text: cstring): ptr EGtkWidget
 
 proc gtk_event_controller_scroll_new*(axes: int32): ptr EGtkWidget
 proc gtk_event_controller_motion_new*(): ptr EGtkWidget
+
+proc gtk_event_controller_key_new*(): ptr EGtkWidget
 
 proc gtk_widget_add_controller*(widget: ptr EGtkWidget, controller: ptr EGtkWidget)
 

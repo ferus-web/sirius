@@ -1,7 +1,7 @@
 ## GTK4 browser shell implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, posix, strformat, strutils]
+import std/[options, posix, strformat, strutils, unicode]
 import pkg/[shakar, results, chronicles, vmath, url]
 import
   components/synapse/[decoder, master, types, transport/socketpairs],
@@ -141,6 +141,52 @@ proc onCursorClick(
   let browser = cast[BrowserState](userData)
   browser.view.master.cursorClick(browser.tab)
 
+proc keyvalToDomKey(keyval: uint32): string =
+  if keyval == GDK_KEY_Return or keyval == GDK_KEY_KP_Enter:
+    return "Enter"
+  elif keyval == GDK_KEY_Escape:
+    return "Escape"
+  elif keyval == GDK_KEY_BackSpace:
+    return "Backspace"
+  elif keyval == GDK_KEY_Tab:
+    return "Tab"
+  elif keyval == GDK_KEY_Up:
+    return "ArrowUp"
+  elif keyval == GDK_KEY_Down:
+    return "ArrowDown"
+  elif keyval == GDK_KEY_Left:
+    return "ArrowLeft"
+  elif keyval == GDK_KEY_Right:
+    return "ArrowRight"
+  elif keyval == GDK_KEY_Shift_L or keyval == GDK_KEY_Shift_R:
+    return "Shift"
+  elif keyval == GDK_KEY_Control_L or keyval == GDK_KEY_Control_R:
+    return "Control"
+  elif keyval == GDK_KEY_Alt_L or keyval == GDK_KEY_Alt_R:
+    return "Alt"
+  else:
+    let codepoint = gdk_keyval_to_unicode(keyval)
+    if codepoint >= 0x20'u32 and codepoint != 0x7f'u32:
+      return $Rune(codepoint)
+
+    "Unidentified"
+
+proc onKeyPress(
+    widget: ptr EGtkWidget,
+    keyval: uint32,
+    keycode: uint32,
+    state: uint32,
+    userData: pointer,
+): int32 {.cdecl.} =
+  let browser = cast[BrowserState](userData)
+
+  browser.view.master.pressKey(
+    tab = browser.tab,
+    key = keyvalToDomKey(keyval),
+    keycode = newString(0), # TODO
+    repeat = false,
+  )
+
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
 
@@ -207,6 +253,12 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
     clickGest, "pressed", cast[pointer](onCursorClick), cast[pointer](browser), nil, 0
   )
   gtk_widget_add_controller(browser.viewport, clickGest)
+
+  let keyCtrl = gtk_event_controller_key_new()
+  discard g_signal_connect_data(
+    keyCtrl, "key-pressed", cast[pointer](onKeyPress), cast[pointer](browser), nil, 0
+  )
+  gtk_widget_add_controller(browser.viewport, keyCtrl)
 
   gtk_box_append(mainBox, browser.viewport)
   gtk_window_present(browser.window)

@@ -48,7 +48,6 @@ proc argument*[T](msg: Message, index: uint8, typ: typedesc[T]): Option[T] =
   if msg.argc <= index:
     return none(T)
 
-  let size = cast[uint32](msg.buffer.len) - 3
   var pos = 3'u32
   var arg: uint8
 

@@ -7,7 +7,9 @@
 	let elem = document.getElementById("targ");
 	let i = 0;
 	function x(event) {
-	  console.log("press", event.key)
+	  let res = "";
+	  res = res.concat(elem.textContent, event.key);
+	  elem.textContent = res;
 	}
 
 	elem.onkeydown = x;

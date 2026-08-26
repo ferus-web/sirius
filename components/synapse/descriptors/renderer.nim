@@ -10,3 +10,4 @@ type RenderOp* {.pure, size: sizeof(uint16).} = enum
   ViewportScroll
   CursorMotion
   CursorClick
+  KeyPressed

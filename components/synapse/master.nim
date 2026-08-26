@@ -153,6 +153,20 @@ func findAssociatedClientByFd*(
       if process.fd == fd:
         return some((tab: cast[uint32](i), process: process))
 
+proc pressKey*(
+    master: Master, tab: uint32, key: string, keycode: string, repeat: bool
+) =
+  let process = &master.tabs[tab].renderer()
+
+  # keyPressed
+  # TODO: document this one
+  master.encoder.encode(RenderOp.KeyPressed)
+  master.encoder.push(key)
+  master.encoder.push(keycode)
+  master.encoder.push(repeat.int64)
+
+  discard master.send(process.fd)
+
 proc initMaster*(zygoteRoutine: ZygoteRoutine): Master =
   let master =
     Master(encoder: initEncoder(MaxPacketSize), decoder: initDecoder(MaxPacketSize))
