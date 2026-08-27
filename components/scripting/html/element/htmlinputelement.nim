@@ -28,6 +28,11 @@ proc toJSHTMLInputElement*(runtime: Runtime, element: dom.Element): JSHTMLInputE
     value: FieldAccessor(
       getter: proc(this: JSValue) =
         ret (&this.getPrivateObject(HTMLInputElement)).inputBuffer
+      ,
+      setter: proc(this: JSValue, value: JSValue) =
+        let element = &this.getPrivateObject(HTMLInputElement)
+        element.inputBuffer = runtime.ToString(value)
+        element.document.edited = true,
     ),
   )
 
