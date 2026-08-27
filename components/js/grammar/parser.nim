@@ -1621,6 +1621,8 @@ proc parseStatement(parser: Parser): Option[Statement] =
       of TokenKind.Whitespace:
         if next.whitespace.contains(strutils.Newlines):
           return some returnFunc()
+      of TokenKind.Semicolon:
+        break
       else:
         parser.error UnexpectedToken, "expected expression, got " & $next.kind
 
