@@ -92,22 +92,18 @@ proc onFrameTick(
   if currSize.x == 0 or currSize.y == 0:
     return G_SOURCE_CONTINUE
 
-  # echo currSize
   if currSize != browser.viewportSize:
-    browser.view.master.resizeRenderTarget(
-      &browser.view.master.tabs[0].renderer(), currSize
-    )
-    # browser.updateBufferFd(browser.bufferFd)
+    browser.view.resizeRenderTarget(browser.tab, currSize)
 
   if browser.frameAcked:
-    browser.view.master.drawFrame(&browser.view.master.tabs[0].renderer())
+    browser.view.requestFrame(browser.tab)
     browser.frameAcked = false
 
   if browser.scrollDelta.x != 0'f32 or browser.scrollDelta.y != 0'f32:
     # TODO: maybe if only one of them (likely) got changed, we can only send the one
     # changed via specialized horizontal/vertical IPC calls so we only ship one f32 instead
     # of two, even when not required?
-    browser.view.master.scrollViewport(0, browser.scrollDelta)
+    browser.view.scroll(browser.tab, browser.scrollDelta)
     browser.scrollDelta.reset()
 
   gtk_widget_queue_draw(widget)
@@ -123,13 +119,13 @@ proc onCursorMotion(
     widget: ptr EGtkWidget, x, y: float64, userData: pointer
 ) {.cdecl.} =
   let browser = cast[BrowserState](userData)
-  browser.view.master.cursorMotion(browser.tab, vec2(x, y))
+  browser.view.moveCursor(browser.tab, vec2(x, y))
 
 proc onCursorClick(
     widget: ptr EGtkWidget, nPress: int32, x, y: float64, userData: pointer
 ) {.cdecl.} =
   let browser = cast[BrowserState](userData)
-  browser.view.master.cursorClick(browser.tab)
+  browser.view.click(browser.tab)
 
 proc keyvalToDomKey(keyval: uint32): string =
   if keyval == GDK_KEY_Return or keyval == GDK_KEY_KP_Enter:
@@ -170,7 +166,7 @@ proc onKeyPress(
 ): int32 {.cdecl.} =
   let browser = cast[BrowserState](userData)
 
-  browser.view.master.pressKey(
+  browser.view.pressKey(
     tab = browser.tab,
     key = keyvalToDomKey(keyval),
     keycode = newString(0), # TODO
