@@ -159,11 +159,10 @@ proc pressKey*(
   let process = &master.tabs[tab].renderer()
 
   # keyPressed
-  # TODO: document this one
   master.encoder.encode(RenderOp.KeyPressed)
   master.encoder.push(key)
   master.encoder.push(keycode)
-  master.encoder.push(repeat.int64)
+  master.encoder.push(repeat)
 
   discard master.send(process.fd)
 
