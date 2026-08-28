@@ -20,15 +20,12 @@ type BrowserState = ref object
   viewport: ptr EGtkWidget
   urlBar: ptr EGtkWidget
 
-  tab: uint32
-
-  viewportSize*: vmath.IVec2
+  tabs: seq[TabID]
+  tab: TabID
 
   frameAcked: bool
 
-  bufferFd*: int32
-  bufferStride*: uint32
-
+  viewportSize: vmath.IVec2
   scrollDelta: vmath.Vec2
 
 proc userNavigationRequest(state: BrowserState, target: string) =
@@ -58,8 +55,11 @@ proc userNavigationRequest(state: BrowserState, target: string) =
 
   # TODO: do that.
 
-proc refreshViewport(state: BrowserState) =
-  if state.bufferFd < 0:
+proc reconstructViewport(state: BrowserState) =
+  if state.view.bufferFd < 0:
+    return
+
+  if state.viewportSize.x <= 0 or state.viewportSize.y <= 0:
     return
 
   let builder = gdk_dmabuf_texture_builder_new()
@@ -70,8 +70,8 @@ proc refreshViewport(state: BrowserState) =
   gdk_dmabuf_texture_builder_set_fourcc(builder, DRM_FORMAT_ABGR8888)
   gdk_dmabuf_texture_builder_set_modifier(builder, DRM_FORMAT_MOD_LINEAR)
 
-  gdk_dmabuf_texture_builder_set_fd(builder, 0, state.bufferFd)
-  gdk_dmabuf_texture_builder_set_stride(builder, 0, state.bufferStride)
+  gdk_dmabuf_texture_builder_set_fd(builder, 0, state.view.bufferFd)
+  gdk_dmabuf_texture_builder_set_stride(builder, 0, state.view.bufferStride)
   gdk_dmabuf_texture_builder_set_offset(builder, 0, 0)
 
   var err: pointer
@@ -82,16 +82,6 @@ proc refreshViewport(state: BrowserState) =
     g_object_unref(texture)
 
   g_object_unref(builder)
-
-proc updateBufferFd*(state: BrowserState, fd: int32) =
-  if fd < 0:
-    return
-
-  if state.bufferFd >= 0'i32:
-    discard posix.close(state.bufferFd)
-
-  state.bufferFd = fd
-  state.refreshViewport()
 
 proc onFrameTick(
     widget: ptr EGtkWidget, frameClock: ptr GdkFrameClock, userData: pointer
@@ -110,7 +100,6 @@ proc onFrameTick(
     # browser.updateBufferFd(browser.bufferFd)
 
   if browser.frameAcked:
-    # debugecho "send drawFrame call"
     browser.view.master.drawFrame(&browser.view.master.tabs[0].renderer())
     browser.frameAcked = false
 
@@ -122,6 +111,7 @@ proc onFrameTick(
     browser.scrollDelta.reset()
 
   gtk_widget_queue_draw(widget)
+  browser.view.step()
 
   return G_SOURCE_CONTINUE
 
@@ -298,14 +288,9 @@ proc showDeadTabPage(browser: BrowserState) =
 
   browser.setPageTitle("Oopsies.")
 
-proc handleDeadChild(state: BrowserState, fd: int32) =
-  let processOpt = findAssociatedClientByFd(state.view.master, fd)
-  if !processOpt:
-    warn "Unassociated file descriptor was signalled as dead?", fd = fd
-    return
-
-  let (tab, process) = &processOpt
-  warn "Process has died unexpectedly.", tab = tab, kind = process.kind, channel = fd
+proc handleDeadChild(state: BrowserState, tab: TabID, process: Process) =
+  warn "Process has died unexpectedly.",
+    tab = tab, kind = process.kind, channel = process.fd
 
   case process.kind
   of ProcessKind.Renderer:
@@ -341,56 +326,35 @@ proc showAlertMessage(state: BrowserState, message: Option[string]) =
 
   adw_dialog_present(dialog, state.window)
 
-proc handleIPCMessage(state: BrowserState, fd: int32): bool =
-  let msgOpt = state.view.master.blockForMessage(MasterOp, fd = some(fd))
-  if !msgOpt:
-    warn "Received no message, did this process die?", sender = fd
-    handleDeadChild(state, fd)
-
-    return false
-
-  # TODO: These should validate their arguments properly instead of just `get()`'ing them
-  let msg = &msgOpt
-  case msg.op
-  of MasterOp.FrameDrawn:
-    # debugecho "frame ack"
+proc attachIPCEventHandlers(state: BrowserState) =
+  state.view.onFrameDrawn = proc(view: WebView, tab: TabID) =
     state.frameAcked = true
-    state.refreshViewport()
-  of MasterOp.UseGraphicsFD:
-    let fd = &msg.fd(0)
-    state.updateBufferFd(fd)
-  of MasterOp.TargetResized:
-    let
-      dims = &msg.argument(0, vmath.IVec2)
-      stride = &msg.argument(1, uint32)
-    info "Render target resized", dims = dims, stride = stride
-    state.viewportSize = dims
-    state.bufferStride = stride
-  of MasterOp.SetPageTitle:
-    state.setPageTitle(&msg.argument(0, string))
-  of MasterOp.SetPCursorShape:
-    state.setPCursorShape(&msg.argument(0, CursorPredefined))
-  of MasterOp.AlertMessage:
-    state.showAlertMessage(msg.argument(0, string))
+    state.reconstructViewport()
 
-  true
+  state.view.onReconstruct = proc(view: WebView, tab: TabID) =
+    state.reconstructViewport()
 
-proc attachPollingForTab*(browser: BrowserState, tab: uint32) =
-  let sourceFd = g_unix_fd_add(
-    (&browser.view.master.tabs[tab].renderer()).fd,
-    cast[GIOCondition](cast[int32](G_IO_IN) or cast[int32](G_IO_HUP)),
-    proc(fd: int32, condition: GIOCondition, userData: pointer): int32 {.cdecl.} =
-      if handleIPCMessage(cast[BrowserState](userData), fd):
-        G_SOURCE_CONTINUE
-      else:
-        G_SOURCE_REMOVE,
-    cast[pointer](browser),
-  )
+  state.view.onResize = proc(view: WebView, tab: TabID, size: vmath.IVec2) =
+    info "Render target resized", size = size, stride = view.bufferStride
+    state.viewportSize = size
+
+  state.view.onProcessFault = proc(view: WebView, tab: TabID, process: Process) =
+    state.handleDeadChild(tab, process)
+
+  state.view.onPageTitleChange = proc(view: WebView, tab: TabID, title: string) =
+    state.setPageTitle(title)
+
+  state.view.onSetCursorShape = proc(
+      view: WebView, tab: TabID, predef: CursorPredefined
+  ) =
+    state.setPCursorShape(predef)
+
+  state.view.onAlert = proc(view: WebView, tab: TabID, msg: Option[string]) =
+    state.showAlertMessage(msg)
 
 proc startBrowserShell*(view: WebView) =
-  let browser = BrowserState(
-    view: view, frameAcked: true, bufferFd: -1, viewportSize: ivec2(640, 480)
-  )
+  let browser =
+    BrowserState(view: view, frameAcked: true, viewportSize: ivec2(640, 480))
   let app = adw_application_new("xyz.xtrayambak.sirius", 0)
 
   discard g_signal_connect_data(
@@ -398,7 +362,11 @@ proc startBrowserShell*(view: WebView) =
   )
 
   # TODO: do this for every tab that we have once we have that working
-  browser.attachPollingForTab(0)
+  let tab = browser.view.createTab()
+
+  browser.tabs &= tab
+  browser.tab = tab
+  attachIPCEventHandlers(browser)
 
   discard g_application_run(app, 0, nil)
   g_object_unref(app)

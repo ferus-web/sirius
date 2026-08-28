@@ -79,11 +79,63 @@ type
 
   WebRenderer* = ref WebRendererObj
 
+  TabID* = distinct uint32 # TODO: move this into the actual tab system?
+
+  FrameDrawnCallback* = proc(view: WebView, tab: TabID)
+  ReconstructCallback* = proc(view: WebView, tab: TabID)
+  ResizeCallback* = proc(view: WebView, tab: TabID, size: vmath.IVec2)
+  ProcessFaultCallback* = proc(view: WebView, tab: TabID, process: Process)
+  PageTitleCallback* = proc(view: WebView, tab: TabID, title: string)
+  CursorShapeCallback* = proc(view: WebView, tab: TabID, predef: CursorPredefined)
+  AlertCallback* = proc(view: WebView, tab: TabID, message: Option[string])
+
+  WebViewCallbacks* = object
+    onFrameDrawn*: FrameDrawnCallback
+    onReconstruct*: ReconstructCallback
+    onResize*: ResizeCallback
+    onProcessFault*: ProcessFaultCallback
+    onPageTitleChange*: PageTitleCallback
+    onSetCursorShape*: CursorShapeCallback
+    onAlert*: AlertCallback
+
   WebViewObj = object
-    opts*: WebViewOpts
     master*: Master
+    opts*: WebViewOpts
+    callbacks*: WebViewCallbacks
+
+    bufferFd*: int32
+    bufferStride*: uint32
+
+    pollingFd*: int32
 
   WebView* = ref WebViewObj
+
+{.push inline, raises: [].}
+func `onFrameDrawn=`*(view: WebView, cb: FrameDrawnCallback) =
+  view.callbacks.onFrameDrawn = cb
+
+func `onReconstruct=`*(view: WebView, cb: ReconstructCallback) =
+  view.callbacks.onReconstruct = cb
+
+func `onResize=`*(view: WebView, cb: ResizeCallback) =
+  view.callbacks.onResize = cb
+
+func `onProcessFault=`*(view: WebView, cb: ProcessFaultCallback) =
+  view.callbacks.onProcessFault = cb
+
+func `onPageTitleChange=`*(view: WebView, cb: PageTitleCallback) =
+  view.callbacks.onPageTitleChange = cb
+
+func `onSetCursorShape=`*(view: WebView, cb: CursorShapeCallback) =
+  view.callbacks.onSetCursorShape = cb
+
+func `onAlert=`*(view: WebView, cb: AlertCallback) =
+  view.callbacks.onAlert = cb
+
+{.pop.}
+
+converter u32*(id: TabID): uint32 =
+  cast[uint32](id)
 
 proc `=destroy`*(view: WebViewObj) =
   debug "~WebView()"

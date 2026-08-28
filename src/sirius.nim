@@ -1,5 +1,7 @@
+## Sirius is an independent web rendering engine and browser written from scratch in Nim.
 import std/os
 import browser/app, webview/[core, types], argparser
+import pkg/[results, url]
 
 proc main() {.inline.} =
   let args = parseInput()
@@ -12,9 +14,6 @@ proc main() {.inline.} =
     )
   )
 
-  let target = if args.command.len > 0: args.command else: "sirius:new"
-
-  view.loadPage(target)
   startBrowserShell(view)
 
 when isMainModule:
