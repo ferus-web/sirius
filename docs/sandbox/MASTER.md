@@ -34,3 +34,8 @@ Sent when the renderer believes the user is hovering over an element with a set 
 **Argument 1<sup>(optional)</sup>**: UTF-8 string
 
 Sent when the renderer's `window.alert()` host bindings are triggered, usually by the guest JavaScript code.
+
+### updateNavigation
+**Argument 1**: URL
+
+Sent when the renderer has either navigated to a new page, or a new section of the page. This is to ensure that the master is aware as to where the user is.

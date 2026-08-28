@@ -2,6 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
+import pkg/url
 
 const
   OpPosition* = 0
@@ -46,6 +47,7 @@ type
   Client* = ref ClientObj
 
   TabObj = object
+    url*: URL
     processes*: seq[Process]
 
   Tab* = ref TabObj

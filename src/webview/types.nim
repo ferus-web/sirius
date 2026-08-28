@@ -88,6 +88,7 @@ type
   PageTitleCallback* = proc(view: WebView, tab: TabID, title: string)
   CursorShapeCallback* = proc(view: WebView, tab: TabID, predef: CursorPredefined)
   AlertCallback* = proc(view: WebView, tab: TabID, message: Option[string])
+  NavigationUpdateCallback* = proc(view: WebView, tab: TabID, target: url.URL)
 
   WebViewCallbacks* = object
     onFrameDrawn*: FrameDrawnCallback
@@ -97,6 +98,7 @@ type
     onPageTitleChange*: PageTitleCallback
     onSetCursorShape*: CursorShapeCallback
     onAlert*: AlertCallback
+    onNavigationUpdate*: NavigationUpdateCallback
 
   WebViewObj = object
     master*: Master
@@ -131,6 +133,9 @@ func `onSetCursorShape=`*(view: WebView, cb: CursorShapeCallback) =
 
 func `onAlert=`*(view: WebView, cb: AlertCallback) =
   view.callbacks.onAlert = cb
+
+func `onNavigationUpdate=`*(view: WebView, cb: NavigationUpdateCallback) =
+  view.callbacks.onNavigationUpdate = cb
 
 {.pop.}
 

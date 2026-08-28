@@ -167,7 +167,7 @@ proc onKeyPress(
   let browser = cast[BrowserState](userData)
 
   browser.view.pressKey(
-    tab = browser.tab,
+    id = browser.tab,
     key = keyvalToDomKey(keyval),
     keycode = newString(0), # TODO
     repeat = false,
@@ -252,7 +252,7 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   discard gtk_widget_grab_focus(browser.viewport)
 
 proc setPageTitle(browser: BrowserState, title: string) =
-  gtk_window_set_title(browser.window, &"{title.strip()} — Sirius")
+  gtk_window_set_title(browser.window, cstring(&"{title.strip()} — Sirius"))
 
 proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
   gtk_widget_set_cursor_from_name(browser.viewport, cstring($predef))
@@ -298,18 +298,30 @@ proc handleDeadChild(state: BrowserState, tab: TabID, process: Process) =
   else:
     unreachable
 
-proc showAlertMessage(state: BrowserState, message: Option[string]) =
+proc showAlertMessage(state: BrowserState, tab: TabID, message: Option[string]) =
   let text =
     if *message:
       &message
     else:
       newString(0)
 
-  let dialog = adw_alert_dialog_new(
-    "This page says:",
-      # TODO: Tab should prooobably track the current URL where its renderer is at.
-    text.cstring,
-  )
+  let
+    tab = state.view.master.tabs[cast[uint32](tab)]
+    name = block:
+      var nam: string
+
+      case getSchemeType(tab.url)
+      of SchemeType.File:
+        nam = &tab.url.hostname & tab.url.pathname
+      of SchemeType.Http, SchemeType.Https:
+        if *tab.url.hostname:
+          nam = &tab.url.hostname
+      else:
+        nam = "This page"
+
+      ensureMove(nam)
+
+    dialog = adw_alert_dialog_new(&"{name} says:", cstring(text))
 
   adw_alert_dialog_add_response(dialog, "ok", "OK")
 
@@ -346,7 +358,7 @@ proc attachIPCEventHandlers(state: BrowserState) =
     state.setPCursorShape(predef)
 
   state.view.onAlert = proc(view: WebView, tab: TabID, msg: Option[string]) =
-    state.showAlertMessage(msg)
+    state.showAlertMessage(tab, msg)
 
 proc startBrowserShell*(view: WebView, args: argparser.Input) =
   let browser =

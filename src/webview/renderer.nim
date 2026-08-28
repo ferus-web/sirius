@@ -553,6 +553,10 @@ proc loadPage*(view: WebRenderer, target: string) =
     # TODO: Can all scripts in the same context share one realm, hopefully?
   debug "Load page", target = view.target, scheme = view.target.scheme
 
+  view.client.encoder.encode(MasterOp.UpdateNavigation)
+  view.client.encoder.push(view.target)
+  assert(*view.client.send())
+
   case getSchemeType(view.target)
   of SchemeType.Ws, SchemeType.Ftp, SchemeType.Wss:
     assert off, "Not supported"

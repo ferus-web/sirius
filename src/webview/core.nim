@@ -121,6 +121,14 @@ proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
   of MasterOp.AlertMessage:
     if view.callbacks.onAlert != nil:
       view.callbacks.onAlert(view, tabId, msg.argument(0, string))
+  of MasterOp.UpdateNavigation:
+    let navigationUrl = &msg.argument(0, URL)
+    view.master.tabs[tab].url = navigationUrl
+
+    # debugecho "update nav: " & $view.master.tabs[tab].url
+
+    if view.callbacks.onNavigationUpdate != nil:
+      view.callbacks.onNavigationUpdate(view, tabId, navigationUrl)
 
 proc step*(view: WebView) =
   var ipcEvent: nix.EpollEvent

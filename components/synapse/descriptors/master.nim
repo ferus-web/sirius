@@ -1,16 +1,14 @@
-## IPC descriptors and operations for the Master process that can be invoked by various different processes
+## IPC descriptors and operations for the Master process that can be invoked by various different processes.
+##
+## For the documentation on these operations, check `docs/sandbox/MASTER.md`
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 
 type MasterOp* {.pure, size: sizeof(uint16).} = enum
   FrameDrawn
-    ## Sent by the Renderer in response to the master sending a `DrawFrame`. The master will not send any further frame-drawing requests until it receives this.
   UseGraphicsFD
-    ## Sent by the Renderer when it wants the master to present a particular DMA-BUF file descriptor via the browser's surface.
-  TargetResized ## Sent in acknowledgement to a `resizeRenderTarget` sent by the master.
+  TargetResized
   SetPageTitle
-    ## Sent when the renderer wants the master process to set this renderer's page's OS-specific window title.
   SetPCursorShape
-    ## Sent when the renderer believes the user is hovering over an element with a set predefined-cursor shape as per the CSS Basic UI Module Level 3 specifications.
   AlertMessage
-    ## Usually sent when JavaScript code calls `window.alert()`. May be accompanied with a message UTF-8 string.
+  UpdateNavigation
