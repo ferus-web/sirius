@@ -27,3 +27,15 @@ Sent by the master process when it wants the viewport to scroll in or away from 
 Sent when the user moves their cursor around in the browser.
 
 **Note**: Argument 1 (position) contains the coordinates relative to the viewport, so it can be directly applied to the rendered scene without accounting for the browser chrome.
+
+### cursorClick
+Generally sent when the user clicks with their mouse in the browser.
+
+It carries no additional data with it, so the renderer uses the data it's already storing about the user's cursor to do the rest of the required work.
+
+### keyPressed
+**Argument 1**: UTF-8 string
+**Argument 2**: UTF-8 string
+**Argument 3**: bool
+
+Generally sent when the user provides keyboard input in the browser.

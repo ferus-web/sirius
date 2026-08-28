@@ -29,3 +29,8 @@ Sent when the renderer wants the master process to set this renderer's page's OS
 **Argument 1**: `css::CursorPredefined`
 
 Sent when the renderer believes the user is hovering over an element with a set predefined-cursor shape as per the CSS Basic UI Module Level 3 specifications. This does not support other variations of the `cursor` property.
+
+### alertMessage
+**Argument 1<sup>(optional)</sup>**: UTF-8 string
+
+Sent when the renderer's `window.alert()` host bindings are triggered, usually by the guest JavaScript code.
