@@ -1,5 +1,5 @@
 # GTK4 browser TODOs
-- [ ] Make keyboard input work again. (**NOTE**: I believe the GTK4 shell itself should translate keycodes to web key names instead of delegating that responsibility to the WebView renderer)
+- [X] Make keyboard input work again. (**NOTE**: I believe the GTK4 shell itself should translate keycodes to web key names instead of delegating that responsibility to the WebView renderer)
 - [ ] Tabbed browsing. I think most of the plumbing for it is already present.
 - [ ] UI improvements
   * [ ] New Tab button
