@@ -13,7 +13,7 @@ Sent by the Renderer when it wants the master to present a particular DMA-BUF fi
 The first argument is a DMA-BUF file descriptor.
 
 ### targetResized
-**Argument 1**: IVec2
+**Argument 1**: IVec2 \
 **Argument 2**: uint32
 
 Sent in acknowledgement to a `resizeRenderTarget` sent by the master.
