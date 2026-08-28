@@ -17,6 +17,23 @@ func toFlatty*[T: SomeOrdinal](s: var string, x: set[T]) =
     ),
   )
 
+func fromFlatty*[T: SomeOrdinal](s: string, pos: var int, dest: out set[T]) =
+  const sizeofT = sizeof(T)
+
+  dest = cast[set[T]](cast[ptr (
+    when sizeofT == 1:
+      uint8
+    elif sizeofT == 2:
+      uint16
+    elif sizeofT == 4:
+      uint32
+    elif sizeofT == 8:
+      uint64
+    else:
+      unreachable
+  )](s[pos].addr)[])
+  pos += sizeofT
+
 func initEncoder*(capacity: Natural = 4096): Encoder =
   privateAccess(types.Encoder)
   Encoder(buffer: newStringOfCap(capacity), argc: 0'u8)
