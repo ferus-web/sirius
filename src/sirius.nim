@@ -14,7 +14,7 @@ proc main() {.inline.} =
     )
   )
 
-  startBrowserShell(view)
+  startBrowserShell(view, args)
 
 when isMainModule:
   main()

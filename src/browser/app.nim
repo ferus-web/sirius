@@ -8,7 +8,7 @@ import
   components/synapse/descriptors/[master],
   components/impure/gtk
 import components/css/types
-import ../webview/[core, types]
+import ../webview/[core, types], ../argparser
 
 logScope:
   topics = "browser/app"
@@ -34,13 +34,13 @@ proc userNavigationRequest(state: BrowserState, target: string) =
   # 1. If `target` can be parsed as a URL with no errors, the happy path is to be executed: navigate directly to its parsed representation.
   let parsedHappy = tryParseURL(target)
   if *parsedHappy:
-    state.view.master.gotoURL(0, &parsedHappy)
+    state.view.loadURL(state.tab, &parsedHappy)
     return
 
   template navigateTo(src: string) =
     let parsed = tryParseURL(src)
     if *parsed:
-      state.view.master.gotoURL(0, &parsed)
+      state.view.loadURL(state.tab, &parsed)
       return
 
   # 2. Otherwise, try to correct the input as per the error observed during initial parsing. This is mostly based off of my inference as to where most people go wrong (or even just slightly off) while typing URLs :P
@@ -352,7 +352,7 @@ proc attachIPCEventHandlers(state: BrowserState) =
   state.view.onAlert = proc(view: WebView, tab: TabID, msg: Option[string]) =
     state.showAlertMessage(msg)
 
-proc startBrowserShell*(view: WebView) =
+proc startBrowserShell*(view: WebView, args: argparser.Input) =
   let browser =
     BrowserState(view: view, frameAcked: true, viewportSize: ivec2(640, 480))
   let app = adw_application_new("xyz.xtrayambak.sirius", 0)
@@ -367,6 +367,9 @@ proc startBrowserShell*(view: WebView) =
   browser.tabs &= tab
   browser.tab = tab
   attachIPCEventHandlers(browser)
+
+  if args.command.len > 0:
+    view.loadURL(tab, tryParseURL(args.command).valueOr(parseURL("sirius:new")))
 
   discard g_application_run(app, 0, nil)
   g_object_unref(app)

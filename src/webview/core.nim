@@ -116,7 +116,6 @@ proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
       discard posix.close(view.bufferFd)
 
     view.bufferFd = dmaFd
-    echo "use graphics fd " & $view.bufferFd
     if view.callbacks.onReconstruct != nil:
       view.callbacks.onReconstruct(view, tabId)
   of MasterOp.AlertMessage:
