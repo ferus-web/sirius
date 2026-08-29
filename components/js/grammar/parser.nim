@@ -1513,6 +1513,62 @@ proc parseCompoundAssignment(
     parser.error Other,
       "expected expression, literal or identifier after compound assignment"
 
+proc parseIndexes(parser: Parser, identifier: string): Option[Statement] =
+  # <ident> [ <ident> OR <int> ] (optionally) = <value>
+  if parser.tokenizer.eof:
+    parser.error Other, "expected identifier or numeric, got EOF."
+
+  let indexKey = &parser.tokenizer.nextExceptWhitespace()
+
+  if indexKey.kind notin {TokenKind.Identifier, TokenKind.Number}:
+    parser.error UnexpectedToken,
+      &"expected identifier or numeric, got {indexKey.kind} instead."
+
+  if parser.tokenizer.eof:
+    parser.error Other, "expected left-facing bracket, got EOF instead."
+
+  if (
+    let rbrack = parser.tokenizer.nextExceptWhitespace()
+    !rbrack or (&rbrack).kind != TokenKind.RBracket
+  ):
+    parser.error UnexpectedToken, "expected left-facing bracket after indexing key"
+
+  let access =
+    case indexKey.kind
+    of TokenKind.Identifier:
+      arrayAccess(identifier, indexKey.ident)
+    of TokenKind.Number:
+      arrayAccess(identifier, &parser.parseAtom(indexKey))
+    else:
+      unreachable
+      nil
+
+  if parser.tokenizer.eof:
+    # just a lonely index
+    return some(access)
+
+  let state = parser.tokenizer
+  if (
+    let expectingEquals = parser.tokenizer.nextExceptWhitespace()
+    !expectingEquals or (&expectingEquals).kind == TokenKind.Equal
+  ):
+    # indeed another lonely index
+    return some(access)
+
+  # index assignment (x[y] = z)
+  let source = &parser.tokenizer.nextExceptWhitespace()
+  some(
+    indexAssignment(
+      source = (
+        if (let atom = parser.parseAtom(source); *atom): &atom
+        elif source.kind == TokenKind.Identifier: identHolder(source.ident)
+        else: parser.error UnexpectedToken,
+          &"expected identifier or value, got {source.kind} instead"
+      ),
+      dest = access,
+    )
+  )
+
 proc parseStatement(parser: Parser): Option[Statement] =
   if parser.tokenizer.eof:
     return
@@ -1588,6 +1644,8 @@ proc parseStatement(parser: Parser): Option[Statement] =
         return some decrement(token.ident)
       of TokenKind.Mul, TokenKind.Add, TokenKind.Sub, TokenKind.Div:
         return parser.parseCompoundAssignment(token.ident, &next)
+      of TokenKind.LBracket:
+        return parser.parseIndexes(token.ident)
       else:
         parser.error UnexpectedToken,
           "expected left parenthesis, increment, decrement or equal sign, got " &

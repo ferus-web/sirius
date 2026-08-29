@@ -38,6 +38,7 @@ type
     CopyFieldToVar
     ConstructObjectShorthand
     PreIncrement
+    IndexAssignment
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -208,6 +209,9 @@ type
     of ConstructObjectShorthand:
       cosStoreIdent*: Option[string]
       cosKVPairs*: KeyValuePairs
+    of IndexAssignment:
+      indexAsgnSource*: Statement
+      indexAsgnDest*: Statement
 
 func hash*(access: FieldAccess): Hash {.inline.} =
   hash((access.identifier))
@@ -507,6 +511,9 @@ func createArrayLiteral*(children: MixedLiteralChildren): Statement =
 
 func preIncrement*(ident: string): Statement =
   Statement(kind: PreIncrement, incIdent: ident)
+
+func indexAssignment*(source, dest: Statement): Statement =
+  Statement(kind: IndexAssignment, indexAsgnDest: dest, indexAsgnSource: source)
 
 {.pop.}
 
