@@ -113,7 +113,7 @@ proc gotoURL*(master: Master, tab: uint32, target: url.URL) =
   # gotoURL
   # Argument 1: string
   master.encoder.encode(RenderOp.GotoURL)
-  master.encoder.push(target.serialize())
+  master.encoder.push(target)
 
   assert *master.send(process.fd)
 

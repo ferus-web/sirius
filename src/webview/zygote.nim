@@ -7,7 +7,7 @@ import
   components/synapse/[decoder, types, transport/socketpairs],
   components/synapse/descriptors/zygote,
   components/os/threads
-import pkg/[chronicles, results, shakar]
+import pkg/[chronicles, results, shakar, url]
 import ./[renderer, types]
 
 when defined(linux):
@@ -18,7 +18,7 @@ logScope:
 
 proc launchRendererProcess(channel: int32) =
   let webRenderer = initRenderer(channel)
-  webRenderer.loadPage("sirius:new")
+  webRenderer.loadPage(parseURL("sirius:new"))
   quit(webRenderer.loop())
 
 proc spawnChildProcess(master: int32, msg: Message[ZygoteOp]) =

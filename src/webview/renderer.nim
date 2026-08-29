@@ -547,8 +547,8 @@ proc loadNotSpecialURL(view: WebRenderer, target: URL) =
   if target.scheme == "sirius":
     loadSiriusURL(view, target.pathname)
 
-proc loadPage*(view: WebRenderer, target: string) =
-  view.target = parseURL(target)
+proc loadPage*(view: WebRenderer, target: url.URL) =
+  view.target = target
   view.realm = newRealm()
     # TODO: Can all scripts in the same context share one realm, hopefully?
   debug "Load page", target = view.target, scheme = view.target.scheme
@@ -755,7 +755,7 @@ proc handleIPCMessage(view: WebRenderer) =
   let msg = &msgOpt
   case msg.op
   of RenderOp.GotoURL:
-    view.loadPage(&msg.argument(0, string))
+    view.loadPage(&msg.argument(0, url.URL))
   of RenderOp.DrawFrame:
     view.renderCtx.drawTree()
 
