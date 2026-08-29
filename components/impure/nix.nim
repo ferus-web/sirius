@@ -90,3 +90,9 @@ when SupportsLinuxPrctls:
 when SupportsEpoll:
   import std/epoll
   export epoll
+
+{.push header: "<sys/resource.h>", importc.}
+let
+  RLIMIT_NPROC*: int32
+  RLIMIT_MSGQUEUE*: int32
+{.pop.}

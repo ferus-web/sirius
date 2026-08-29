@@ -7,8 +7,11 @@ import
   components/synapse/[decoder, types, transport/socketpairs],
   components/synapse/descriptors/zygote,
   components/os/threads
-import pkg/[chronicles, shakar]
+import pkg/[chronicles, results, shakar]
 import ./[renderer, types]
+
+when defined(linux):
+  import components/sandbox/linux/[init]
 
 logScope:
   topics = "webview/zygote"
@@ -54,6 +57,11 @@ proc main*(master: int32) {.noReturn.} =
   setThreadName("Zygote")
 
   let client = initClient(master)
+
+  when defined(linux):
+    let sandboxInitRes = initSandboxLinuxImpl()
+    assert(*sandboxInitRes, &"initSandboxLinuxImpl() failed: {sandboxInitRes.error()}")
+
   while client.running:
     let msgOpt = client.blockForMessage(ZygoteOp)
     if !msgOpt:
