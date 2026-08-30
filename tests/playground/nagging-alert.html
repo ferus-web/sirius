@@ -1,0 +1,16 @@
+<!DOCTYPE HTML>
+<html>
+  <head><title>This ought to be annoying</title></head>
+  <body>
+    <h1>;)</h1>
+    <script>
+setInterval(function() {
+    let x = performance.now();
+    window.alert("foobar");
+    let y = performance.now();
+    let elapsed = y - x;
+    console.log("window.alert IPC took:", elapsed, "ms");
+}, 1000);
+    </script>
+  </body>
+</html>

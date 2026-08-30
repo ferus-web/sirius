@@ -36,7 +36,7 @@ proc applyResourceLimits(): Result[void, string] =
     lim.rlim_cur = 0
     lim.rlim_max = 0
 
-    if posix.setrlimit(posix.RLIMIT_CORE, lim) != 0:
+    if posix.setrlimit(nix.RLIMIT_CORE, lim) != 0:
       return err(posixError())
 
   # We don't really use message queues, so we might as well forbid making them.

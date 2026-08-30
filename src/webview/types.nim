@@ -47,6 +47,7 @@ type
     dom*: Document
     target*: URL
     realm*: js.Realm
+    timeOrigin*: int64
     scripts*: seq[HTMLScriptElement]
     coreScript*: HTMLScriptElement
 

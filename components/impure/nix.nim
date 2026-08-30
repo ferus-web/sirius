@@ -95,4 +95,5 @@ when SupportsEpoll:
 let
   RLIMIT_NPROC*: int32
   RLIMIT_MSGQUEUE*: int32
+  RLIMIT_CORE*: int32
 {.pop.}

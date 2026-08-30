@@ -11,7 +11,7 @@ import
 import
   components/scripting/dom/[document, element, event, mouse_event, keyboard_event],
   components/scripting/[url, timeouts],
-  components/scripting/html/[navigator, window]
+  components/scripting/html/[navigator, performance, window]
 import components/aux/pretty
 
 when defined(unix):
@@ -25,6 +25,8 @@ logScope:
 type HostScriptingCallbacks* = object
   ## Callbacks that the host exposes for bindings to call, in order to talk to it.
   window*: WindowHostCallbacks
+
+  getTimeOrigin*: proc(): int64
 
 export WindowHostCallbacks
 
@@ -54,6 +56,9 @@ proc registerWebBindings(
   event.generateBindings(elem.script.rt)
   mouse_event.generateBindings(elem.script.rt)
   keyboard_event.generateBindings(elem.script.rt)
+
+  performance.generateBindings(elem.script.rt)
+  performance.generateGlobal(elem.script.rt, callbacks.getTimeOrigin())
 
 proc setupRandomState(rng: out uint64) =
   when defined(unix):

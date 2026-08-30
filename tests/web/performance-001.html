@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>Performance interface</h1>
+    <p id="out">???</p>
+  </body>
+  <script>
+    const out = document.getElementById('out');
+
+    setInterval(function() {
+      let now = performance.now();
+      out.textContent = now;
+      console.log(now);
+    }, 1000);
+  </script>
+</html>

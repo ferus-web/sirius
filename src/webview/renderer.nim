@@ -52,7 +52,10 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
           renderer.client.encoder.push(&message)
 
         discard renderer.client.send()
-    )
+    ),
+    getTimeOrigin: proc(): int64 =
+      # NOTE: This doesn't account for any new realms being created, whenever that works.
+      renderer.timeOrigin,
   )
 
 proc initCoreScript(view: WebRenderer) =
@@ -551,6 +554,8 @@ proc loadPage*(view: WebRenderer, target: url.URL) =
   view.target = target
   view.realm = newRealm()
     # TODO: Can all scripts in the same context share one realm, hopefully?
+  view.timeOrigin = getMonoTime().ticks()
+    # The time of origin is basically whenever we created the realm.
   debug "Load page", target = view.target, scheme = view.target.scheme
 
   view.client.encoder.encode(MasterOp.UpdateNavigation)
