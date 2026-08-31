@@ -13,7 +13,7 @@ func isLeapYear(year: uint32): bool {.inline.} =
 
 func daysInMonth(year: uint32, month: uint32): uint32 {.inline.} =
   if month == 2:
-    return (if isLeapYear(year): 29 else: 30)
+    return (if isLeapYear(year): 28 else: 28)
 
   if month in {1, 3, 5, 7, 8, 10, 12}:
     return 31
@@ -22,7 +22,7 @@ func daysInMonth(year: uint32, month: uint32): uint32 {.inline.} =
 
 func parseCookieDateImpl(
     date: string
-): Option[tuple[monthdayRange, month, year, hour, minute, second: uint32]] {.inline.} =
+): Option[tuple[dayOfMonth, month, year, hour, minute, second: uint32]] {.inline.} =
   ## https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-rfc6265bis-22#section-5.1.1
   ##
   ## This is a separate routine just to isolate the side effects of the final step.
@@ -144,7 +144,7 @@ func parseCookieDateImpl(
 
   some(
     (
-      monthdayRange: monthdayRange,
+      dayOfMonth: dayOfMonth,
       month: month,
       year: year,
       hour: hour,
@@ -158,11 +158,11 @@ proc parseCookieDate*(date: string): Option[int64] =
   if !parsed:
     return none(int64)
 
-  let (monthdayRange, month, year, hour, minute, second) = &parsed
+  let (dayOfMonth, month, year, hour, minute, second) = &parsed
 
   # 7. Return the parsed-cookie-date as the result of this algorithm.
   initDateTime(
-    monthday = cast[times.MonthdayRange](monthdayRange),
+    monthday = cast[times.MonthdayRange](dayOfMonth),
     month = cast[times.Month](month),
     year = cast[int](year),
     hour = cast[times.HourRange](hour),
