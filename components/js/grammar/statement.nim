@@ -39,6 +39,7 @@ type
     ConstructObjectShorthand
     PreIncrement
     IndexAssignment
+    FunctionHolder
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -212,6 +213,8 @@ type
     of IndexAssignment:
       indexAsgnSource*: Statement
       indexAsgnDest*: Statement
+    of FunctionHolder:
+      function*: Function
 
 func hash*(access: FieldAccess): Hash {.inline.} =
   hash((access.identifier))
@@ -514,6 +517,9 @@ func preIncrement*(ident: string): Statement =
 
 func indexAssignment*(source, dest: Statement): Statement =
   Statement(kind: IndexAssignment, indexAsgnDest: dest, indexAsgnSource: source)
+
+func functionHolder*(fn: Function): Statement =
+  Statement(kind: FunctionHolder, function: fn)
 
 {.pop.}
 

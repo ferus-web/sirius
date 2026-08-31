@@ -309,6 +309,10 @@ proc parseTypeofCall(parser: Parser): Option[PositionedArguments] =
 
   some(args)
 
+proc parseFunction(
+  parser: Parser, name: Option[string] = none(string)
+): Option[Function]
+
 proc parseTable(parser: Parser): Option[KeyValuePairs] =
   # We are assuming that the starting curly bracket (`{`) has been consumed.
   if parser.tokenizer.eof:
@@ -340,7 +344,7 @@ proc parseTable(parser: Parser): Option[KeyValuePairs] =
         of TokenKind.Whitespace:
           continue
         else:
-          parser.error UnexpectedToken, $token.kind & " (expected identifier or string)"
+          parser.error UnexpectedToken, &"{token.kind} (expected identifier or string)"
 
       table[key] = atomHolder(stackNull())
       currentKey = key
@@ -361,10 +365,17 @@ proc parseTable(parser: Parser): Option[KeyValuePairs] =
         parser.error Other, "identifiers are not supported in maps yet"
       of TokenKind.Whitespace:
         discard
+      of TokenKind.Function:
+        let fn = parser.parseFunction(name = some(newString(0)))
+        if !fn:
+          parser.error UnexpectedToken, &"expected body after `function`"
+
+        table[currentKey] = functionHolder(&fn)
+        state = TableParsingState.PostValue
       else:
         let atom = parser.parseAtom(token)
         if !atom:
-          parser.error UnexpectedToken, "expected value, got " & $token.kind
+          parser.error UnexpectedToken, &"expected value, got {token.kind}"
 
         table[currentKey] = &atom
         state = TableParsingState.PostValue
@@ -577,10 +588,6 @@ proc parseTernaryOp(
 
   some(tern)
 
-proc parseFunction(
-  parser: Parser, name: Option[string] = none(string)
-): Option[Function]
-
 proc parseDeclaration(
     parser: Parser, initialIdent: string, reassignment: bool = false
 ): Option[Statement] =
@@ -723,10 +730,12 @@ proc parseDeclaration(
     else:
       parser.error UnexpectedToken, $tok.kind
 
-  assert (
+  if not (
     *atom or *vIdent or *toCall or *ternary or *declareFn or *vFieldAccess or
     *keyValuePair
-  ), "Attempt to assign a value to nothing (something went wrong)"
+  ):
+    parser.error Other, "cannot parse literal or identifier"
+      # HACK: This is stupid. Ideally this should be an invariant that's never hit. If I change my mind then the error should probs be more descriptive
 
   if *ternary:
     ternary.applyThis:

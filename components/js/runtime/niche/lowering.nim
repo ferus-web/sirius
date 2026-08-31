@@ -35,6 +35,9 @@ proc generateBytecode(
   index: Option[uint] = none(uint),
 ) {.gcsafe.}
 
+func generateLambdaName(runtime: Runtime): string {.inline.} =
+  "@anon" & $runtime.realm.addrIdx
+
 proc expand*(
     runtime: Runtime, fn: Function, stmt: Statement, internal: bool = false
 ) {.gcsafe.} =
@@ -1286,7 +1289,7 @@ proc genDefineFunction(
     fn = stmt.defunFn
     name =
       if fn.name.len < 1:
-        "@anon" & $(runtime.realm.addrIdx - 1)
+        generateLambdaName(runtime)
       else:
         fn.name
 
@@ -1378,9 +1381,27 @@ proc genConstructObjectShort*(runtime: Runtime, fn: Function, stmt: Statement) =
   runtime.ir.loadObject(index)
 
   for key, value in stmt.cosKVPairs:
-    assert(value.kind == AtomHolder)
+    assert(value.kind in {AtomHolder, FunctionHolder})
       # TODO: this could be an expression or IdentHolder, I guess
-    let valueIndex = runtime.loadIRAtom(value.atom)
+
+    var valueIndex = runtime.index("undefined", defaultParams(fn))
+
+    case value.kind
+    of AtomHolder:
+      valueIndex = runtime.loadIRAtom(value.atom)
+    of FunctionHolder:
+      value.function.name = generateLambdaName(runtime)
+      value.function.unmangled = false
+      runtime.generateBytecodeForScope(
+        scope = Scope(value.function), allocateConstants = false
+      )
+
+      runtime.markInternal(stmt, value.function.name)
+      valueIndex = runtime.realm.addrIdx - 1
+
+      runtime.ir.loadBytecodeCallable(valueIndex, value.function.name)
+    else:
+      unreachable
 
     case key.kind
     of AtomHolder:
@@ -1389,7 +1410,6 @@ proc genConstructObjectShort*(runtime: Runtime, fn: Function, stmt: Statement) =
         runtime.ir.writeField(index, &key.atom.getStr(), valueIndex)
       else:
         unreachable
-        # TODO: Implement non-strings-as-keys. I'm pretty sure our current Object variant cannot handle that.
     else:
       unreachable
 
@@ -1510,6 +1530,9 @@ proc generateBytecodeForScope(
     runtime: Runtime, scope: Scope, allocateConstants: bool = true
 ) {.gcsafe.} =
   let
+    prevCachedIndex = runtime.ir.cachedIndex
+    prevCurrModule = runtime.ir.currModule
+
     fn =
       try:
         Function(scope)
@@ -1568,6 +1591,11 @@ proc generateBytecodeForScope(
 
   for child in scope.children:
     runtime.generateBytecodeForScope(child)
+
+  # We also gotta restore the previous context just so it's reentrant (idk if that's a good way to describe it) for its caller so it can continue generating code in its correct scope like before
+  runtime.ir.cachedIndex = prevCachedIndex
+  runtime.ir.cachedModule = nil
+  runtime.ir.currModule = prevCurrModule
 
 proc computeTypeof*(runtime: Runtime, atom: JSValue): string =
   ## Compute the type of an atom.
