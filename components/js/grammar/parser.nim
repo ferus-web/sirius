@@ -386,6 +386,9 @@ proc parseTable(parser: Parser): Option[KeyValuePairs] =
         break # we've hit our }, end table parsing
       of TokenKind.Comma:
         state = TableParsingState.Key # a new key-value pair is ahead, continue
+      of TokenKind.Whitespace:
+        # Ignore whitespace.
+        continue
       else:
         parser.error UnexpectedToken,
           &"{token.kind} (expected right-curly-bracket or comma)"
