@@ -668,7 +668,6 @@ proc genBinaryOp(
       else:
         "BALI_EQUATE_ATOMS_STRICT"
     )
-    # FIXME: really weird bug in mirage's IR generator. wtf?
     let
       equalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1 # left == right branch
       unequalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1 # left != right branch
@@ -1396,9 +1395,17 @@ proc genConstructObjectShort*(runtime: Runtime, fn: Function, stmt: Statement) =
     of FunctionHolder:
       value.function.name = generateLambdaName(runtime)
       value.function.unmangled = false
+
+      let
+        prevCachedIndex = runtime.ir.cachedIndex
+        prevCurrModule = runtime.ir.currModule
+
       runtime.generateBytecodeForScope(
         scope = Scope(value.function), allocateConstants = false
       )
+      runtime.ir.cachedIndex = prevCachedIndex
+      runtime.ir.currModule = prevCurrModule
+      runtime.ir.cachedModule = nil
 
       runtime.markInternal(stmt, value.function.name)
       valueIndex = runtime.realm.addrIdx - 1
@@ -1539,9 +1546,6 @@ proc generateBytecodeForScope(
     runtime: Runtime, scope: Scope, allocateConstants: bool = true
 ) {.gcsafe.} =
   let
-    prevCachedIndex = runtime.ir.cachedIndex
-    prevCurrModule = runtime.ir.currModule
-
     fn =
       try:
         Function(scope)
@@ -1600,11 +1604,6 @@ proc generateBytecodeForScope(
 
   for child in scope.children:
     runtime.generateBytecodeForScope(child)
-
-  # We also gotta restore the previous context just so it's reentrant (idk if that's a good way to describe it) for its caller so it can continue generating code in its correct scope like before
-  runtime.ir.cachedIndex = prevCachedIndex
-  runtime.ir.cachedModule = nil
-  runtime.ir.currModule = prevCurrModule
 
 proc computeTypeof*(runtime: Runtime, atom: JSValue): string =
   ## Compute the type of an atom.
