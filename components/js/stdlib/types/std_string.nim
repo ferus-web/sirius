@@ -62,7 +62,7 @@ proc generateStdIr*(runtime: Runtime) =
         # 2. Let S be ? ToString(O).
         value = toUtf8((&value.getUTF16View())[])
         needle = runtime.argument(1)
-        position = runtime.argument(2)
+        position = &runtime.argument(2)
 
       var searchStr: string
       if *needle:
@@ -71,8 +71,8 @@ proc generateStdIr*(runtime: Runtime) =
 
       # 4. Let pos be ? ToIntegerOrInfinity(position).
       var pos: uint
-      if *position:
-        pos = runtime.ToNumber(&position).uint()
+      if not position.isUndefined:
+        pos = runtime.ToNumber(position).uint()
       else:
         # 5. Assert: If position is undefined, then pos is 0.
         pos = 0'u

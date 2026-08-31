@@ -200,7 +200,7 @@ proc setupAtom*(runtime: Runtime, typ: JSType, value: JSValue) =
       value[name] = nativeCallable(
         runtime.realm.heap,
         proc() =
-          typ.prototypeFunctions[name](value),
+          typ.prototypeFunctions[name](runtime.vm[].getThisBinding()),
       )
 
   value.tag("bali_object_type", integer(runtime.realm.heap, typ.proto.int))

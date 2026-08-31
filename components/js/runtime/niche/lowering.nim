@@ -22,7 +22,9 @@ privateAccess(Interpreter)
 privateAccess(Runtime)
 privateAccess(AllocStats)
 
-const EntryPointName* = "@start"
+const
+  EntryPointName* = "@start"
+  ThisIdent = "this"
 
 proc generateBytecode(
   runtime: Runtime,
@@ -437,13 +439,15 @@ proc genCall(
     let identName = (&stmt.fn.field).identifier
 
     # TODO: recursive field solving
+    let thisBinding = runtime.index(identName, defaultParams(fn))
 
     # firstly, try to get the bytecode callable / native callable
-    let fn = runtime.resolveFieldAccess(
-      fn, stmt, runtime.index(identName, defaultParams(fn)), &stmt.fn.field
-    )
+    let fn = runtime.resolveFieldAccess(fn, stmt, thisBinding, &stmt.fn.field)
 
     fillArguments()
+
+    # set the this-binding (??? NOTE: written while sleep deprived, please review this again later)
+    runtime.ir.setThisBinding(thisBinding)
 
     # then, invoke it.
     runtime.ir.invoke(fn)
@@ -1516,7 +1520,12 @@ proc generateBytecode(
     (message: stmt.source, line: stmt.line)
 
 proc loadArgumentsOntoStack(runtime: Runtime, fn: Function) =
-  # info "niche: loading up function signature arguments onto stack via IR: " & fn.name
+  # Load this-binding into place
+  # TODO: Could this use some optimization? Maybe we could infer if Function truly uses `this` or not.
+  # On another thought, maybe that's best left to Madhyasthal to prove. :^)
+  let thisAddr = runtime.realm.addrIdx
+  runtime.markLocal(fn, ThisIdent)
+  runtime.ir.readRegister(thisAddr, Register.This)
 
   for i, arg in fn.arguments:
     runtime.markLocal(fn, arg)

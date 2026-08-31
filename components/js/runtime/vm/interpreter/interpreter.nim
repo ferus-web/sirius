@@ -31,6 +31,7 @@ type
     retVal*: Option[JSValue]
     callArgs*: seq[JSValue]
     error*: Option[JSValue]
+    this*: Option[JSValue]
 
   Builtin* = proc(op: Operation) {.gcsafe.}
 
@@ -384,6 +385,12 @@ proc invoke*(interpreter: var Interpreter, value: JSValue) {.gcsafe.} =
   else:
     interpreter.typeErrorHook($value.kind & " is not a function")
 
+proc getThisBinding*(interpreter: var Interpreter): JSValue =
+  if *interpreter.registers.this:
+    &interpreter.registers.this
+  else:
+    undefined(interpreter.heapManager)
+
 proc readRegister*(interpreter: var Interpreter, store, register, index: int) =
   case register
   of 0:
@@ -414,6 +421,9 @@ proc readRegister*(interpreter: var Interpreter, store, register, index: int) =
         undefined(interpreter.heapManager),
       store,
     )
+  of 3:
+    # 3 - this-binding register
+    interpreter.addAtom(interpreter.getThisBinding(), store)
   else:
     raise newException(
       InvalidRegisterRead, "Attempt to read from non-existant register " & $register
@@ -1028,6 +1038,10 @@ proc opPassMultipleArguments(interpreter: var Interpreter, op: ptr Operation) =
 
   inc interpreter.currIndex
 
+proc opSetThisBinding(interpreter: var Interpreter, op: ptr Operation) =
+  interpreter.registers.this = some(&interpreter.get(&getInt(op.arguments[0])))
+  inc interpreter.currIndex
+
 {.pop.}
 
 proc execute*(interpreter: var Interpreter, op: ptr Operation) {.gcsafe.} =
@@ -1039,7 +1053,7 @@ proc execute*(interpreter: var Interpreter, op: ptr Operation) {.gcsafe.} =
     opResetArgs, opCopyAtom, opMoveAtom, opLoadFloat, opZeroRetval,
     opLoadBytecodeCallable, opExecuteBytecodeCallable, opLoadUndefined,
     opGreaterThanEqualInt, opLesserThanEqualInt, opInvoke, opPower,
-    opThrowReferenceError, opResolveField, opPassMultipleArguments,
+    opThrowReferenceError, opResolveField, opPassMultipleArguments, opSetThisBinding,
   ]
   OpDispatchTable[cast[uint8](op.opcode)](interpreter, op)
 

@@ -176,6 +176,9 @@ type
     ## An operation to reduce the number of `PassArgument` instructions significantly.
     PassMultipleArguments
 
+    ## Set the `this` object binding
+    SetThisBinding
+
 const
   OpCodeToTable* = {
     "CALL": Call,
@@ -220,6 +223,7 @@ const
     "THROWREF": ThrowReferenceError,
     "RESFLD": ResolveField,
     "PMARG": PassMultipleArguments,
+    "SETTHIS": SetThisBinding,
   }.toTable
 
   OpCodeToString* = static:

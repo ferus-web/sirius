@@ -192,3 +192,5 @@ proc resolve*(clause: Clause, op: var Operation, heap: HeapManager) =
     for x in 0 ..< op.rawArgs.len:
       op.arguments &=
         op.consume(Integer, "CFIELD expects an integer at position " & $x, heap = heap)
+  of SetThisBinding:
+    op.arguments &= op.consume(Integer, "SETTHIS expects an integer", heap = heap)

@@ -9,6 +9,7 @@ type
     ReturnValue = 0
     CallArgument = 1
     Error = 2
+    This = 3
 
   IROperation* = object
     opCode*: Ops
