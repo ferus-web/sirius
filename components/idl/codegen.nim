@@ -63,14 +63,19 @@ type
 
   Interface = object
     name*: string
-    ancester*: string
+    ancester*: Option[string]
     constants*: seq[Constant]
     attributes*: seq[Attribute]
     ops*: seq[Op]
 
 func getTypeFromNodes(typeNode: Node): Option[ValueKind] =
   assert(typeNode.kind == Type)
+
   let idents = typeNode.sons[0]
+  if idents.kind == Union:
+    # don't even joke lad.
+    return some(ValueKind.Any)
+
   let typ0 =
     if idents.kind == Idents:
       idents.sons[0].strVal
@@ -188,6 +193,8 @@ func genInterfaceMember(iface: var Interface, member: Node) =
     debugecho "attr"
   of Readonly:
     debugecho "readonly attr"
+  of Constructor:
+    debugecho "constructor"
   else:
     unreachable
 
@@ -268,13 +275,18 @@ func genInterface(node: Node, buffer: var string) =
         state = InterfaceState.Ancester
     of InterfaceState.Ancester:
       if son.kind == Ident:
-        iface.ancester = son.strVal
-        state = InterfaceState.Members
+        iface.ancester = some(son.strVal)
+
+      state = InterfaceState.Members
     of InterfaceState.Members:
       if son.kind == InterfaceMember:
         genInterfaceMember(iface, son.sons[0])
 
-  buffer &= &"type {iface.name}* = object of {iface.ancester}\n"
+  buffer &= &"type {iface.name}* = object"
+  if *iface.ancester:
+    buffer &= &" of {&iface.ancester}"
+
+  buffer &= '\n'
 
   if iface.constants.len > 0:
     buffer &= "\nconst\n"
