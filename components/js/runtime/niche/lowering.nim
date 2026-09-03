@@ -15,7 +15,7 @@ import
   ]
 import components/js/runtime/optimize/[mutator_loops, redundant_loop_allocations]
 import components/js/runtime/vm/heap/boehm
-import components/js/runtime/abstract/equating
+import components/js/runtime/abstract/[to_string, equating]
 import components/js/stdlib/prelude
 
 privateAccess(Interpreter)
@@ -1656,17 +1656,27 @@ proc generateInternalIR*(runtime: Runtime) =
         index = runtime.argument(2)
 
       assert(*atom, "BUG: Atom was empty when calling BALI_INDEX_INTERNAL!")
-      assert(
-        (&atom).kind == Sequence,
-        "BUG: BALI_INDEX_INTERNAL was passed a " & $(&atom).kind,
-      )
 
-      let idx = int(&(&index).getNumeric())
-      var vec = (&atom).sequence
-      if idx < 0 or idx > vec.len - 1:
+      let
+        target = &atom
+        indexValue = &index
+
+      case target.kind
+      of MAtomKind.Sequence:
+        let idx = int(&(&index).getNumeric())
+        var vec = (&atom).sequence
+        if idx < 0 or idx > vec.len - 1:
+          ret undefined(runtime)
+
+        ret vec[idx] # TODO: add indexing for tables/object fields
+      of MAtomKind.Object:
+        if runtime.isA(target, JSArray):
+          # FIXME: Arrays should back their data as fields, not the internal seq.
+          ret runtime.indexArray(target, uint32(&getNumeric(indexValue)))
+
+        ret runtime.getProperty(target, runtime.ToString(indexValue))
+      else:
         ret undefined(runtime)
-
-      ret vec[idx] # TODO: add indexing for tables/object fields
     ,
   )
 
