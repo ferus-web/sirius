@@ -91,23 +91,23 @@
       "url": "https://github.com/guzba/supersnappy",
       "checksum": "6519f588a0e259cf426f286a5678f5aeba6962dad83ed38e36be4a52e0700691"
     },
-    "owlkettle": {
-      "version": "3.0.0",
-      "commit": "861092dc931e754650a735af590fbc34becc3942",
-      "url": "https://github.com/can-lehmann/owlkettle",
-      "checksum": "55a4faad4d1e1ee441c7cb505cd4d4f527ed0de9ac6f527c5c549cdc6bd7cc1c"
-    },
-    "xkb": {
-      "version": "1.4.1",
-      "commit": "4c0f36b4632e185201d7f24819a4b0d138563221",
-      "url": "https://github.com/j-james/nim-xkbcommon",
-      "checksum": "6a3ea94af15560ff056215e4e9569f01c8ed6eca4cafc1e40b2760a2b8c1377b"
+    "regex": {
+      "version": "0.26.3",
+      "commit": "16f96a41f9ff74372268eef656b671d7e5355930",
+      "url": "https://github.com/nitely/nim-regex",
+      "checksum": "db495a80a8eb6ee04129d6cccd46967a6d95df65aa2dd0a51a5b7f8c38555ebf"
     },
     "sdfy": {
       "version": "0.8.1",
       "commit": "0404677947b4bbaf70eb3082cc89ac1272f912d0",
       "url": "https://github.com/elcritch/sdfy",
       "checksum": "6a4c15480b1f14fa975a6e90a55c9bc629d47734894b03dc10f05d178fbfd55e"
+    },
+    "xkb": {
+      "version": "1.4.1",
+      "commit": "4c0f36b4632e185201d7f24819a4b0d138563221",
+      "url": "https://github.com/j-james/nim-xkbcommon",
+      "checksum": "6a3ea94af15560ff056215e4e9569f01c8ed6eca4cafc1e40b2760a2b8c1377b"
     },
     "nayland": {
       "version": "0.2.0",
@@ -163,6 +163,12 @@
       "url": "https://github.com/andreaferretti/patty",
       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
+    "webidl2nim": {
+      "version": "0.0.1",
+      "commit": "a50303ea276ad77b1ee151b4d1475892133e4927",
+      "url": "https://github.com/ASVIEST/webidl2nim",
+      "checksum": "e0bc969fbe8fd7bee6831638be9450fe03c719e0d2f12a060eb65ad5bd4925fd"
+    },
     "jsony": {
       "version": "1.1.6",
       "commit": "bb647e1ca21af25ffdc423bcb96feeeeae963ca2",
@@ -199,6 +205,12 @@
       "url": "https://github.com/treeform/flatty",
       "checksum": "7c19fafe94ec272a273d373a2ec9849c0ecb97f9bd906ba388e5c0a0e5845ad5"
     },
+    "unicodedb": {
+      "version": "0.13.2",
+      "commit": "66f2458710dc641dd4640368f9483c8a0ec70561",
+      "url": "https://github.com/nitely/nim-unicodedb",
+      "checksum": "ca39bb6ef5bf8ff067481e08eaf250807ff04962a88b3184f3bf50ad90f91cf1"
+    },
     "noise": {
       "version": "0.1.10",
       "commit": "1062d35d38fcd4d8a3bcdee3003381e639786edf",
@@ -210,6 +222,18 @@
       "commit": "df8113dda4c2d74d460a8fa98252b0b771bf1f27",
       "url": "https://github.com/arnetheduck/nim-results",
       "checksum": "49379aaeadb08fbb4e99d1d56e713c390badd71b5f4f073c9493df7ae6bd85e4"
+    },
+    "cligen": {
+      "version": "1.11.0",
+      "commit": "6db1b20fe58e25ddd783412ca9af3334a211bbe5",
+      "url": "https://github.com/c-blake/cligen.git",
+      "checksum": "519aa549992acd76ca6b96e9dca0ecc1f7ae5e05d6651f5fd8be5adb83c93807"
+    },
+    "npeg": {
+      "version": "1.3.0",
+      "commit": "409f6796d0e880b3f0222c964d1da7de6e450811",
+      "url": "https://github.com/zevv/npeg",
+      "checksum": "d77646c3abdd8df73f62b676049e0b4bb706b88d44e7d834f36eb982ff99f86f"
     },
     "variant": {
       "version": "0.3.1",

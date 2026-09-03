@@ -5,7 +5,7 @@ version = "0.1.0"
 license = "BSD-3-Clause"
 kind = "Binary"
 backend = "C"
-binaries = ["balde", "sirius"]
+binaries = ["balde", "niskriya", "sirius"]
 
 [toolchain]
 version = "2.2.0"
@@ -13,6 +13,7 @@ version = "2.2.0"
 [dependencies]
 pixie = ">= 6.1.0"
 patty = ">= 0.3.5"
+webidl2nim = ">= 0.0.1"
 jsony = ">= 1.1.6"
 "gh:elcritch/harfbuzzy" = ">= 0.2.2"
 url = ">= 0.1.9"
