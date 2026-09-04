@@ -323,7 +323,7 @@ func genInterface(node: Node, buffer: var string) =
   buffer &= '\n'
 
   for attr in iface.attributes:
-    buffer &= &"  {attr.name}: FieldAccessor\n"
+    buffer &= &"  {attr.name}*: FieldAccessor\n"
       # TODO: add ReadOnly<T> in bali, like Hidden<T>
 
   if iface.constants.len > 0:
