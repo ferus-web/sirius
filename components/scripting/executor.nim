@@ -9,7 +9,8 @@ import
   components/js/runtime/prelude,
   components/js/runtime/vm/interpreter/interpreter
 import
-  components/scripting/dom/[document, element, event, mouse_event, keyboard_event],
+  components/scripting/dom/
+    [document, element, event, event_target, mouse_event, keyboard_event],
   components/scripting/[url, timeouts],
   components/scripting/html/[navigator, performance, window]
 import components/aux/pretty
@@ -37,6 +38,8 @@ proc registerWebBindings(
 
   # we have to register ECMA types earlier, as otherwise bindings below would fail as they rely on ECMA primitives existing
   elem.script.rt.registerEcmaTypes()
+
+  event_target.generateBindings(elem.script.rt)
 
   document.generateBindings(elem.script.rt)
   let doc = document.generateGlobal(elem.script.rt, elem.script.document)

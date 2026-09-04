@@ -62,12 +62,16 @@ type
     name*: string
     arguments*: seq[Arg]
 
+  Ctor = object
+    arguments*: seq[Arg]
+
   Interface = object
     name*: string
     ancester*: Option[string]
     constants*: seq[Constant]
     attributes*: seq[Attribute]
     ops*: seq[Op]
+    constructors*: seq[Ctor]
 
 func getTypeFromNodes(typeNode: Node): Option[ValueKind] =
   assert(typeNode.kind == Type)
@@ -190,6 +194,11 @@ func genAttr(iface: var Interface, member: Node, readonly: bool) =
 
   iface.attributes &= Attribute(name: attrName, kind: attrType, readOnly: readonly)
 
+func genCtor(iface: var Interface, argsNode: Node) =
+  assert(argsNode.kind == ArgumentList)
+
+  iface.constructors &= Ctor(arguments: genArguments(argsNode))
+
 func genInterfaceMember(iface: var Interface, member: Node) =
   case member.kind
   of ConstStmt:
@@ -201,7 +210,7 @@ func genInterfaceMember(iface: var Interface, member: Node) =
   of Readonly:
     genAttr(iface, member.sons[0], readonly = true)
   of Constructor:
-    debugecho "constructor"
+    genCtor(iface, member.sons[0])
   else:
     unreachable
 
@@ -230,6 +239,13 @@ func pascalCase(ident: string): string =
     inc i
 
   ensureMove(buffer)
+
+func sanitizeIdent(buffer: string): string =
+  # Stupid simple sanitization for reserved keywords
+  if buffer in ["type", "for", "if", "as", "block", "while", "end"]:
+    return buffer[0 ..< buffer.len - 1]
+
+  buffer
 
 func convertValueKind(kind: ValueKind): string =
   case kind
@@ -326,39 +342,46 @@ func genInterface(node: Node, buffer: var string) =
         &"\nproc {attr.name}Setter(rt: Runtime, this: JSValue, value: JSValue) =\n"
       buffer &= &"  warn \"IMPLEMENTME: {iface.name}.{attr.name} setter\"\n"
 
-  buffer &= &"proc new{iface.name}*(): {iface.name} ="
-  buffer &= &"  {iface.name}("
-  for i, attr in iface.attributes:
-    buffer &=
-      &"""{attr.name}: FieldAccessor(
-  getter: proc(this: JSValue): JSValue =
-    ret {attr.name}Getter(rt = runtime, this = this)
-  ,
-  setter: proc(this: JSValue, value: JSValue): JSValue =
-    {attr.name}Setter(rt = runtime, this, value)
-  )
-"""
+  for ctor in iface.constructors:
+    buffer &= &"proc new{iface.name}*(rt: Runtime"
+    for i, arg in ctor.arguments:
+      buffer &= &", {sanitizeIdent(arg.name)}: {convertValueKind(arg.kind)}"
+      if *arg.defaultValue:
+        buffer &= &" = {emitConstant(&arg.defaultValue)}"
 
-    if i != iface.attributes.len - 1:
-      buffer &= "  ,"
-  buffer &= ")\n"
+    buffer &= &"): {iface.name} =\n"
+    buffer &= &"  {iface.name}("
+    for i, attr in iface.attributes:
+      buffer &=
+        &"""{attr.name}: FieldAccessor(
+    getter: proc(this: JSValue): JSValue =
+      ret {attr.name}Getter(rt = runtime, this = this)
+    ,
+    setter: proc(this: JSValue, value: JSValue): JSValue =
+      {attr.name}Setter(rt = runtime, this, value)
+    )
+  """
+
+      if i != iface.attributes.len - 1:
+        buffer &= "  ,"
+    buffer &= ")\n"
 
   for op in iface.ops:
     buffer &= &"\nproc {op.name}(rt: Runtime, this: JSValue"
 
     for arg in op.arguments:
-      buffer &= &", {arg.name}: {convertValueKind(arg.kind)}"
+      buffer &= &", {sanitizeIdent(arg.name)}: {convertValueKind(arg.kind)}"
 
     buffer &= "): JSValue =\n"
     buffer &= &"  warn \"IMPLEMENTME: {iface.name}::{op.name}()\""
 
     for arg in op.arguments:
       buffer &=
-        &", {arg.name} = " & (
-          if arg.kind == ValueKind.Any:
-            &"rt.ToString({arg.name})"
+        &", {sanitizeIdent(arg.name)} = " & (
+          if arg.kind in {ValueKind.Any, ValueKind.DOMString}:
+            &"rt.ToString({sanitizeIdent(arg.name)})"
           else:
-            arg.name
+            sanitizeIdent(arg.name)
         )
 
     buffer &= "\n  undefined(rt)"
@@ -385,7 +408,7 @@ func genInterface(node: Node, buffer: var string) =
     const InnerIndent = "      "
 
     for i, arg in op.arguments:
-      buffer &= &"{InnerIndent}let {arg.name} = "
+      buffer &= &"{InnerIndent}let {sanitizeIdent(arg.name)} = "
 
       let argumentGetCall = &"&runtime.argument({i + 1}, required = {not arg.optional})"
 
@@ -411,13 +434,13 @@ func genInterface(node: Node, buffer: var string) =
       of ValueKind.UnsignedLongLong:
         buffer &= &"uint64(runtime.ToNumeric({argumentGetCall}))"
       of ValueKind.DOMString:
-        buffer &= &"runtime.ToString({argumentGetCall})"
+        buffer &= argumentGetCall
 
       buffer &= '\n'
 
     buffer &= &"{InnerIndent}ret {op.name}(rt = runtime, this = this"
     for arg in op.arguments:
-      buffer &= &", {arg.name} = {arg.name}"
+      buffer &= &", {sanitizeIdent(arg.name)} = {sanitizeIdent(arg.name)}"
     buffer &= ")\n"
 
     buffer &= "  )\n"

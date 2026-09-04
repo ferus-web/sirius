@@ -1,6 +1,6 @@
 ## Niskriya is Sirius' WebIDL to Nim generator
 ## Usage: niskriya [path to file] [output file]
-import std/[os, sequtils, strutils, strformat, deques]
+import std/[deques, os, osproc, sequtils, strutils, strformat]
 import components/idl/codegen, components/aux/pretty
 import ./argparser
 import pkg/[webidl2nim, jsony]
@@ -56,9 +56,13 @@ proc main() =
 
   echo "niskriya: generating Bali wrapper"
   let wrapper = generateWrapper(tree)
+  let nph = findExe("nph")
 
   try:
     writeFile(destination, wrapper & '\n')
+
+    if nph.len > 0:
+      discard execCmd(&"{nph} {destination}")
   except OSError as exc:
     echo "niskriya: failed to write to destination: " & exc.msg
 
