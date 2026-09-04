@@ -5,12 +5,13 @@ logScope:
   topics = "stub" # TODO: Replace this with something more appropriate!
 
 type EventTarget* = object
+proc newEventTarget*(): EventTarget =  EventTarget()
 
-proc addEventListener(rt: Runtime, this: JSValue, type: string, callback: JSValue, options: JSValue): JSValue =
+proc addEventListener(rt: Runtime, this: JSValue, type: JSValue, callback: JSValue, options: JSValue): JSValue =
   warn "IMPLEMENTME: EventTarget::addEventListener()", type = type, callback = rt.ToString(callback), options = rt.ToString(options)
   undefined(rt)
 
-proc removeEventListener(rt: Runtime, this: JSValue, type: string, callback: JSValue, options: JSValue): JSValue =
+proc removeEventListener(rt: Runtime, this: JSValue, type: JSValue, callback: JSValue, options: JSValue): JSValue =
   warn "IMPLEMENTME: EventTarget::removeEventListener()", type = type, callback = rt.ToString(callback), options = rt.ToString(options)
   undefined(rt)
 
@@ -20,6 +21,7 @@ proc dispatchEvent(rt: Runtime, this: JSValue, event: JSValue): JSValue =
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType("EventTarget", EventTarget)
+
   runtime.definePrototypeFn(
     EventTarget,
     "addEventListener",

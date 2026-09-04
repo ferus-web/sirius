@@ -32,6 +32,7 @@ type
   Attribute = object
     name*: string
     kind*: ValueKind
+    readOnly*: bool
 
   Constant = object
     name*: string
@@ -183,6 +184,12 @@ func genOp(iface: var Interface, node: Node) =
 
   iface.ops &= ensureMove(op)
 
+func genAttr(iface: var Interface, member: Node, readonly: bool) =
+  let attrName = member.sons[0].strVal
+  let attrType = &getTypeFromNodes(member.sons[1])
+
+  iface.attributes &= Attribute(name: attrName, kind: attrType, readOnly: readonly)
+
 func genInterfaceMember(iface: var Interface, member: Node) =
   case member.kind
   of ConstStmt:
@@ -190,9 +197,9 @@ func genInterfaceMember(iface: var Interface, member: Node) =
   of Operation:
     genOp(iface, member.sons[0])
   of Attribute:
-    debugecho "attr"
+    genAttr(iface, member, readonly = false)
   of Readonly:
-    debugecho "readonly attr"
+    genAttr(iface, member.sons[0], readonly = true)
   of Constructor:
     debugecho "constructor"
   else:
@@ -226,17 +233,28 @@ func pascalCase(ident: string): string =
 
 func convertValueKind(kind: ValueKind): string =
   case kind
-  of Short: "uint16"
-  of Long: "uint32"
-  of UnsignedShort: "uint16"
-  of UnsignedLong: "uint32"
-  of Boolean: "bool"
-  of Byte: "int8"
-  of Octet: "uint8"
-  of LongLong: "int64"
-  of UnsignedLongLong: "uint64"
-  of DOMString: "string"
-  of Any: "JSValue"
+  of Short:
+    "uint16"
+  of Long:
+    "uint32"
+  of UnsignedShort:
+    "uint16"
+  of UnsignedLong:
+    "uint32"
+  of Boolean:
+    "bool"
+  of Byte:
+    "int8"
+  of Octet:
+    "uint8"
+  of LongLong:
+    "int64"
+  of UnsignedLongLong:
+    "uint64"
+  of DOMString:
+    "JSValue" # JSString :)
+  of Any:
+    "JSValue"
 
 func emitConstant(constant: Constant): string =
   case constant.kind
@@ -288,11 +306,42 @@ func genInterface(node: Node, buffer: var string) =
 
   buffer &= '\n'
 
+  for attr in iface.attributes:
+    buffer &= &"  {attr.name}: FieldAccessor\n"
+      # TODO: add ReadOnly<T> in bali, like Hidden<T>
+
   if iface.constants.len > 0:
     buffer &= "\nconst\n"
     for constant in iface.constants:
       buffer &=
         &"  {pascalCase(constant.name)}*: {convertValueKind(constant.kind)} = {emitConstant(constant)}\n"
+
+  for attr in iface.attributes:
+    buffer &= &"\nproc {attr.name}Getter(rt: Runtime, this: JSValue): JSValue =\n"
+    buffer &= &"  warn \"IMPLEMENTME: {iface.name}.{attr.name} getter\"\n"
+    buffer &= "  undefined(rt)\n"
+
+    if not attr.readOnly:
+      buffer &=
+        &"\nproc {attr.name}Setter(rt: Runtime, this: JSValue, value: JSValue) =\n"
+      buffer &= &"  warn \"IMPLEMENTME: {iface.name}.{attr.name} setter\"\n"
+
+  buffer &= &"proc new{iface.name}*(): {iface.name} ="
+  buffer &= &"  {iface.name}("
+  for i, attr in iface.attributes:
+    buffer &=
+      &"""{attr.name}: FieldAccessor(
+  getter: proc(this: JSValue): JSValue =
+    ret {attr.name}Getter(rt = runtime, this = this)
+  ,
+  setter: proc(this: JSValue, value: JSValue): JSValue =
+    {attr.name}Setter(rt = runtime, this, value)
+  )
+"""
+
+    if i != iface.attributes.len - 1:
+      buffer &= "  ,"
+  buffer &= ")\n"
 
   for op in iface.ops:
     buffer &= &"\nproc {op.name}(rt: Runtime, this: JSValue"
@@ -317,7 +366,11 @@ func genInterface(node: Node, buffer: var string) =
     buffer &= "\n"
 
   buffer &= "\nproc generateBindings*(runtime: Runtime) =\n"
-  buffer &= &"  runtime.registerType(\"{iface.name}\", {iface.name})"
+  buffer &= &"  runtime.registerType(\"{iface.name}\", {iface.name})\n"
+  if iface.constants.len > 0:
+    for constant in iface.constants:
+      buffer &=
+        &"  runtime.setProperty({iface.name}, \"{constant.name}\", {pascalCase(constant.name)})\n"
 
   for op in iface.ops:
     buffer &=
