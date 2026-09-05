@@ -2,9 +2,9 @@ import components/js/runtime/prelude
 import pkg/[chronicles, shakar]
 
 logScope:
-  topics = "stub" # TODO: Replace this with something more appropriate!
+  topics = "dom/event_target"
 
-type EventTarget* = object
+type EventTarget* = object of RootObj
 proc newEventTarget*(rt: Runtime): EventTarget =
   EventTarget()
 

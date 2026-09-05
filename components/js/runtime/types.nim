@@ -65,7 +65,7 @@ type
     experiments*: ExperimentOpts
     jit*: JITOpts
 
-  JSType* = object
+  JSType* = ref object
     name*: string
     constructor*: NativeFunction
     members*: Table[string, AtomOrFunction[NativeFunction]]
@@ -74,6 +74,8 @@ type
     singletonId*: uint
 
     proto*: Hash
+    ancestor*: JSType
+    objRepr*: JSValue
 
   IRLabel* = object
     start*, dummy*, ending*: uint
@@ -195,14 +197,15 @@ proc setupAtom*(runtime: Runtime, typ: JSType, value: JSValue) =
           },
         )
 
-  for name, protoFn in typ.prototypeFunctions:
+  #[ for name, protoFn in typ.prototypeFunctions:
     capture name, protoFn:
       value[name] = nativeCallable(
         runtime.realm.heap,
         proc() =
           typ.prototypeFunctions[name](runtime.vm[].getThisBinding()),
-      )
+      ) ]#
 
+  value.prototype = typ.objRepr
   value.tag("bali_object_type", integer(runtime.realm.heap, typ.proto.int))
 
 proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
@@ -218,6 +221,7 @@ proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
   atom
 
 proc createObjFromType*[T](runtime: Runtime, typ: typedesc[T]): JSValue =
+  debugecho "createObjFromType " & $typ
   for etyp in runtime.types:
     if etyp.proto == hash($typ):
       return runtime.createAtom(etyp)

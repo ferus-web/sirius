@@ -8,17 +8,14 @@ import
   components/js/runtime/[arguments, bridge, construction, types, wrapping],
   components/js/runtime/abstract/[coercible, to_number, to_string],
   components/dom/dom,
-  components/html/[dom_utils, parser, serialization]
+  components/html/[dom_utils, parser, serialization],
+  components/scripting/dom/node
 import pkg/shakar
 
-type JSElement* = object of RootObj
-  internal*: Hidden[dom.Element]
-  textContent*, innerHTML*: FieldAccessor
-  parentElement*: JSValue
-
+type JSElement* = object of node.Node
   localName*, tagName*: string
 
-  onabort*, onauxclick*, onbeforeinput*, onbeforematch*, onbeforetoggle*, onblur*,
+  #[ onabort*, onauxclick*, onbeforeinput*, onbeforematch*, onbeforetoggle*, onblur*,
     oncancel*, oncanplay*, oncanplaythrough*, onchange*, onclick*, onclose*, oncommand*,
     oncontextlost*, oncontextmenu*, oncontextrestored*, oncopy*, oncuechange*, oncut*,
     ondblclick*, ondrag*, ondragend*, ondragenter*, ondragleave*, ondragover*,
@@ -31,7 +28,7 @@ type JSElement* = object of RootObj
     onselect*, onslotchange*, onstalled*, onsubmit*, onsuspend*, ontimeupdate*,
     ontoggle*, onvolumechange*, onwaiting*, onwebkitanimationend*,
     onwebkitanimationiteration*, onwebkitanimationstart*, onwebkittransitionend*,
-    onwheel*: FieldAccessor
+    onwheel*: FieldAccessor ]#
 
 proc onclickSetter(rt: Runtime, this: JSValue, value: JSValue) =
   # i can't wait to do this for the 8234823842384 others :D
@@ -59,7 +56,7 @@ proc onsubmitSetter(rt: Runtime, this: JSValue, value: JSValue) =
     SubmitEvent, EventListener(rt: rt, callback: value, setter: true)
   )
 
-proc getElementTextContentAccessor*(runtime: Runtime): FieldAccessor =
+proc getTextContentFieldAccessor*(runtime: Runtime): FieldAccessor =
   FieldAccessor(
     getter: proc(this: JSValue) =
       ret textContent(&this.getPrivateObject(dom.Element))
@@ -74,7 +71,7 @@ proc getElementTextContentAccessor*(runtime: Runtime): FieldAccessor =
       element.document.edited = true,
   )
 
-proc getInnerHTMLTextContentAccessor*(runtime: Runtime): FieldAccessor =
+proc getInnerHTMLFieldAccessor*(runtime: Runtime): FieldAccessor =
   FieldAccessor(
     getter: proc(this: JSValue) =
       ret serializeFragment(&this.getPrivateObject(dom.Node))
@@ -93,6 +90,7 @@ proc getInnerHTMLTextContentAccessor*(runtime: Runtime): FieldAccessor =
 proc getOnClickFieldAccessor*(runtime: Runtime): FieldAccessor =
   FieldAccessor(
     setter: proc(this: JSValue, value: JSValue) {.gcsafe.} =
+      debugecho "onclick setter"
       runtime.onclickSetter(this, value)
   )
 
@@ -102,32 +100,27 @@ proc getOnKeyDownFieldAccessor*(runtime: Runtime): FieldAccessor =
       runtime.onkeydownSetter(this, value)
   )
 
-proc getOnSubmitFieldAccessor*(runtime: Runtime): FieldAccessor =
-  FieldAccessor(
-    setter: proc(this: JSValue, value: JSValue) {.gcsafe.} =
-      runtime.onsubmitSetter(this, value)
-  )
+proc toJSElement*(runtime: Runtime, element: dom.Element): JSValue =
+  let elem = runtime.createObjFromType(JSElement)
+  elem.setHiddenField("internal", runtime.wrap(hidden(dom.Node(element))))
 
-proc toJSElement*(runtime: Runtime, element: dom.Element): JSElement =
-  JSElement(
-    internal: hidden(element),
-    textContent: getElementTextContentAccessor(runtime),
-    innerHTML: getInnerHTMLTextContentAccessor(runtime),
-    parentElement: (
-      if element.parentNode != nil and element.parentNode of dom.Element:
-        runtime.wrap(toJSElement(runtime, Element(element.parentNode)))
-      else:
-        null(runtime)
-    ),
-    localName: element.document.factory.atomToStr(element.localName),
-    tagName: toUpperAscii(element.document.factory.atomToStr(element.localName)),
-    onclick: getOnClickFieldAccessor(runtime),
-    onkeydown: getOnKeyDownFieldAccessor(runtime),
-    onsubmit: getOnSubmitFieldAccessor(runtime),
-  )
+  elem
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType(prototype = JSElement, name = "Element")
+  runtime.defineAccessor(
+    JSElement,
+    "onsubmit",
+    FieldAccessor(
+      setter: proc(this: JSValue, value: JSValue) {.gcsafe.} =
+        runtime.onsubmitSetter(this, value)
+    ),
+  )
+  runtime.defineAccessor(JSElement, "onclick", getOnClickFieldAccessor(runtime))
+  runtime.defineAccessor(JSElement, "onkeydown", getOnKeyDownFieldAccessor(runtime))
+  runtime.defineAccessor(JSElement, "innerHTML", getInnerHTMLFieldAccessor(runtime))
+  runtime.defineAccessor(JSElement, "textContent", getTextContentFieldAccessor(runtime))
+
   runtime.definePrototypeFn(
     JSElement,
     "toString",

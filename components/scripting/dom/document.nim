@@ -97,7 +97,7 @@ proc generateBindings*(runtime: Runtime) =
         target = document.getElementsByTagName(tagName)
 
       # TODO: Can we implement HTMLCollection some day?
-      var elems = newSeq[JSElement](target.len)
+      var elems = newSeq[JSValue](target.len)
       for i, elem in target:
         elems[i] = runtime.toJSElement(elem)
 

@@ -57,8 +57,9 @@ type
     of Object:
       objFields*: Table[string, Property]
       objHiddenFields*: Table[string, FieldIndex]
-
       objValues*: seq[JSValue]
+
+      prototype*: JSValue
     of Undefined: discard
     of Float:
       floatVal*: float64

@@ -57,7 +57,7 @@ proc wrap*[T: object](runtime: Runtime, obj: T): JSValue =
 
   mObj
 
-proc wrap*[T: object](runtime: Runtime, dest: JSValue, obj: T) =
+proc wrap*[T: object | ref object](runtime: Runtime, dest: JSValue, obj: T) =
   for name, field in obj.fieldPairs:
     when field is Hidden:
       setHiddenField(dest, name, runtime.wrap(field))

@@ -7,13 +7,12 @@ import components/scripting/dom/element
 import components/dom/[dom, tags]
 import pkg/shakar
 
-type JSHTMLInputElement* {.final.} = object of JSElement
-  value*: FieldAccessor
+type JSHTMLInputElement* {.final.} = object of JSElement # value*: FieldAccessor
 
 proc toJSHTMLInputElement*(runtime: Runtime, element: dom.Element): JSHTMLInputElement =
   JSHTMLInputElement(
-    internal: hidden(element),
-    textContent: getElementTextContentAccessor(runtime),
+    internal: hidden(dom.Node(element))
+      #[ textContent: getElementTextContentAccessor(runtime),
     innerHTML: getInnerHTMLTextContentAccessor(runtime),
     parentElement: (
       if element.parentNode != nil and element.parentNode of dom.Element:
@@ -33,7 +32,7 @@ proc toJSHTMLInputElement*(runtime: Runtime, element: dom.Element): JSHTMLInputE
         let element = &this.getPrivateObject(HTMLInputElement)
         element.inputBuffer = runtime.ToString(value)
         element.document.edited = true,
-    ),
+    ), ]#
   )
 
 proc generateBindings*(runtime: Runtime) =

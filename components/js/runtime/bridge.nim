@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[tables, options, strformat, strutils, hashes, importutils]
+import std/[tables, options, macros, strformat, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
@@ -106,6 +106,15 @@ proc definePrototypeFn*[T](
   for i, typ in runtime.types:
     if typ.proto == hash($prototype):
       runtime.types[i].prototypeFunctions[name] = fn
+      runtime.types[i].objRepr[name] = nativeCallable(
+        runtime.realm.heap,
+        proc() {.gcsafe.} =
+          echo "call " & name
+          fn(runtime.vm[].getThisBinding())
+          echo "done " & name
+        ,
+      )
+      break
 
 proc getReturnValue*(runtime: Runtime): Option[JSValue] =
   ## Get the value in the return-value register, if there is any.
@@ -191,6 +200,15 @@ proc getTypeFromName*(runtime: Runtime, name: string): Option[JSType] =
     if typ.name == name:
       return some(typ)
 
+proc getType*(runtime: Runtime, obj: JSValue): Option[JSType] =
+  let proto = cast[Hash](&getInt(&obj.getHiddenField("bali_object_type")))
+
+  for typ in runtime.types:
+    if typ.proto == proto:
+      return some(typ)
+
+  none(JSType)
+
 proc defineConstructor*(runtime: Runtime, name: string, fn: NativeFunction) {.inline.} =
   ## Expose a constructor for a type to a JavaScript runtime.
 
@@ -242,9 +260,40 @@ func argumentCount*(runtime: Runtime): int {.inline.} =
   ## Get the number of atoms in the `CallArgs` register
   runtime.vm.registers.callArgs.len
 
+macro getParent(T: typedesc): untyped =
+  let impl = getTypeImpl(T)
+
+  let concrete =
+    if impl.kind == nnkBracketExpr:
+      impl[1].getTypeImpl
+    else:
+      impl
+
+  var objNode = concrete
+  if objNode.kind == nnkRefTy:
+    objNode = objNode[0].getTypeImpl
+
+  if objNode.kind == nnkObjectTy:
+    let inheritNode = objNode[1]
+    if inheritNode.kind == nnkOfInherit:
+      return inheritNode[0]
+
+  return bindSym("RootObj")
+
+proc getType[T: object](runtime: Runtime, typ: typedesc[T]): Option[JSType] =
+  let proto = hash($typ)
+
+  for typ in runtime.types:
+    if typ.proto == proto:
+      return some(typ)
+
+  none(JSType)
+
 proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
   ## Register a type in the JavaScript engine instance with the name of the type (`name`) alongside its prototype (`prototype`).
-  var jsType: JSType
+  var jsType = JSType(objRepr: obj(runtime))
+  if (let ancestor = runtime.getType(getParent(prototype)); *ancestor):
+    jsType.ancestor = &ancestor
 
   let index = runtime.types.len
   jsType.proto = hash($prototype)
@@ -254,26 +303,19 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
 
   for fname, fatom in prototype().fieldPairs:
     when fatom is JSValue:
-      jsType.members[fname] = initAtomOrFunction[NativeFunction](undefined(runtime))
+      let value = undefined(runtime)
+      jsType.members[fname] = initAtomOrFunction[NativeFunction](value)
+      jsType.objRepr[fname] = value
     elif fatom is FieldAccessor:
       discard
     else:
       # assert not (fatom is Hidden), $prototype
-      jsType.members[fname] = initAtomOrFunction[NativeFunction](
-        runtime.wrap(fatom), hidden = fatom is Hidden
-      )
+      let wrapped = runtime.wrap(fatom)
+      jsType.members[fname] =
+        initAtomOrFunction[NativeFunction](wrapped, hidden = fatom is Hidden)
+      jsType.objRepr[fname] = wrapped
 
   runtime.types[index] = ensureMove(jsType)
-  let typIdx = runtime.types.len - 1
-
-  #[ runtime.vm[].registerBuiltin(
-    "BALI_CONSTRUCTOR_" & strutils.toUpperAscii(name),
-    proc(_: Operation) {.gcsafe.} =
-      if runtime.types[typIdx].constructor == nil:
-        runtime.typeError(runtime.types[typIdx].name & " is not a constructor")
-
-      runtime.types[typIdx].constructor(),
-  ) ]#
 
 proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: varargs[JSValue]) =
   if callable.kind != BytecodeCallable:
@@ -361,9 +403,13 @@ proc getPrivateObject*[T: ref object | ptr object](
 
   some(cast[T](&getInt(dataPtr)))
 
+import components/aux/pretty, tables
 proc setFieldAccessor*(
     runtime: Runtime, atom: JSValue, name: string, accessor: FieldAccessor
 ) =
+  print atom
+  print name
+  assert accessor != nil
   atom.objFields[name] = Property(
     isAccessor: true,
     descriptors: {FieldDescriptor.Writable},
@@ -376,16 +422,26 @@ proc setFieldAccessor*(
             accessor != nil and accessor.getter != nil,
             &"bridge: Invariant: Getter (or FieldAccessor) for property `{name}` of object 0x{cast[uint64](atom):X} is not defined. Did you forget to write an implementation for it?",
           )
-          accessor.getter(atom),
+          accessor.getter(runtime.vm[].getThisBinding()),
       ),
       setter: nativeCallable(
         runtime.realm.heap,
         proc() =
+          debugEcho &"accessor == nil: {accessor == nil}"
+          if accessor != nil:
+            debugEcho &"accessor.setter == nil: {accessor.setter == nil}"
           assert(
             accessor != nil and accessor.setter != nil,
             &"bridge: Invariant: Setter (or FieldAccessor) for property `{name}` of object 0x{cast[uint64](atom):X} is not defined. Did you forget to write an implementation for it?",
           )
-          accessor.setter(atom, &runtime.argument(1, required = true)),
+          accessor.setter(
+            runtime.vm[].getThisBinding(), &runtime.argument(1, required = true)
+          ),
       ),
     ),
   )
+
+proc defineAccessor*[T: object](
+    runtime: Runtime, typ: typedesc[T], name: string, accessor: FieldAccessor
+) =
+  runtime.setFieldAccessor((&runtime.getType(typ)).objRepr, name, accessor)

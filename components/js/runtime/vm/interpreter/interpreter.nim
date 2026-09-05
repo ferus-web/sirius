@@ -713,9 +713,7 @@ proc opWriteField(interpreter: var Interpreter, op: ptr Operation) =
     inc interpreter.currIndex
     return
 
-  var
-    atom = &oatomId
-    propertyObj = none(Property)
+  var atom = &oatomId
 
   if atom.isNull() or atom.isUndefined():
     interpreter.typeErrorHook(
@@ -723,32 +721,44 @@ proc opWriteField(interpreter: var Interpreter, op: ptr Operation) =
     )
     return
 
-  for field, idx in atom.objFields:
-    if field == fieldName:
-      propertyObj = some(idx)
+  var
+    curr = atom
+    prop: Option[Property]
 
-  if not *propertyObj:
+  while curr != nil and not curr.isNull():
+    if fieldName in curr.objFields:
+      prop = some(curr.objFields[fieldName])
+      break
+
+    curr = curr.prototype
+
+  if *prop:
+    let property = &prop
+    if property.isAccessor:
+      interpreter.registers.this = oatomId
+      interpreter.registers.callArgs = @[&sourceAtom]
+      interpreter.invoke(property.accessor.setter)
+      return
+    elif not property.descriptors.contains(FieldDescriptor.Writable):
+      # TODO: Error here in strict mode
+      inc interpreter.currIndex
+      return
+
+  if fieldName in atom.objFields:
+    let property = atom.objFields[fieldName]
+    atom.objValues[property.index] = &sourceAtom
+  else:
     atom.objValues &= undefined(interpreter.heapManager)
-    propertyObj = some(
-      Property(
-        isAccessor: false,
-        index: cast[uint32](atom.objValues.len) - 1'u32,
-        descriptors: {FieldDescriptor.Writable},
-      )
+    let property = Property(
+      isAccessor: false,
+      index: cast[uint32](atom.objValues.len) - 1'u32,
+      descriptors: {
+        FieldDescriptor.Writable, FieldDescriptor.Enumerable,
+        FieldDescriptor.Configurable,
+      },
     )
-
-  let property = &propertyObj
-  if not property.descriptors.contains(FieldDescriptor.Writable):
-    # TODO: Strict mode would throw a TypeError instead.
-    inc interpreter.currIndex
-    return
-
-  if not property.isAccessor:
     atom.objValues[property.index] = &sourceAtom
     atom.objFields[fieldName] = property
-  else:
-    interpreter.registers.callArgs = @[&sourceAtom]
-    interpreter.invoke(property.accessor.setter)
 
   interpreter.addAtom(atom, oatomIndex)
   inc interpreter.currIndex
@@ -969,32 +979,39 @@ func createFieldAccess(vm: var Interpreter, values: seq[string]): ptr FieldAcces
 
 proc findField(vm: var Interpreter, atom: JSValue, accesses: ptr FieldAccess): JSValue =
   let field = $accesses.field
-  if field in atom.objFields:
-    let prop = atom.objFields[field]
-    if accesses.next == nil:
-      if prop.isAccessor:
-        vm.invoke(prop.accessor.getter)
-        dec vm.currIndex
-          # Otherwise, we'd end up skipping an instruction right below this.
-        if *vm.registers.retval:
-          return &vm.registers.retval
-      else:
-        return atom.objValues[prop.index]
+
+  var curr = atom
+  var prop: Option[Property]
+  while curr != nil:
+    if field in curr.objFields:
+      prop = some(curr.objFields[field])
+      break
+
+    curr = curr.prototype
+
+  if !prop:
+    return undefined(vm.heapManager)
+
+  var resolved: JSValue
+  let property = &prop
+
+  if property.isAccessor:
+    vm.registers.this = some(atom)
+    vm.invoke(property.accessor.getter)
+    dec vm.currIndex
+
+    if *vm.registers.retVal:
+      resolved = &vm.registers.retVal
     else:
-      var next: JSValue
+      resolved = undefined(vm.heapManager)
+  else:
+    resolved = curr.objValues[property.index]
 
-      if prop.isAccessor:
-        vm.invoke(prop.accessor.getter)
-        dec vm.currIndex
-        if *vm.registers.retval:
-          next = &vm.registers.retval
-      else:
-        next = atom.objValues[prop.index]
-
-      assert(next != nil)
-      return findField(vm, next, accesses.next)
-
-  undefined(vm.heapManager)
+  if accesses.next == nil:
+    resolved
+  else:
+    assert(resolved != nil)
+    vm.findField(resolved, accesses.next)
 
 proc opResolveField(interpreter: var Interpreter, op: ptr Operation) =
   let
