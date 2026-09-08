@@ -23,6 +23,7 @@ It also has a _relatively_ capable embedding API, that lets other Nim programs (
 - [X] JavaScript execution, *very* early DOM bindings
 - [ ] Content caching
 - [X] Forms support
+- [X] WebIDL -> Nim stub generator
 - [ ] CSS Grid Layout
 - [ ] Sandboxing
 - [ ] MacOS support
