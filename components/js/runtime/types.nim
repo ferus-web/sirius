@@ -221,7 +221,6 @@ proc createAtom*(runtime: Runtime, typ: JSType): JSValue =
   atom
 
 proc createObjFromType*[T](runtime: Runtime, typ: typedesc[T]): JSValue =
-  debugecho "createObjFromType " & $typ
   for etyp in runtime.types:
     if etyp.proto == hash($typ):
       return runtime.createAtom(etyp)

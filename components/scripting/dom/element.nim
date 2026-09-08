@@ -90,7 +90,6 @@ proc getInnerHTMLFieldAccessor*(runtime: Runtime): FieldAccessor =
 proc getOnClickFieldAccessor*(runtime: Runtime): FieldAccessor =
   FieldAccessor(
     setter: proc(this: JSValue, value: JSValue) {.gcsafe.} =
-      debugecho "onclick setter"
       runtime.onclickSetter(this, value)
   )
 

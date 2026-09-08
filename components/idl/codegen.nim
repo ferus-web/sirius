@@ -322,10 +322,6 @@ func genInterface(node: Node, buffer: var string) =
 
   buffer &= '\n'
 
-  for attr in iface.attributes:
-    buffer &= &"  {attr.name}*: FieldAccessor\n"
-      # TODO: add ReadOnly<T> in bali, like Hidden<T>
-
   if iface.constants.len > 0:
     buffer &= "\nconst\n"
     for constant in iface.constants:
@@ -350,21 +346,7 @@ func genInterface(node: Node, buffer: var string) =
         buffer &= &" = {emitConstant(&arg.defaultValue)}"
 
     buffer &= &"): {iface.name} =\n"
-    buffer &= &"  {iface.name}("
-    for i, attr in iface.attributes:
-      buffer &=
-        &"""{attr.name}: FieldAccessor(
-    getter: proc(this: JSValue): JSValue =
-      ret {attr.name}Getter(rt = runtime, this = this)
-    ,
-    setter: proc(this: JSValue, value: JSValue): JSValue =
-      {attr.name}Setter(rt = runtime, this, value)
-    )
-  """
-
-      if i != iface.attributes.len - 1:
-        buffer &= "  ,"
-    buffer &= ")\n"
+    buffer &= &"  {iface.name}()\n"
 
   for op in iface.ops:
     buffer &= &"\nproc {op.name}(rt: Runtime, this: JSValue"
@@ -394,6 +376,25 @@ func genInterface(node: Node, buffer: var string) =
     for constant in iface.constants:
       buffer &=
         &"  runtime.setProperty({iface.name}, \"{constant.name}\", {pascalCase(constant.name)})\n"
+
+  for attr in iface.attributes:
+    buffer &=
+      &"""
+  runtime.defineAccessor(
+    {iface.name},
+    "{attr.name}",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret {attr.name}Getter(rt = runtime, this = this)
+"""
+    if not attr.readOnly:
+      buffer &=
+        &"""    ,
+        setter: proc(this: JSValue, value: JSValue) =
+          {attr.name}Setter(rt = runtime, this, value)
+  """
+
+    buffer &= "    )\n  )\n"
 
   for op in iface.ops:
     buffer &=

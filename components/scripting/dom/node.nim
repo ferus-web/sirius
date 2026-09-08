@@ -1,7 +1,3 @@
-## `Node` interface implementation
-##
-## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-
 import
   components/js/runtime/prelude,
   components/scripting/dom/event_target,
@@ -12,20 +8,6 @@ logScope:
   topics = "dom/node"
 
 type Node* = object of EventTarget
-  #[ nodeType*: FieldAccessor
-  nodeName*: FieldAccessor
-  baseURI*: FieldAccessor
-  isConnected*: FieldAccessor
-  ownerDocument*: FieldAccessor
-  parentNode*: FieldAccessor
-  parentElement*: FieldAccessor
-  childNodes*: FieldAccessor
-  firstChild*: FieldAccessor
-  lastChild*: FieldAccessor
-  previousSibling*: FieldAccessor
-  nextSibling*: FieldAccessor
-  nodeValue*: FieldAccessor
-  textContent*: FieldAccessor ]#
   internal*: Hidden[dom.Node]
 
 const
@@ -198,6 +180,124 @@ proc generateBindings*(runtime: Runtime) =
   runtime.setProperty(
     Node, "DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC",
     DocumentPositionImplementationSpecific,
+  )
+  runtime.defineAccessor(
+    Node,
+    "nodeType",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret nodeTypeGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "nodeName",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret nodeNameGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "baseURI",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret baseURIGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "isConnected",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret isConnectedGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "ownerDocument",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret ownerDocumentGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "parentNode",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret parentNodeGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "parentElement",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret parentElementGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "childNodes",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret childNodesGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "firstChild",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret firstChildGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "lastChild",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret lastChildGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "previousSibling",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret previousSiblingGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "nextSibling",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret nextSiblingGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "nodeValue",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret nodeValueGetter(rt = runtime, this = this)
+      ,
+      setter: proc(this: JSValue, value: JSValue) =
+        nodeValueSetter(rt = runtime, this, value),
+    ),
+  )
+  runtime.defineAccessor(
+    Node,
+    "textContent",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret textContentGetter(rt = runtime, this = this)
+      ,
+      setter: proc(this: JSValue, value: JSValue) =
+        textContentSetter(rt = runtime, this, value),
+    ),
   )
 
   runtime.definePrototypeFn(

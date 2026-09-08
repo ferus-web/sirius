@@ -12,7 +12,8 @@ import
   components/scripting/dom/
     [document, element, event, event_target, mouse_event, keyboard_event],
   components/scripting/[url, timeouts],
-  components/scripting/html/[navigator, performance, window]
+  components/scripting/html/[navigator, performance, window],
+  components/scripting/html/element/htmlinputelement
 import components/aux/pretty
 
 when defined(unix):
@@ -45,6 +46,7 @@ proc registerWebBindings(
   let doc = document.generateGlobal(elem.script.rt, elem.script.document)
 
   element.generateBindings(elem.script.rt)
+  htmlinputelement.generateBindings(elem.script.rt)
 
   timeouts.generateBindings(elem.script.rt)
 

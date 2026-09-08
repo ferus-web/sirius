@@ -49,7 +49,7 @@ proc generateGlobal*(runtime: Runtime, doc: dom.Document): JSValue =
 
 template bindJSElement(runtime: Runtime, elem: dom.Element) =
   if elem of HTMLInputElement:
-    ret toJSHTMLInputElement(runtime, elem)
+    ret toJSHTMLInputElement(runtime, HTMLInputElement(elem))
   else:
     ret toJSElement(runtime, elem)
 
