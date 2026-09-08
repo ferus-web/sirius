@@ -1,20 +1,23 @@
-import components/js/runtime/prelude
+import components/js/runtime/prelude, components/dom/dom
 import pkg/[chronicles, shakar]
 
 logScope:
   topics = "dom/event_target"
 
 type EventTarget* = object of RootObj
-proc newEventTarget*(rt: Runtime): EventTarget =
-  EventTarget()
+
+proc newEventTarget*(rt: Runtime): event_target.EventTarget =
+  event_target.EventTarget()
 
 proc addEventListener(
     rt: Runtime, this: JSValue, typ: JSValue, callback: JSValue, options: JSValue
 ): JSValue =
-  warn "IMPLEMENTME: EventTarget::addEventListener()",
-    typ = rt.ToString(typ),
-    callback = rt.ToString(callback),
-    options = rt.ToString(options)
+  # TODO: Not spec compliant yet. I'm pretty sure about that.
+  let target = &this.getPrivateObject(dom.EventTarget)
+  target.addEventListener(
+    rt.ToString(typ), EventListener(rt: rt, callback: callback, setter: false)
+  )
+
   undefined(rt)
 
 proc removeEventListener(

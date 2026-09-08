@@ -7,7 +7,7 @@ import pkg/[chronicles, shakar]
 logScope:
   topics = "dom/node"
 
-type Node* = object of EventTarget
+type Node* = object of event_target.EventTarget
   internal*: Hidden[dom.Node]
 
 const
