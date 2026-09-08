@@ -291,6 +291,7 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
   var jsType = JSType(objRepr: obj(runtime))
   if (let ancestor = runtime.getType(getParent(prototype)); *ancestor):
     jsType.ancestor = &ancestor
+    jsType.objRepr.prototype = jsType.ancestor.objRepr
 
   let index = runtime.types.len
   jsType.proto = hash($prototype)
@@ -311,8 +312,6 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
       jsType.members[fname] =
         initAtomOrFunction[NativeFunction](wrapped, hidden = fatom is Hidden)
       jsType.objRepr[fname] = wrapped
-
-  runtime.types[index] = ensureMove(jsType)
 
 proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: varargs[JSValue]) =
   if callable.kind != BytecodeCallable:
