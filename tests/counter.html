@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Counter</title>
+  </head>
+  <body>
+    <p id="out">0</p>
+    <script>
+const elem = document.getElementById("out");
+let cnt = 0;
+
+elem.addEventListener("click", function(event) {
+  cnt++;
+  elem.textContent = cnt;
+})
+    </script>
+  </body>
+</html>
