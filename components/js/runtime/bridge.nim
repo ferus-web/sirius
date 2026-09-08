@@ -109,10 +109,7 @@ proc definePrototypeFn*[T](
       runtime.types[i].objRepr[name] = nativeCallable(
         runtime.realm.heap,
         proc() {.gcsafe.} =
-          echo "call " & name
-          fn(runtime.vm[].getThisBinding())
-          echo "done " & name
-        ,
+          fn(runtime.vm[].getThisBinding()),
       )
       break
 
@@ -403,13 +400,9 @@ proc getPrivateObject*[T: ref object | ptr object](
 
   some(cast[T](&getInt(dataPtr)))
 
-import components/aux/pretty, tables
 proc setFieldAccessor*(
     runtime: Runtime, atom: JSValue, name: string, accessor: FieldAccessor
 ) =
-  print atom
-  print name
-  assert accessor != nil
   atom.objFields[name] = Property(
     isAccessor: true,
     descriptors: {FieldDescriptor.Writable},
@@ -427,9 +420,6 @@ proc setFieldAccessor*(
       setter: nativeCallable(
         runtime.realm.heap,
         proc() =
-          debugEcho &"accessor == nil: {accessor == nil}"
-          if accessor != nil:
-            debugEcho &"accessor.setter == nil: {accessor.setter == nil}"
           assert(
             accessor != nil and accessor.setter != nil,
             &"bridge: Invariant: Setter (or FieldAccessor) for property `{name}` of object 0x{cast[uint64](atom):X} is not defined. Did you forget to write an implementation for it?",
