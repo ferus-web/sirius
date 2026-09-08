@@ -10,7 +10,7 @@ import
   components/js/runtime/vm/interpreter/interpreter
 import
   components/scripting/dom/
-    [document, element, event, event_target, mouse_event, keyboard_event],
+    [document, element, event, event_target, mouse_event, keyboard_event, node],
   components/scripting/[url, timeouts],
   components/scripting/html/[navigator, performance, window],
   components/scripting/html/element/htmlinputelement
@@ -41,6 +41,7 @@ proc registerWebBindings(
   elem.script.rt.registerEcmaTypes()
 
   event_target.generateBindings(elem.script.rt)
+  node.generateBindings(elem.script.rt)
 
   document.generateBindings(elem.script.rt)
   let doc = document.generateGlobal(elem.script.rt, elem.script.document)
@@ -117,21 +118,24 @@ proc executeScript*(
   )
   element.script.rt.deathCallback = proc(vm: Interpreter) =
     error "Script execution error"
-    debugEcho &"{element.script.rt.ir.name} on {serialize(element.script.baseURL)}"
-    debugEcho &"  pc: {vm.currIndex}; jit: {vm.runningCompiled}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"
-    debugEcho &"  halt: {vm.halt}; trace: 0x{cast[uint64](vm.trace):X}"
+    echo &"{element.script.rt.ir.name} on {serialize(element.script.baseURL)}"
+    echo &"  pc: {vm.currIndex}; jit: {vm.runningCompiled}; vcount: {vm.stack.len}; exccount: {vm.errors.len}"
+    echo &"  halt: {vm.halt}; trace: 0x{cast[uint64](vm.trace):X}"
 
-    debugEcho "  registers:"
+    echo "  registers:"
     if *vm.registers.retVal:
-      debugEcho &" > retval: 0x{cast[uint64](&vm.registers.retval):X}"
+      echo &" > retval: 0x{cast[uint64](&vm.registers.retval):X}"
 
     if *vm.registers.error:
-      debugEcho &" > error: 0x{cast[uint64](&vm.registers.error):X}"
+      echo &" > error: 0x{cast[uint64](&vm.registers.error):X}"
 
-    stdout.write &" > callargs: ["
+    stdout.write "    > callargs:"
     for arg in vm.registers.callArgs:
-      stdout.write &"\n    0x{cast[uint64](arg):X} ({(if arg != nil: $arg.kind else: \"\")})  \n"
-    debugEcho "]"
+      stdout.write &"\n      0x{cast[uint64](arg):X} ({(if arg != nil: $arg.kind else: \"\")})"
+    stdout.write('\n')
+
+    if *vm.registers.this:
+      stdout.write &"    > this-binding: 0x{cast[uint64](&vm.registers.this):X} ({(&vm.registers.this).kind})\n"
 
   registerWebBindings(element, callbacks)
   element.script.rt.run()
