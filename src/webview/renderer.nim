@@ -281,8 +281,8 @@ proc fetchHTMLImageResource(
       if *decodedData:
         view.imageCache[&srcRaw] = decodeImage(&decodedData)
         view.renderCtx.reuploadImage(&srcRaw)
-        element.document.edited = true
-        # view.reflow()
+        element.document.state = NodeState.Dirty
+          # TODO: Ideally, we should only mark the element that needed this as dirty. But it doesn't really matter since the document being non-clean triggers a full, untargetted reflow anyways.
       else:
         warn "Image element has data URL, but its content could not be decoded as base64."
     except pixie.PixieError as exc:
@@ -764,9 +764,9 @@ proc handleIPCMessage(view: WebRenderer) =
   of RenderOp.DrawFrame:
     view.renderCtx.drawTree()
 
-    if view.dom.edited:
+    if view.dom.state != NodeState.None:
       view.reflow()
-      view.dom.edited = false
+      view.dom.state = NodeState.None
 
     let dmabufFd = VulkanContext(view.renderCtx.fig.ctx).exportBufferFd()
 

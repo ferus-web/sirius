@@ -41,9 +41,15 @@ type
   EventTarget* = ref object of RootObj
     listeners*: Table[string, seq[EventListener]]
 
+  NodeState* {.pure, size: sizeof(uint8).} = enum
+    None
+    Dirty ## The node itself is dirty and needs to be reprocessed
+    ChildDirty ## One of the node's descendants are dirty and need to be reprocessed
+
   Node* = ref object of EventTarget
     childList*: seq[Node]
     parentNode* {.cursor.}: Node
+    state*: NodeState
 
   CharacterData* = ref object of Node
     data*: string
@@ -56,7 +62,6 @@ type
     language*: Option[string]
 
     # sirius-specific stuff
-    edited*: bool
     willDeclarativelyRefresh*: bool
     cookies*: seq[Cookie]
     url*: URL
@@ -75,6 +80,14 @@ type
     document*: Document
 
   DocumentFragment* = ref object of Node
+
+func markDirty*(node: Node) =
+  node.state = NodeState.Dirty
+
+  var curr = node.parentNode
+  while curr != nil:
+    curr.state = NodeState.ChildDirty
+    curr = curr.parentNode
 
 func addEventListener*(target: EventTarget, event: string, listener: EventListener) =
   # specs? never heard of her
