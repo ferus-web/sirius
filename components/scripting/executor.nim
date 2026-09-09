@@ -12,7 +12,7 @@ import
   components/scripting/dom/
     [document, element, event, event_target, mouse_event, keyboard_event, node],
   components/scripting/[url, timeouts],
-  components/scripting/html/[navigator, performance, window],
+  components/scripting/html/[navigator, performance, window, htmlelement],
   components/scripting/html/element/htmlinputelement
 import components/aux/pretty
 
@@ -42,11 +42,12 @@ proc registerWebBindings(
 
   event_target.generateBindings(elem.script.rt)
   node.generateBindings(elem.script.rt)
+  element.generateBindings(elem.script.rt)
+  htmlelement.generateBindings(elem.script.rt)
 
   document.generateBindings(elem.script.rt)
   let doc = document.generateGlobal(elem.script.rt, elem.script.document)
 
-  element.generateBindings(elem.script.rt)
   htmlinputelement.generateBindings(elem.script.rt)
 
   timeouts.generateBindings(elem.script.rt)

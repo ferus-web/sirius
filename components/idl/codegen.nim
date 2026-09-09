@@ -77,7 +77,7 @@ func getTypeFromNodes(typeNode: Node): Option[ValueKind] =
   assert(typeNode.kind == Type)
 
   let idents = typeNode.sons[0]
-  if idents.kind == Union:
+  if idents.kind in {Union, Generic}:
     # don't even joke lad.
     return some(ValueKind.Any)
 

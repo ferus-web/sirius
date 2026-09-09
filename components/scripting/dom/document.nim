@@ -11,6 +11,7 @@ import
   components/html/dom_utils,
   components/scripting/dom/[element],
   components/scripting/html/element/[htmlinputelement],
+  components/scripting/html/htmlelement,
   components/net/[cookie, cookie_parser],
   components/aux/pretty
 import pkg/shakar
@@ -48,10 +49,10 @@ proc generateGlobal*(runtime: Runtime, doc: dom.Document): JSValue =
   )
 
 template bindJSElement(runtime: Runtime, elem: dom.Element) =
-  if elem of HTMLInputElement:
-    ret toJSHTMLInputElement(runtime, HTMLInputElement(elem))
+  if elem of tags.HTMLInputElement:
+    ret toJSHTMLInputElement(runtime, tags.HTMLInputElement(elem))
   else:
-    ret toJSElement(runtime, elem)
+    ret toHTMLElement(runtime, elem)
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType(prototype = JSDocument, name = "Document")
@@ -99,7 +100,7 @@ proc generateBindings*(runtime: Runtime) =
       # TODO: Can we implement HTMLCollection some day?
       var elems = newSeq[JSValue](target.len)
       for i, elem in target:
-        elems[i] = runtime.toJSElement(elem)
+        elems[i] = runtime.toHTMLElement(elem)
 
       ret ensureMove(elems)
     ,

@@ -7,13 +7,13 @@ import components/scripting/dom/element
 import components/dom/[dom, tags]
 import pkg/shakar
 
-type JSHTMLInputElement* {.final.} = object of JSElement # value*: FieldAccessor
+type HTMLInputElement* {.final.} = object of element.Element # value*: FieldAccessor
 
 proc toJSHTMLInputElement*(runtime: Runtime, element: tags.HTMLInputElement): JSValue =
-  let elem = runtime.createObjFromType(JSHTMLInputElement)
+  let elem = runtime.createObjFromType(HTMLInputElement)
   elem.setHiddenField("internal", runtime.wrap(hidden(dom.Node(element))))
 
   elem
 
 proc generateBindings*(runtime: Runtime) =
-  runtime.registerType("HTMLInputElement", JSHTMLInputElement)
+  runtime.registerType("HTMLInputElement", HTMLInputElement)
