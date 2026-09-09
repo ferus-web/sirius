@@ -982,7 +982,7 @@ proc findField(vm: var Interpreter, atom: JSValue, accesses: ptr FieldAccess): J
 
   var curr = atom
   var prop: Option[Property]
-  while curr != nil:
+  while curr != nil and curr.kind == Object:
     if field in curr.objFields:
       prop = some(curr.objFields[field])
       break
