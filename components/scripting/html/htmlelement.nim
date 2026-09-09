@@ -1,3 +1,8 @@
+## Implementation of `HTMLElement`
+## https://html.spec.whatwg.org/#htmlelement
+##
+## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+
 import
   components/js/runtime/prelude, components/scripting/dom/element, components/dom/dom
 import pkg/[chronicles, shakar]

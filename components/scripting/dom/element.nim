@@ -1,4 +1,13 @@
-import components/js/runtime/prelude, components/scripting/dom/node, components/dom/dom
+## Implementation of `Element`
+## https://dom.spec.whatwg.org/#interface-element
+##
+## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+
+import
+  components/js/runtime/prelude,
+  components/scripting/dom/node,
+  components/dom/dom,
+  components/html/[parser, serialization]
 import pkg/[chronicles, shakar]
 
 logScope:
@@ -17,6 +26,18 @@ proc prefixGetter(rt: Runtime, this: JSValue): JSValue =
 proc localNameGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: Element.localName getter"
   undefined(rt)
+
+proc innerHTMLGetter(rt: Runtime, this: JSValue): JSValue =
+  rt.wrap(serializeFragment(&this.getPrivateObject(dom.Node)))
+
+proc innerHTMLSetter(rt: Runtime, this: JSValue, value: JSValue) =
+  let element = &this.getPrivateObject(dom.Element)
+  {.cast(gcsafe).}:
+    # FIXME: Why is this GC-unsafe?
+    element.childList =
+      parseHTMLFragment(rt.ToString(value), element, MiniDOMBuilderCallbacks())
+      # TODO: Provide proper callbacks here! Right now these'll just segfault and crash if any special stuff's found while parsing!!!!!
+    markDirty element
 
 proc tagNameGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: Element.tagName getter"
@@ -299,6 +320,17 @@ proc generateBindings*(runtime: Runtime) =
     FieldAccessor(
       getter: proc(this: JSValue) =
         ret customElementRegistryGetter(rt = runtime, this = this)
+    ),
+  )
+  runtime.defineAccessor(
+    Element,
+    "innerHTML",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+        ret innerHTMLGetter(rt = runtime, this = this)
+      ,
+      setter: proc(this, value: JSValue) =
+        innerHTMLSetter(rt = runtime, this = this, value = value),
     ),
   )
 

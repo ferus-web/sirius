@@ -90,7 +90,13 @@ proc textContentGetter(rt: Runtime, this: JSValue): JSValue =
   undefined(rt)
 
 proc textContentSetter(rt: Runtime, this: JSValue, value: JSValue) =
-  warn "IMPLEMENTME: Node.textContent setter"
+  let node = &this.getPrivateObject(dom.Node)
+  node.childList.setLen(1)
+
+  let textData = rt.ToString(value)
+
+  node.childList[0] = Text(data: textData, parentNode: node)
+  markDirty node
 
 proc getRootNode(rt: Runtime, this: JSValue, options: JSValue): JSValue =
   warn "IMPLEMENTME: Node::getRootNode()", options = rt.ToString(options)
