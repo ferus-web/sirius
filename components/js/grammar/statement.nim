@@ -5,8 +5,6 @@ import pkg/shakar
 
 type
   StatementKind* = enum
-    CreateImmutVal
-    CreateMutVal
     NewFunction
     Call
     ReturnFn
@@ -40,6 +38,7 @@ type
     PreIncrement
     IndexAssignment
     FunctionHolder
+    Declaration
 
   FieldAccess* = ref object
     prev*, next*: FieldAccess
@@ -106,13 +105,9 @@ type
     storeIn*: Option[string]
 
     case kind*: StatementKind
-    of CreateMutVal:
-      mutIdentifier*: string
-      mutAtom*: Statement
-    of CreateImmutVal:
-      imIdentifier*: string
-      imAtom*: Statement
-      imField*: FieldAccess
+    of Declaration:
+      declIdent*: string
+      declValue*: Statement
     of Call:
       fn*: FunctionCall
       arguments*: PositionedArguments
@@ -126,7 +121,6 @@ type
       retIdent*: Option[string]
       retExpr*: Option[Statement]
     of CallAndStoreResult:
-      mutable*: bool
       storeIdent*: string
       storeFn*: Statement
     of ConstructObject:
@@ -238,12 +232,8 @@ proc hash*(stmt: Statement): Hash {.inline.} =
 
   {.cast(gcsafe).}:
     case stmt.kind
-    of CreateMutVal:
-      hash = hash !& hash((stmt.mutIdentifier, stmt.mutAtom))
-    of CreateImmutVal:
-      hash =
-        hash !&
-        hash((stmt.imIdentifier, cast[int64](stmt.imAtom), cast[int64](stmt.imField)))
+    of Declaration:
+      hash = hash !& hash((stmt.declIdent, stmt.declValue))
     of Call:
       hash = hash !& hash((stmt.fn, stmt.arguments))
     of NewFunction:
@@ -361,12 +351,6 @@ func throwError*(
 
   Statement(kind: ThrowError, error: (str: errorStr, exc: errorExc, ident: errorIdent))
 
-func createImmutVal*(name: string, atom: MAtom): Statement =
-  Statement(kind: CreateImmutVal, imIdentifier: name, imAtom: atomHolder atom)
-
-func createImmutVal*(name: string, field: FieldAccess): Statement =
-  Statement(kind: CreateImmutVal, imIdentifier: name, imField: field)
-
 func breakStmt*(): Statement =
   Statement(kind: Break)
 
@@ -440,18 +424,13 @@ func returnFunc*(retVal: MAtom): Statement =
 func returnFunc*(ident: string): Statement =
   Statement(kind: ReturnFn, retIdent: some(ident))
 
-func callAndStoreImmut*(ident: string, fn: Statement): Statement =
+func callAndStore*(ident: string, fn: Statement): Statement =
   var fn = fn
   fn.expectsReturnVal = true
-  Statement(kind: CallAndStoreResult, mutable: false, storeIdent: ident, storeFn: fn)
+  Statement(kind: CallAndStoreResult, storeIdent: ident, storeFn: fn)
 
-func callAndStoreMut*(ident: string, fn: Statement): Statement =
-  var fn = fn
-  fn.expectsReturnVal = true
-  Statement(kind: CallAndStoreResult, mutable: true, storeIdent: ident, storeFn: fn)
-
-func createMutVal*(name: string, atom: MAtom): Statement =
-  Statement(kind: CreateMutVal, mutIdentifier: name, mutAtom: atomHolder atom)
+func decl*(ident: string, value: Statement): Statement =
+  Statement(kind: Declaration, declIdent: ident, declValue: value)
 
 func identArg*(ident: string): CallArg =
   CallArg(kind: cakIdent, ident: ident)

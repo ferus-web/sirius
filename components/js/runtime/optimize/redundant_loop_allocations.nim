@@ -31,7 +31,7 @@ proc eliminateRedundantLoopAllocations*(
 
   for stmt in body.stmts:
     case stmt.kind
-    of CreateImmutVal, CreateMutVal:
+    of Declaration:
       # debug "redundant_loop_allocations: moving " & $stmt.kind &
       elims.placeBefore.stmts &= stmt
     else:

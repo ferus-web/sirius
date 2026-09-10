@@ -616,11 +616,7 @@ proc parseDeclaration(
             " instead"
 
   proc stubDef(): Result[Option[Statement], void] =
-    case initialIdent
-    of "let", "const":
-      return ok(some(createImmutVal(ident, stackUndefined())))
-    of "var":
-      return ok(some(createMutVal(ident, stackUndefined())))
+    ok(some(decl(ident, atomHolder(stackUndefined()))))
 
   if parser.tokenizer.eof():
     if ident == initialIdent:
@@ -752,26 +748,14 @@ proc parseDeclaration(
   if *keyValuePair:
     return some(constructObjectShort(ident, &keyValuePair))
 
-  if not reassignment:
-    if *atom:
-      return some(createImmutVal(ident, &atom))
-    elif *vIdent:
-      return some(copyValImmut(ident, &vIdent))
-    elif *toCall:
-      return some(callAndStoreImmut(ident, &toCall))
-    elif *vFieldAccess:
-      return some(createImmutVal(ident, &vFieldAccess))
-  else:
-    if not reassignment:
-      if *atom:
-        return some(createImmutVal(ident, &atom))
-      elif *toCall:
-        return some(callAndStoreImmut(ident, &toCall))
-    else:
-      if *atom:
-        return some(createMutVal(ident, &atom))
-      elif *toCall:
-        return some(callAndStoreMut(ident, &toCall))
+  if *atom:
+    return some(decl(ident, atomHolder(&atom)))
+  elif *vIdent:
+    return some(decl(ident, identHolder(&vIdent)))
+  elif *toCall:
+    return some(decl(ident, &toCall))
+  elif *vFieldAccess:
+    return some(decl(ident, fieldHolder(&vFieldAccess)))
 
 proc parseStatement(parser: Parser): Option[Statement]
 
@@ -981,7 +965,7 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
 
           args.pushImmExpr(expr)
         else:
-          parser.ast.appendToCurrentScope(callAndStoreMut(resIdent, &call))
+          parser.ast.appendToCurrentScope(callAndStore(resIdent, &call))
 
           args.pushIdent(resIdent)
       else:
@@ -1022,7 +1006,7 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
         call = parser.parseConstructor()
         resIdent = "@0_" & $idx
 
-      parser.ast.appendToCurrentScope(callAndStoreMut(resIdent, &call))
+      parser.ast.appendToCurrentScope(callAndStore(resIdent, &call))
       args.pushIdent(resIdent)
     of TokenKind.LBracket:
       if !last or &last != TokenKind.Identifier:
@@ -1181,7 +1165,7 @@ proc parseReassignment(parser: Parser, ident: string): Option[Statement] =
 
       return some(ensureMove(copyExpr))
   elif *toCall:
-    var callStoreExpr = callAndStoreMut(ident, &toCall)
+    var callStoreExpr = callAndStore(ident, &toCall)
     callStoreExpr.source = parser.lines[parser.tokenizer.location.line]
 
     return some(ensureMove(callStoreExpr))

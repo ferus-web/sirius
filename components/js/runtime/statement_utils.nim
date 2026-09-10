@@ -1,16 +1,16 @@
 import std/[tables, strutils]
 import components/js/grammar/statement
 
+# TODO: Remove these. AST based optimizations just do not make sense anymore.
+
 proc getValueDefinitions*(body: Scope): seq[string] =
   ## Get all the identifiers that `body` defines
 
   var defs: seq[string]
   for stmt in body.stmts:
     case stmt.kind
-    of CreateMutVal:
-      defs &= stmt.mutIdentifier
-    of CreateImmutVal:
-      defs &= stmt.imIdentifier
+    of Declaration:
+      defs &= stmt.declIdent
     of IfStmt:
       defs &= stmt.branchTrue.getValueDefinitions()
       defs &= stmt.branchFalse.getValueDefinitions()

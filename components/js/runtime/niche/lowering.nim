@@ -92,7 +92,7 @@ proc expand*(
       if *stmt.error.str:
         runtime.generateBytecode(
           fn,
-          createImmutVal("error_msg", stackStr(&stmt.error.str)),
+          decl("error_msg", atomHolder(stackStr(&stmt.error.str))),
           ownerStmt = some(stmt),
           internal = true,
         )
@@ -109,7 +109,7 @@ proc expand*(
       of StatementKind.AtomHolder:
         runtime.generateBytecode(
           fn,
-          createImmutVal("left_term", stmt.binLeft.atom),
+          decl("left_term", atomHolder(stmt.binLeft.atom)),
           ownerStmt = some(stmt),
           internal = true,
         )
@@ -141,7 +141,7 @@ proc expand*(
       of StatementKind.AtomHolder:
         runtime.generateBytecode(
           fn,
-          createImmutVal("right_term", stmt.binRight.atom),
+          decl("right_term", atomHolder(stmt.binRight.atom)),
           ownerStmt = some(stmt),
           internal = true,
         )
@@ -178,7 +178,7 @@ proc expand*(
         # # debug "niche: if-stmt: left term is an atom"
         runtime.generateBytecode(
           fn,
-          createImmutVal("left_term", stmt.conditionExpr.binLeft.atom),
+          decl("left_term", atomHolder(stmt.conditionExpr.binLeft.atom)),
           ownerStmt = some(stmt),
           internal = true,
         )
@@ -211,7 +211,7 @@ proc expand*(
         # # debug "niche: if-stmt: right term is an atom"
         runtime.generateBytecode(
           fn,
-          createImmutVal("right_term", stmt.conditionExpr.binRight.atom),
+          decl("right_term", atomHolder(stmt.conditionExpr.binRight.atom)),
           ownerStmt = some(stmt),
           internal = true,
         )
@@ -241,7 +241,7 @@ proc expand*(
         # # debug "niche: while-stmt: left term is an atom"
         runtime.generateBytecode(
           fn,
-          createImmutVal("left_term", stmt.whConditionExpr.binLeft.atom),
+          decl("left_term", atomHolder(stmt.whConditionExpr.binLeft.atom)),
           ownerStmt = some(stmt),
           internal = true,
         )
@@ -250,7 +250,7 @@ proc expand*(
         # # debug "niche: while-stmt: right term is an atom"
         runtime.generateBytecode(
           fn,
-          createImmutVal("right_term", stmt.whConditionExpr.binRight.atom),
+          decl("right_term", atomHolder(stmt.whConditionExpr.binRight.atom)),
           ownerStmt = some(stmt),
           internal = true,
         )
@@ -258,14 +258,14 @@ proc expand*(
       if *stmt.retVal:
         runtime.generateBytecode(
           fn,
-          createImmutVal("retval", &stmt.retVal),
+          decl("retval", atomHolder(&stmt.retVal)),
           internal = true,
           ownerStmt = some(stmt),
         )
       elif *stmt.retExpr:
         runtime.generateBytecode(
           fn,
-          createImmutVal("retval", stackUndefined()),
+          decl("retval", atomHolder(stackUndefined())),
           internal = true,
           ownerStmt = some(stmt),
         ) # load undefined atom
@@ -283,7 +283,7 @@ proc expand*(
       else:
         runtime.generateBytecode(
           fn,
-          createImmutVal("retval", stackUndefined()),
+          decl("retval", atomHolder(stackUndefined())),
           internal = true,
           ownerStmt = some(stmt),
         ) # load undefined atom
@@ -329,7 +329,7 @@ proc resolveFieldAccess*(
     let internalName = $(hash(stmt) !& hash(access.identifier))
   runtime.generateBytecode(
     fn,
-    createImmutVal(internalName, stackNull()),
+    decl(internalName, atomHolder(stackNull())),
     internal = true,
     ownerStmt = some(stmt),
   )
@@ -357,7 +357,7 @@ func willIRGenerateClause*(runtime: Runtime, clause: string): bool {.inline.} =
   false
 
 {.push gcsafe.}
-proc genCreateImmutVal(
+#[ proc genCreateImmutVal(
     runtime: Runtime,
     fn: Function,
     stmt: Statement,
@@ -373,7 +373,7 @@ proc genCreateImmutVal(
         stmt,
         runtime.index(stmt.imField.identifier, defaultParams(fn)),
         stmt.imField,
-      )
+   )
 
   if not internal:
     runtime.markLocal(fn, stmt.imIdentifier, index = some(idx))
@@ -395,6 +395,7 @@ proc genCreateMutVal(
   else:
     assert *ownerStmt
     runtime.markInternal(&ownerStmt, stmt.mutIdentifier)
+]#
 
 proc genCall(
     runtime: Runtime,
@@ -503,8 +504,6 @@ proc genCallAndStoreResult(
       runtime.markLocal(fn, stmt.storeIdent)
       index = runtime.realm.addrIdx - 1
 
-    # # debug "emitter: call-and-store result will be stored in ident \"" & stmt.storeIdent &
-  # "\" or index " & $index
   runtime.ir.loadUndefined(index) # load `undefined` on that index
   runtime.ir.readRegister(index, Register.ReturnValue)
   runtime.ir.zeroRetval()
@@ -851,7 +850,7 @@ proc genCopyValMut(runtime: Runtime, fn: Function, stmt: Statement) =
 
   if preExistingDestIndex == runtime.index("undefined", defaultParams(fn)):
     runtime.generateBytecode(
-      fn, createMutVal(stmt.cpMutDestIdent, stackNull()), internal = false
+      fn, decl(stmt.cpMutDestIdent, atomHolder(stackNull())), internal = false
     )
     let dest = runtime.realm.addrIdx - 1
 
@@ -879,7 +878,7 @@ proc genCopyValImmut(runtime: Runtime, fn: Function, stmt: Statement) =
   # # debug "emitter: generate IR for copying value to an immutable address with source: " &
   # stmt.cpImmutSourceIdent & " and destination: " & stmt.cpImmutDestIdent
   runtime.generateBytecode(
-    fn, createMutVal(stmt.cpImmutDestIdent, stackNull()), internal = false
+    fn, decl(stmt.cpImmutDestIdent, atomHolder(stackNull())), internal = false
   )
   let dest = runtime.realm.addrIdx - 1
 
@@ -1424,6 +1423,46 @@ proc genConstructObjectShort*(runtime: Runtime, fn: Function, stmt: Statement) =
     else:
       unreachable
 
+proc genDeclaration*(
+    runtime: Runtime,
+    fn: Function,
+    stmt: Statement,
+    internal: bool,
+    ownerStmt: Option[Statement],
+) =
+  if stmt.declValue.kind == Call:
+    # HACK: Can we move this logic in here or atleast abstract
+    # `genCallAndStoreResult()` so it isn't a standalone op?
+    # Or maybe I've just went cuckoo. Either ways, revisit this.
+    runtime.genCallAndStoreResult(
+      fn = fn,
+      stmt = callAndStore(stmt.declIdent, stmt.declValue),
+      ownerStmt = ownerStmt,
+    )
+    return
+
+  let idx =
+    case stmt.declValue.kind
+    of AtomHolder:
+      runtime.loadIRAtom(stmt.declValue.atom)
+    of FieldAccessHolder:
+      runtime.resolveFieldAccess(
+        fn,
+        stmt,
+        runtime.index(stmt.declValue.fieldAccessList.identifier, defaultParams(fn)),
+        stmt.declValue.fieldAccessList,
+      )
+    else:
+      debugEcho stmt.declValue.kind
+      unreachable
+      0'u
+
+  if not internal:
+    runtime.markLocal(fn, stmt.declIdent, index = some(idx))
+  else:
+    assert(*ownerStmt)
+    runtime.markInternal(&ownerStmt, stmt.declIdent)
+
 {.pop.}
 
 proc generateBytecode(
@@ -1440,12 +1479,8 @@ proc generateBytecode(
   ## generate the bytecode for that statement.
   ## **NOTE**: This function can be _HIGHLY_ recursive in nature and has side effects*
   case stmt.kind
-  of CreateImmutVal:
-    runtime.genCreateImmutVal(
-      fn = fn, stmt = stmt, internal = internal, ownerStmt = ownerStmt
-    )
-  of CreateMutVal:
-    runtime.genCreateMutVal(
+  of Declaration:
+    runtime.genDeclaration(
       fn = fn, stmt = stmt, internal = internal, ownerStmt = ownerStmt
     )
   of Call:
