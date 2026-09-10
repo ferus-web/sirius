@@ -1,7 +1,8 @@
 import
   components/js/runtime/prelude,
   components/scripting/dom/event_target,
-  components/dom/dom
+  components/dom/dom,
+  components/html/dom_utils
 import pkg/[chronicles, shakar]
 
 logScope:
@@ -86,8 +87,7 @@ proc nodeValueSetter(rt: Runtime, this: JSValue, value: JSValue) =
   warn "IMPLEMENTME: Node.nodeValue setter"
 
 proc textContentGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: Node.textContent getter"
-  undefined(rt)
+  rt.wrap(textContent(&this.getPrivateObject(dom.Node)))
 
 proc textContentSetter(rt: Runtime, this: JSValue, value: JSValue) =
   let node = &this.getPrivateObject(dom.Node)
