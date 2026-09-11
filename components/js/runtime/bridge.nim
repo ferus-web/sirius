@@ -377,6 +377,9 @@ proc getProperty*(runtime: Runtime, atom: JSValue, name: string): JSValue {.gcsa
   if atom.kind != Object:
     raise newException(ValueError, $atom.kind & " does not have field access methods")
 
+  if name notin atom.objFields:
+    return undefined(runtime)
+
   let property = atom.objFields[name]
   if property.isAccessor:
     return runtime.call(property.accessor.getter)
