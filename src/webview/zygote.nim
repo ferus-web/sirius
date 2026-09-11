@@ -6,7 +6,8 @@ import std/[posix, strformat]
 import
   components/synapse/[decoder, types, transport/socketpairs],
   components/synapse/descriptors/zygote,
-  components/os/threads
+  components/os/threads,
+  components/impure/nix
 import pkg/[chronicles, results, shakar, url]
 import ./[renderer, types]
 
@@ -38,6 +39,8 @@ proc spawnChildProcess(master: int32, msg: Message[ZygoteOp]) =
   elif pid == 0:
     discard posix.close(master)
       # The Renderer process mustn't be able to talk to the master using the Zygote's channel.
+    assert(nix.prctl(nix.PR_SET_PDEATHSIG, cast[uint64](posix.SIGKILL)) == 0)
+      # We want to die if our parent (the zygote) dies.
 
     case processKind
     of ProcessKind.Renderer:
