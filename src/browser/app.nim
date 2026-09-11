@@ -13,20 +13,29 @@ import ../webview/[core, types], ../argparser
 logScope:
   topics = "browser/app"
 
-type BrowserState = ref object
-  view: WebView
+type
+  BrowserTab = ref object
+    id: TabID
 
-  window: ptr EGtkWidget
-  viewport: ptr EGtkWidget
-  urlBar: ptr EGtkWidget
+    tabPage: ptr EGtkWidget
+    viewport: ptr EGtkWidget
 
-  tabs: seq[TabID]
-  tab: TabID
+  BrowserState = ref object
+    view: WebView
+    args: argparser.Input
 
-  frameAcked: bool
+    window: ptr EGtkWidget
+    mainBox: ptr EGtkWidget
+    tabBar, tabView: ptr EGtkWidget
+    urlBar: ptr EGtkWidget
 
-  viewportSize: vmath.IVec2
-  scrollDelta: vmath.Vec2
+    tabs: seq[BrowserTab]
+    tab: BrowserTab
+
+    frameAcked: bool
+
+    viewportSize: vmath.IVec2
+    scrollDelta: vmath.Vec2
 
 proc userNavigationRequest(state: BrowserState, target: string) =
   # TODO: Document the algorithm behind this somewhere
@@ -34,13 +43,13 @@ proc userNavigationRequest(state: BrowserState, target: string) =
   # 1. If `target` can be parsed as a URL with no errors, the happy path is to be executed: navigate directly to its parsed representation.
   let parsedHappy = tryParseURL(target)
   if *parsedHappy:
-    state.view.loadURL(state.tab, &parsedHappy)
+    state.view.loadURL(state.tab.id, &parsedHappy)
     return
 
   template navigateTo(src: string) =
     let parsed = tryParseURL(src)
     if *parsed:
-      state.view.loadURL(state.tab, &parsed)
+      state.view.loadURL(state.tab.id, &parsed)
       return
 
   # 2. Otherwise, try to correct the input as per the error observed during initial parsing. This is mostly based off of my inference as to where most people go wrong (or even just slightly off) while typing URLs :P
@@ -78,7 +87,7 @@ proc reconstructViewport(state: BrowserState) =
   let texture = gdk_dmabuf_texture_builder_build(builder, nil, nil, err.addr)
 
   if texture != nil:
-    gtk_picture_set_paintable(state.viewport, texture)
+    gtk_picture_set_paintable(state.tab.viewport, texture)
     g_object_unref(texture)
 
   g_object_unref(builder)
@@ -87,23 +96,28 @@ proc onFrameTick(
     widget: ptr EGtkWidget, frameClock: ptr GdkFrameClock, userData: pointer
 ): int32 {.cdecl.} =
   let browser = cast[BrowserState](userData)
+  if widget != browser.tab.viewport:
+    # If we're an unfocused tab, don't bother sending any IPC calls or anything.
+    # let the renderer process rest :3
+    return G_SOURCE_CONTINUE
+
   let currSize = ivec2(gtk_widget_get_width(widget), gtk_widget_get_height(widget) + 1)
 
   if currSize.x == 0 or currSize.y == 0:
     return G_SOURCE_CONTINUE
 
-  if currSize != browser.viewportSize:
-    browser.view.resizeRenderTarget(browser.tab, currSize)
+  if currSize != browser.viewportSize and browser.frameAcked:
+    browser.view.resizeRenderTarget(browser.tab.id, currSize)
 
   if browser.frameAcked:
-    browser.view.requestFrame(browser.tab)
+    browser.view.requestFrame(browser.tab.id)
     browser.frameAcked = false
 
   if browser.scrollDelta.x != 0'f32 or browser.scrollDelta.y != 0'f32:
     # TODO: maybe if only one of them (likely) got changed, we can only send the one
     # changed via specialized horizontal/vertical IPC calls so we only ship one f32 instead
     # of two, even when not required?
-    browser.view.scroll(browser.tab, browser.scrollDelta)
+    browser.view.scroll(browser.tab.id, browser.scrollDelta)
     browser.scrollDelta.reset()
 
   gtk_widget_queue_draw(widget)
@@ -119,13 +133,13 @@ proc onCursorMotion(
     widget: ptr EGtkWidget, x, y: float64, userData: pointer
 ) {.cdecl.} =
   let browser = cast[BrowserState](userData)
-  browser.view.moveCursor(browser.tab, vec2(x, y))
+  browser.view.moveCursor(browser.tab.id, vec2(x, y))
 
 proc onCursorClick(
     widget: ptr EGtkWidget, nPress: int32, x, y: float64, userData: pointer
 ) {.cdecl.} =
   let browser = cast[BrowserState](userData)
-  browser.view.click(browser.tab)
+  browser.view.click(browser.tab.id)
 
 proc keyvalToDomKey(keyval: uint32): string =
   if keyval == GDK_KEY_Return or keyval == GDK_KEY_KP_Enter:
@@ -167,11 +181,65 @@ proc onKeyPress(
   let browser = cast[BrowserState](userData)
 
   browser.view.pressKey(
-    id = browser.tab,
+    id = browser.tab.id,
     key = keyvalToDomKey(keyval),
     keycode = newString(0), # TODO
     repeat = false,
   )
+
+proc interactionNewTab(browser: BrowserState) =
+  let tab = BrowserTab(id: browser.view.createTab(), viewport: gtk_picture_new())
+  browser.tabs &= tab
+  browser.tab = tab
+
+  gtk_widget_set_hexpand(tab.viewport, true)
+  gtk_widget_set_vexpand(tab.viewport, true)
+  gtk_picture_set_can_shrink(tab.viewport, true)
+
+  gtk_widget_set_focusable(browser.tab.viewport, true)
+
+  let scrollCtrl = gtk_event_controller_scroll_new(3)
+  discard g_signal_connect_data(
+    scrollCtrl, "scroll", cast[pointer](onScroll), cast[pointer](browser), nil, 0
+  )
+  gtk_widget_add_controller(browser.tab.viewport, scrollCtrl)
+
+  let motionCtrl = gtk_event_controller_motion_new()
+  discard g_signal_connect_data(
+    motionCtrl, "motion", cast[pointer](onCursorMotion), cast[pointer](browser), nil, 0
+  )
+  gtk_widget_add_controller(browser.tab.viewport, motionCtrl)
+
+  discard gtk_widget_add_tick_callback(
+    browser.tab.viewport, onFrameTick, cast[pointer](browser), nil
+  )
+
+  let clickGest = gtk_gesture_click_new()
+  gtk_gesture_single_set_button(clickGest, GDK_BUTTON_PRIMARY)
+  discard g_signal_connect_data(
+    clickGest, "pressed", cast[pointer](onCursorClick), cast[pointer](browser), nil, 0
+  )
+  gtk_widget_add_controller(browser.tab.viewport, clickGest)
+
+  let keyCtrl = gtk_event_controller_key_new()
+  discard g_signal_connect_data(
+    keyCtrl, "key-pressed", cast[pointer](onKeyPress), cast[pointer](browser), nil, 0
+  )
+  gtk_widget_add_controller(browser.tab.viewport, keyCtrl)
+
+  # gtk_box_append(browser.mainBox, browser.tab.viewport)
+
+  discard gtk_widget_grab_focus(browser.tab.viewport)
+
+  browser.tab.tabPage = adw_tab_view_append(browser.tabView, tab.viewport)
+  adw_tab_page_set_title(browser.tab.tabPage, cstring("New Tab"))
+
+proc interactionSwitchTab(browser: BrowserState, tab: BrowserTab) =
+  browser.tab = tab
+
+  # also send it a resize packet just so it's up to date on the viewport state, since
+  # we don't send those to unfocused tabs
+  browser.view.resizeRenderTarget(tab.id, browser.viewportSize)
 
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
@@ -180,9 +248,26 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   gtk_window_set_default_size(browser.window, 640, 480)
 
   let mainBox = gtk_box_new(1, 0)
+  browser.mainBox = mainBox
+
   adw_application_window_set_content(browser.window, mainBox)
 
   let headerBar = adw_header_bar_new()
+
+  let newTabBtn = gtk_button_new_from_icon_name("tab-new-symbolic")
+  gtk_widget_set_tooltip_text(newTabBtn, "New Tab")
+  adw_header_bar_pack_start(headerBar, newTabBtn)
+
+  discard g_signal_connect_data(
+    newTabBtn,
+    "clicked",
+    cast[pointer](proc(btn: ptr EGtkWidget, userData: pointer) {.cdecl.} =
+      let browser = cast[BrowserState](userData)
+      interactionNewTab(browser)),
+    cast[pointer](browser),
+    nil,
+    0,
+  )
 
   browser.urlBar = gtk_entry_new()
   gtk_entry_set_placeholder_text(browser.urlBar, "Enter URL")
@@ -205,64 +290,66 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
 
   adw_header_bar_set_title_widget(headerBar, browser.urlBar)
 
+  browser.tabView = adw_tab_view_new()
+  gtk_widget_set_hexpand(browser.tabView, true)
+  gtk_widget_set_vexpand(browser.tabView, true)
+
+  discard g_signal_connect_data(
+    browser.tabView,
+    "notify::selected-page",
+    cast[pointer](proc(
+        tabView: ptr EGtkWidget, pspec: pointer, userData: pointer
+    ) {.cdecl.} =
+      let browser = cast[BrowserState](userData)
+      let page = adw_tab_view_get_selected_page(tabView)
+      if page == nil:
+        return
+
+      for tab in browser.tabs:
+        if tab.tabPage == page:
+          interactionSwitchTab(browser, tab)
+          return
+    ),
+    cast[pointer](browser),
+    nil,
+    0,
+  )
+
+  browser.tabBar = adw_tab_bar_new()
+  adw_tab_bar_set_view(browser.tabBar, browser.tabView)
+  adw_tab_bar_set_autohide(browser.tabBar, true)
+
+  gtk_box_append(mainBox, headerBar)
+  gtk_box_append(mainBox, browser.tabBar)
+  gtk_box_append(mainBox, browser.tabView)
+
   # let windowTitle = adw_window_title_new("Sirius", "")
   # adw_header_bar_set_title_widget(headerBar, windowTitle)
-  gtk_box_append(mainBox, headerBar)
+  interactionNewTab(browser)
 
-  # browser.headerBar = headerBar
-  browser.viewport = gtk_picture_new()
-  gtk_widget_set_hexpand(browser.viewport, true)
-  gtk_widget_set_vexpand(browser.viewport, true)
-  gtk_picture_set_can_shrink(browser.viewport, true)
+  if browser.args.command.len > 0:
+    browser.view.loadURL(
+      browser.tab.id, tryParseURL(browser.args.command).valueOr(parseURL("sirius:new"))
+    )
 
-  gtk_widget_set_focusable(browser.viewport, true)
-
-  let scrollCtrl = gtk_event_controller_scroll_new(3)
-  discard g_signal_connect_data(
-    scrollCtrl, "scroll", cast[pointer](onScroll), cast[pointer](browser), nil, 0
-  )
-  gtk_widget_add_controller(browser.viewport, scrollCtrl)
-
-  let motionCtrl = gtk_event_controller_motion_new()
-  discard g_signal_connect_data(
-    motionCtrl, "motion", cast[pointer](onCursorMotion), cast[pointer](browser), nil, 0
-  )
-  gtk_widget_add_controller(browser.viewport, motionCtrl)
-
-  discard gtk_widget_add_tick_callback(
-    browser.viewport, onFrameTick, cast[pointer](browser), nil
-  )
-
-  let clickGest = gtk_gesture_click_new()
-  gtk_gesture_single_set_button(clickGest, GDK_BUTTON_PRIMARY)
-  discard g_signal_connect_data(
-    clickGest, "pressed", cast[pointer](onCursorClick), cast[pointer](browser), nil, 0
-  )
-  gtk_widget_add_controller(browser.viewport, clickGest)
-
-  let keyCtrl = gtk_event_controller_key_new()
-  discard g_signal_connect_data(
-    keyCtrl, "key-pressed", cast[pointer](onKeyPress), cast[pointer](browser), nil, 0
-  )
-  gtk_widget_add_controller(browser.viewport, keyCtrl)
-
-  gtk_box_append(mainBox, browser.viewport)
   gtk_window_present(browser.window)
 
-  discard gtk_widget_grab_focus(browser.viewport)
+  # browser.headerBar = headerBar
 
 proc setPageTitle(browser: BrowserState, title: string) =
-  gtk_window_set_title(browser.window, cstring(&"{title.strip()} — Sirius"))
+  let finalTitle = title.strip()
+  gtk_window_set_title(browser.window, cstring(&"{finalTitle} — Sirius"))
+  adw_tab_page_set_title(browser.tab.tabPage, cstring(finalTitle))
 
 proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
-  gtk_widget_set_cursor_from_name(browser.viewport, cstring($predef))
+  gtk_widget_set_cursor_from_name(browser.tab.viewport, cstring($predef))
 
 proc showDeadTabPage(browser: BrowserState) =
-  let parentBox = gtk_widget_get_parent(browser.viewport)
+  let parentBox = gtk_widget_get_parent(browser.tab.viewport)
   if parentBox == nil:
     return
 
-  gtk_box_remove(parentBox, browser.viewport)
+  gtk_box_remove(parentBox, browser.tab.viewport)
 
   let crashBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 24)
   gtk_widget_set_hexpand(crashBox, true)
@@ -290,7 +377,7 @@ proc handleDeadChild(state: BrowserState, tab: TabID, process: Process) =
 
   case process.kind
   of ProcessKind.Renderer:
-    if tab == state.tab:
+    if tab == state.tab.id:
       # TODO: whenever we get tabbed browsing, we should probably track this properly
       # TODO: also, maybe we should try to recover the renderer in the future?
 
@@ -361,23 +448,16 @@ proc attachIPCEventHandlers(state: BrowserState) =
     state.showAlertMessage(tab, msg)
 
 proc startBrowserShell*(view: WebView, args: argparser.Input) =
-  let browser =
-    BrowserState(view: view, frameAcked: true, viewportSize: ivec2(640, 480))
+  let browser = BrowserState(
+    args: args, view: view, frameAcked: true, viewportSize: ivec2(640, 480)
+  )
   let app = adw_application_new("xyz.xtrayambak.sirius", 0)
 
   discard g_signal_connect_data(
     app, "activate", cast[pointer](onActivate), cast[pointer](browser), nil, 0
   )
 
-  # TODO: do this for every tab that we have once we have that working
-  let tab = browser.view.createTab()
-
-  browser.tabs &= tab
-  browser.tab = tab
   attachIPCEventHandlers(browser)
-
-  if args.command.len > 0:
-    view.loadURL(tab, tryParseURL(args.command).valueOr(parseURL("sirius:new")))
 
   discard g_application_run(app, 0, nil)
   g_object_unref(app)

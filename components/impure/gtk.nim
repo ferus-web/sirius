@@ -183,6 +183,7 @@ proc adw_header_bar_new*(): ptr EGtkWidget
 proc adw_window_title_new*(title: cstring, subtitle: cstring): ptr EGtkWidget
 proc adw_application_window_set_content*(win: ptr EGtkWidget, content: ptr EGtkWidget)
 proc adw_header_bar_set_title_widget*(bar: ptr EGtkWidget, titleWidget: ptr EGtkWidget)
+proc adw_header_bar_pack_start*(bar: ptr EGtkWidget, widget: ptr EGtkWidget)
 
 proc gtk_box_new*(orientation: int32, spacing: int32): ptr EGtkWidget
 proc gtk_box_append*(box: ptr EGtkWidget, child: ptr EGtkWidget)
@@ -226,6 +227,7 @@ proc gtk_widget_add_tick_callback*(
 ): uint32
 
 proc gtk_widget_queue_draw*(widget: ptr EGtkWidget)
+proc gtk_widget_set_tooltip_text*(widget: ptr EGtkWidget, text: cstring)
 
 proc g_signal_connect_data*(
   instance: pointer,
@@ -256,6 +258,16 @@ proc adw_alert_dialog_add_response*(dialog: ptr EGtkWidget, id, label: cstring)
 proc adw_alert_dialog_set_default_response*(dialog: ptr EGtkWidget, id: cstring)
 proc adw_alert_dialog_set_close_response*(dialog: ptr EGtkWidget, id: cstring)
 proc adw_dialog_present*(dialog: ptr EGtkWidget, window: ptr EGtkWidget)
+
+proc adw_tab_view_new*(): ptr EGtkWidget
+proc adw_tab_view_append*(view: ptr EGtkWidget, widget: ptr EGtkWidget): ptr EGtkWidget
+proc adw_tab_page_set_title*(page: ptr EGtkWidget, title: cstring)
+proc adw_tab_bar_new*(): ptr EGtkWidget
+proc adw_tab_bar_set_view*(bar: ptr EGtkWidget, view: ptr EGtkWidget)
+proc adw_tab_bar_set_autohide*(bar: ptr EGTkWidget, autohide: bool)
+proc adw_tab_view_get_selected_page*(view: ptr EGtkWidget): ptr EGtkWidget
+
+proc gtk_button_new_from_icon_name*(icon: cstring): ptr EGtkWidget
 
 proc gdk_display_get_default*(): pointer
 proc gdk_dmabuf_texture_builder_new*(): ptr GdkDmabufTextureBuilder

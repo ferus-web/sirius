@@ -131,16 +131,16 @@ proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
       view.callbacks.onNavigationUpdate(view, tabId, navigationUrl)
 
 proc step*(view: WebView) =
-  var ipcEvent: nix.EpollEvent
+  var ipcEvents = newSeq[nix.EpollEvent](view.master.tabs.len)
   let ipcEventCount = nix.epoll_wait(
     view.pollingFd,
-    ipcEvent.addr,
+    ipcEvents[0].addr,
     maxevents = cast[int32](view.master.tabs.len),
     timeout = 6'i32,
   )
 
-  if ipcEventCount > 0:
-    handleIPCMessage(view, ipcEvent.events, ipcEvent.data.fd)
+  for i in 0 ..< ipcEventCount:
+    handleIPCMessage(view, ipcEvents[i].events, ipcEvents[i].data.fd)
 
 proc initWebView*(opts: WebViewOpts): WebView =
   # TODO: Make WebViewOpts work again
