@@ -108,13 +108,7 @@ proc executeScript*(
     repl: false,
     dumpBytecode: true,
     insertDebugHooks: true,
-    codegen: CodegenOpts(
-      elideLoops: false,
-      loopAllocationEliminator: false,
-      aggressivelyFreeRetvals: false,
-      deadCodeElimination: false,
-      jitCompiler: true,
-    ),
+    codegen: CodegenOpts(aggressivelyFreeRetvals: false, jitCompiler: true),
     jit: JITOpts(),
   )
   element.script.rt.deathCallback = proc(vm: Interpreter) =

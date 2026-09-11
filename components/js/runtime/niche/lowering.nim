@@ -13,7 +13,6 @@ import
     normalize, types, atom_helpers, arguments, statement_utils, bridge, describe,
     construction,
   ]
-import components/js/runtime/optimize/[mutator_loops, redundant_loop_allocations]
 import components/js/runtime/vm/heap/boehm
 import components/js/runtime/abstract/[to_string, equating]
 import components/js/stdlib/prelude
@@ -889,12 +888,6 @@ proc genCopyValImmut(runtime: Runtime, fn: Function, stmt: Statement) =
 
 proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
   # # debug "emitter: generate IR for while loop"
-  if runtime.opts.codegen.elideLoops and
-      stmt.whStmtOnlyMutatesItsState(stmt.whBranch.getValueCaptures()):
-    # # debug "emitter: while loop only mutates its own state - eliding it away"
-    if runtime.optimizeAwayStateMutatorLoop(fn, stmt):
-      return # we can fully skip creating all of the expensive comparison checks! :D
-
   runtime.expand(fn, stmt)
 
   proc getCurrOpNum(): int =
@@ -904,12 +897,6 @@ proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
 
     unreachable
     0
-
-  let allocElimResult: Option[AllocationEliminatorResult] =
-    if runtime.opts.codegen.loopAllocationEliminator:
-      runtime.eliminateRedundantLoopAllocations(stmt.whBranch).some
-    else:
-      none(AllocationEliminatorResult)
 
   let
     lhsIdx =
@@ -935,10 +922,6 @@ proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
       else:
         unreachable
         0
-
-  if *allocElimResult:
-    let placeBefore = (&allocElimResult).placeBefore
-    runtime.generateBytecodeForScope(placeBefore, allocateConstants = false)
 
   let jmpIntoComparison = getCurrOpNum()
   case stmt.whConditionExpr.op
@@ -970,12 +953,7 @@ proc genWhileStmt(runtime: Runtime, fn: Function, stmt: Statement) =
   let jmpIntoBody = getCurrOpNum()
 
   # generate the body of the loop
-  if !allocElimResult:
-    runtime.generateBytecodeForScope(stmt.whBranch, allocateConstants = false)
-  else:
-    runtime.generateBytecodeForScope(
-      (&allocElimResult).modifiedBody, allocateConstants = false
-    )
+  runtime.generateBytecodeForScope(stmt.whBranch, allocateConstants = false)
 
   runtime.ir.jump(jmpIntoComparison.uint) # jump back to the comparison logic
 

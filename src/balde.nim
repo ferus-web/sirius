@@ -66,8 +66,6 @@ proc allocRuntime*(
       repl: repl,
       insertDebugHooks: ctx.enabled("insert-debug-hooks", "H"),
       codegen: CodegenOpts(
-        elideLoops: not ctx.enabled("disable-loop-elision"),
-        loopAllocationEliminator: not ctx.enabled("disable-loop-allocation-elim"),
         aggressivelyFreeRetvals: ctx.enabled("aggressively-free-retvals"),
         jitCompiler: not ctx.enabled("disable-jit", "Nz") and not repl,
       ),
@@ -110,10 +108,7 @@ proc allocRuntime*(ctx: Input, file: string): Runtime =
       repl: false,
       insertDebugHooks: ctx.enabled("insert-debug-hooks", "H"),
       codegen: CodegenOpts(
-        elideLoops: not ctx.enabled("disable-loop-elision"),
-        loopAllocationEliminator: not ctx.enabled("disable-loop-allocation-elim"),
         aggressivelyFreeRetvals: not ctx.enabled("aggressively-free-retvals"),
-        deadCodeElimination: not ctx.enabled("disable-dead-code-elim"),
         jitCompiler: not ctx.enabled("disable-jit", "Nz"),
       ),
     ),

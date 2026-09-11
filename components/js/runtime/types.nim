@@ -45,10 +45,7 @@ type
   ExperimentOpts* = object
 
   CodegenOpts* = object
-    elideLoops*: bool = true
-    loopAllocationEliminator*: bool = true
     aggressivelyFreeRetvals*: bool = false
-    deadCodeElimination*: bool = true
     jitCompiler*: bool = true
 
   JITOpts* = object
