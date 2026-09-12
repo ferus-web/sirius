@@ -4,7 +4,7 @@
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[options, strutils, times]
-import components/js/internal/[generic_lexer, trim_string]
+import components/js/internal/[generic_lexer]
 import pkg/shakar
 
 proc parseSimplifiedISO8601*(date: string): Option[float] =

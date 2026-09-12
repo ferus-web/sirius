@@ -47,7 +47,7 @@ proc trimString*(runtime: Runtime, input: JSValue, where: TrimMode): string =
   let inputString = RequireObjectCoercible(runtime, input)
 
   # 2. Let S be ? ToString(str).
-  let str = ToString(runtime, input)
+  let str = ToString(runtime, inputString)
 
   # 3. If where is start, let T be the String value that is a copy of S with leading white space removed.
   # 4. Else if where is end, let T be the String value that is a copy of S with trailing white space removed.

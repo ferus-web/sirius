@@ -6,10 +6,10 @@ import
   components/js/runtime/vm/atom,
   components/js/runtime/atom_helpers,
   components/js/stdlib/types/std_string_type,
-  components/js/runtime/types,
-  pkg/shakar
+  components/js/runtime/types
 
 proc wrap*(runtime: Runtime, val: SomeInteger | string | float | bool): JSValue =
+  {.warning[UnreachableCode]: off.}
   when val is SomeInteger:
     return integer(runtime.realm.heap, val.int)
 
@@ -21,6 +21,7 @@ proc wrap*(runtime: Runtime, val: SomeInteger | string | float | bool): JSValue 
 
   when val is float:
     return floating(runtime.realm.heap, val)
+  {.warning[UnreachableCode]: on.}
 
 proc wrap*[T: not JSValue](runtime: Runtime, val: openArray[T]): JSValue =
   var vec = sequence(runtime.realm.heap, newSeqOfCap[MAtom](val.len - 1))

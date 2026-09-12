@@ -1,11 +1,11 @@
-## Equation functions
-## Loose (==) and Strict (===)
-## Author: Trayambak Rai (xtrayambak at disroot dot org)
+## Loose (==) and strict (===) equality routines
+##
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 import components/js/runtime/vm/atom
 import components/unicode/utf16view
 import components/js/runtime/[atom_helpers, types, bridge, construction]
 import components/js/runtime/abstract/[coercion]
-import pkg/[gmp/gmp, shakar], components/aux/pretty
+import pkg/[gmp/gmp, shakar]
 import components/js/stdlib/types/[std_bigint, std_string_type]
 
 proc equateNumbers*(runtime: Runtime, x, y: JSValue): bool =

@@ -10,7 +10,6 @@ import components/js/runtime/vm/ir/shared
 import components/js/runtime/normalize
 import components/js/runtime/compiler/base
 import components/js/runtime/atom_helpers
-import components/aux/pretty
 import pkg/[shakar]
 
 when hasJITSupport:
@@ -1216,9 +1215,6 @@ proc run*(interpreter: var Interpreter) {.gcsafe.} =
             interpreter.baseline.compile(clause)
           of Tier.Midtier:
             interpreter.midtier.compile(clause)
-          else:
-            unreachable
-            none(JITSegment)
 
         if *compiled:
           clause.compiled = true
@@ -1283,8 +1279,6 @@ when defined(amd64):
         return initAMD64BaselineCodegen(vm, heap, callbacks)
       of Tier.Midtier:
         return initAMD64MidtierCodegen(vm, heap, callbacks)
-      else:
-        unreachable
 
 proc tryInitializeJIT(interp: ptr Interpreter) =
   let callbacks = VMCallbacks(

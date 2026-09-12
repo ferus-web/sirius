@@ -36,8 +36,6 @@ proc addOp*(gen: var IRGenerator, operation: IROperation): uint {.inline.} =
     gen.cachedIndex = gen.cachedModule.operations.len.uint
     return gen.cachedIndex
 
-  unreachable
-
 proc loadInt*[V: SomeInteger](
     gen: var IRGenerator, position: uint, value: V
 ): uint {.inline, discardable.} =

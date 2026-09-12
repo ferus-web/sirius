@@ -1,8 +1,8 @@
 ## Runtime types
 ##
-## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak at disroot dot org)
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[deques, monotimes, options, hashes, sugar, tables, times]
+import std/[deques, monotimes, options, hashes, tables, times]
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/prelude
 import components/js/grammar/prelude
@@ -168,7 +168,6 @@ proc getMethods*(
 ): Table[string, NativePrototypeFunction] {.inline.} =
   for typ in runtime.types:
     if typ.proto == proto:
-      var fns: Table[string, NativeFunction]
       #for name, member in typ.members:
       #  if member.isFn: fns[name] = member.fn()
       return typ.prototypeFunctions

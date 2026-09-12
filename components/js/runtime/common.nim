@@ -7,7 +7,6 @@ import
   components/js/runtime/niche/lowering,
   components/js/runtime/vm/prelude,
   components/js/runtime/vm/ir/generator,
-  components/js/runtime/vm/heap/manager,
   components/js/runtime/vm/atom,
   components/js/runtime/abstract/[to_string, equating],
   components/js/stdlib/prelude

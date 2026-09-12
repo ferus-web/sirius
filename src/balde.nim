@@ -250,18 +250,6 @@ proc getDumpIRForList(ctx: Input): seq[string] =
 
   newSeq[string](0)
 
-func `%`(
-    t: tuple[str: Option[string], exc: Option[void], ident: Option[string]]
-): JsonNode =
-  if *t.str:
-    return newJString &t.str
-
-  if *t.exc:
-    return "exception".newJString
-
-  if *t.ident:
-    return newJString &t.ident
-
 proc execFile(ctx: Input, file: string) {.inline.} =
   profileThis "execFile() sanity checks":
     if not fileExists(file):

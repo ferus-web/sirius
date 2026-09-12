@@ -108,9 +108,7 @@ func decodeSurrogatePair*(high, low: uint16): uint32 {.inline, raises: [ValueErr
   ((high - HighSurrogateMin).uint32 shl 10'u32) + (low - LowSurrogateMin).uint32 +
     FirstSupplementaryPlaneCodePoint
 
-func codePointAt*(
-    view: UTF16View, index: SomeUnsignedInt
-): uint32 {.raises: [ValueError].} =
+func codePointAt*(view: UTF16View, index: SomeUnsignedInt): uint32 =
   ## Get the code point at `index` in this view.
   if view.data == nil:
     raise newException(Defect, "UTF16View has no buffer attached")

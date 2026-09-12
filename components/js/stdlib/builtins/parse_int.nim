@@ -1,4 +1,6 @@
 ## `parseInt` builtin.
+##
+## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[strutils, math, options]
 import components/js/runtime/vm/prelude
@@ -29,6 +31,7 @@ template parseIntFunctionSubstitution*() =
           some(10) # a. Set R to 10.
 
   try:
+    # TODO: Replace this with exceptionless parsing too.
     runtime.vm.registers.retVal = some(
       case &radix
       of 2:
@@ -45,7 +48,7 @@ template parseIntFunctionSubstitution*() =
         else:
           floating(runtime, NaN)
     )
-  except ValueError as exc:
+  except ValueError:
     runtime.vm.registers.retVal = some floating(runtime, NaN)
 
 proc parseIntGenerateStdIr*(runtime: Runtime) =

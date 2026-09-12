@@ -93,7 +93,7 @@ proc emitNativeCode*(cgen: BaselineJIT, clause: Clause): bool =
 
       cgen.prepareAtomAddCall(int64(&op.arguments[0].getInt()))
     of CreateField:
-      prepareLoadString(cgen, &op.arguments[2].getStr()) # puts the string in r8
+      prepareLoadString(cgen, cstring(&op.arguments[2].getStr())) # puts the string in r8
 
       prepareAtomGetCall(cgen, &op.arguments[0].getInt()) # put the JSValue in rax
       cgen.s.mov(regRdi.reg, regRax) # put the JSValue as the first arg
@@ -163,7 +163,7 @@ proc emitNativeCode*(cgen: BaselineJIT, clause: Clause): bool =
       cgen.s.call(cgen.callbacks.passArgument)
       cgen.s.add(regRsp.reg, 8)
     of LoadStr:
-      prepareLoadString(cgen, &op.arguments[1].getStr()) # puts the string in r8
+      prepareLoadString(cgen, cstring(&op.arguments[1].getStr())) # puts the string in r8
 
       # Allocate the string on GC'd memory
       # FIXME: Can't we just reuse the same heap memory used in the prep-load-string call?
@@ -178,7 +178,7 @@ proc emitNativeCode*(cgen: BaselineJIT, clause: Clause): bool =
       # TODO: check if the clause has been JIT'd too. If so,
       # use the compiled version
 
-      prepareLoadString(cgen, &op.arguments[0].getStr())
+      prepareLoadString(cgen, cstring(&op.arguments[0].getStr()))
 
       cgen.s.sub(regRsp.reg, 8)
       cgen.s.mov(regRdi, cast[int64](cgen.vm))
@@ -203,7 +203,7 @@ proc emitNativeCode*(cgen: BaselineJIT, clause: Clause): bool =
       cgen.s.call(move(fun))
       cgen.s.add(regRsp.reg, 8)
     of LoadBytecodeCallable:
-      prepareLoadString(cgen, &op.arguments[1].getStr())
+      prepareLoadString(cgen, cstring(&op.arguments[1].getStr()))
 
       cgen.s.sub(regRsp.reg, 8)
       cgen.s.mov(regRdi, cast[int64](cgen.vm))
@@ -231,7 +231,7 @@ proc emitNativeCode*(cgen: BaselineJIT, clause: Clause): bool =
       cgen.s.mov(regRdi, cast[int64](cgen.vm))
       cgen.s.add(regRsp.reg, 8)
     of WriteField:
-      prepareLoadString(cgen, &op.arguments[1].getStr())
+      prepareLoadString(cgen, cstring(&op.arguments[1].getStr()))
 
       cgen.s.sub(regRsp.reg, 8)
       cgen.s.mov(regRdi, cast[int64](cgen.vm))

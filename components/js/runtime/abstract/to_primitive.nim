@@ -55,7 +55,8 @@ proc ToPrimitive*(
     if *exoticToPrim:
       # b. If exoticToPrim is not undefined, then
 
-      let hint =
+      let hint {.used.} =
+        # TODO: Use this as an argument below.
         if !preferredType:
           # i. If preferredType is not present, then
           # 1. Let hint be "default".
@@ -67,7 +68,7 @@ proc ToPrimitive*(
         else:
           # iii. Else,
           # 1. Assert: preferredType is number.
-          if &preferredType in [Integer, Float]:
+          if &preferredType in {Integer, Float}:
             # 2. Let hint be "number".
             PrimitiveHint.Number
           else:

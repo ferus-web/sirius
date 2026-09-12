@@ -5,7 +5,7 @@ import std/[options, math]
 import
   components/js/runtime/[arguments, atom_helpers, types, wrapping, bridge, construction],
   components/js/stdlib/errors
-import components/js/runtime/abstract/[coercion, equating, slots]
+import components/js/runtime/abstract/[coercion, equating]
 import pkg/shakar
 import components/js/runtime/vm/atom
 

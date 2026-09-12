@@ -1,6 +1,6 @@
 ## Implementation of the `Date` object
 ##
-## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
+## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak at disroot dot org)
 import std/[math, strformat, times, options]
 import pkg/shakar
 import components/js/runtime/vm/atom
@@ -102,7 +102,7 @@ proc toDateString*(tv: float): string {.gcsafe.} =
   let t = tv
 
   # FIXME: non-compliant!
-  fmt"{dateToString(tv)} {timeToString(tv)}{getTimeZoneString(tv)}"
+  fmt"{dateToString(t)} {timeToString(t)}{getTimeZoneString(t)}"
 
 proc generateStdIR*(runtime: Runtime) =
   runtime.registerType("Date", JSDate)

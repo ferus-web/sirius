@@ -6,9 +6,8 @@ import std/[tables, options, macros, strformat, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
-  components/js/runtime/[
-    arguments, atom_obj_variant, wrapping, atom_helpers, types, normalize, construction
-  ]
+  components/js/runtime/
+    [arguments, atom_obj_variant, wrapping, atom_helpers, types, construction]
 import pkg/shakar
 
 privateAccess(Runtime)
@@ -293,7 +292,6 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
     jsType.ancestor = &ancestor
     jsType.objRepr.prototype = jsType.ancestor.objRepr
 
-  let index = runtime.types.len
   jsType.proto = hash($prototype)
   jsType.name = name
 

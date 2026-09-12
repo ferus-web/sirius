@@ -286,24 +286,6 @@ proc expand*(
     else:
       discard
 
-proc verifyNotOccupied*(runtime: Runtime, ident: string, fn: Function): bool =
-  var prev = fn.prev
-
-  while *prev:
-    let parked =
-      try:
-        discard runtime.index(ident, defaultParams(fn))
-        true
-      except ValueError as exc:
-        false
-
-    if parked:
-      return true
-
-    prev = (&prev).prev
-
-  false
-
 proc loadFieldAccessStrings*(runtime: Runtime, access: FieldAccess) =
   var curr = access.next
   assert(
@@ -578,9 +560,6 @@ proc genThrowError(runtime: Runtime, fn: Function, stmt: Statement, internal: bo
   # info "emitter: add error-throw logic"
 
   if *stmt.error.str:
-    let msg = &stmt.error.str
-
-    # info "emitter: error string that will be raised: `" & msg & '`'
     runtime.expand(fn, stmt, internal)
 
     runtime.ir.passArgument(runtime.index("error_msg", internalIndex(stmt)))
