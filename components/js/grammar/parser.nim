@@ -667,7 +667,6 @@ proc parseDeclaration(
       break
     of TokenKind.Identifier:
       if not parser.tokenizer.eof():
-        let copiedTok = parser.tokenizer
         let next = parser.tokenizer.nextExceptWhitespace()
         case (&next).kind
         of TokenKind.LParen:
@@ -1543,7 +1542,6 @@ proc parseIndexes(parser: Parser, identifier: string): Option[Statement] =
     # just a lonely index
     return some(access)
 
-  let state = parser.tokenizer
   if (
     let expectingEquals = parser.tokenizer.nextExceptWhitespace()
     !expectingEquals or (&expectingEquals).kind == TokenKind.Equal
@@ -1610,10 +1608,6 @@ proc parseStatement(parser: Parser): Option[Statement] =
 
     parser.ast.scopes[parser.ast.currentScope] = ensureMove(scope)
   of TokenKind.Identifier:
-    let
-      prevPos = parser.tokenizer.pos
-      prevLoc = parser.tokenizer.location
-
     if not parser.tokenizer.eof():
       let next = parser.tokenizer.nextExceptWhitespace()
 
@@ -1776,7 +1770,7 @@ proc parseStatement(parser: Parser): Option[Statement] =
         # TODO: Verify that nim-yaml is actually gcsafe.
         {.cast(gcsafe).}:
           yaml.load(token.comment, parser.ast.test262)
-      except CatchableError as exc:
+      except CatchableError:
         discard
   of TokenKind.Typeof:
     let typeofCall = parser.parseTypeofCall()

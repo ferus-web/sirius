@@ -8,7 +8,6 @@ import
     copy_propagation,
     escape_analysis,
   ]
-import pkg/[shakar]
 
 func optimize*(pipeline: var pipeline.Pipeline, passes: seq[Passes]) =
   for pass in passes:
@@ -21,5 +20,3 @@ func optimize*(pipeline: var pipeline.Pipeline, passes: seq[Passes]) =
       propagateCopies(pipeline)
     of Passes.EscapeAnalysis:
       analyzeEscapes(pipeline)
-    else:
-      unreachable

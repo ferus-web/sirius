@@ -213,13 +213,6 @@ proc generateTraceback*(interpreter: Interpreter): Option[string] {.inline, cdec
     let cls = &clause
     let op = cls.find(currTrace.index)
 
-    let line =
-      # FIXME: weird stuff
-      if currTrace.exception.operation < 2:
-        currTrace.exception.operation
-      else:
-        currTrace.exception.operation - 1
-
     if not *op:
       if currTrace.exception.clause != "@start":
         msg &= "\n\tFunction <" & currTrace.exception.clause & '>'

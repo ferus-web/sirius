@@ -680,9 +680,7 @@ macro genAssembler(name, instr: untyped): untyped =
           (ident"cond", bindSym"Condition")
         else:
           error("invalid param", param)
-          {.warn[UnreachableCode]: off.}
           (nil, nil) # shouldn't be necessary, but error is not noreturn
-          {.warn[UnreachableCode]: on.}
       finalProc[3].add(newIdentDefs(name, typ))
     if emit.len == 1 and emit[0].kind == nnkIfStmt:
       for branch in emit[0]:
