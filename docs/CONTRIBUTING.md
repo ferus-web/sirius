@@ -2,7 +2,7 @@
 Contributing to Sirius is a relatively straightforward process.
 As this is currently, at large, a solo project, I'm more than happy to accept any contributions (given they're appropriately created and presented).
 
-> **Note**: Sirius currently only supports Linux. WSL has not been tested. There are plans to extend support to the BSDs and Android, then MacOS, and finally Windows. Feel free to work on that as well.
+> **Note** Sirius currently only supports Linux. WSL has not been tested. There are plans to extend support to the BSDs and Android, then MacOS, and finally Windows. Feel free to work on that as well.
 
 # Setting up a development environment
 
