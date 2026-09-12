@@ -1,8 +1,6 @@
 ## Some bindings for GTK4/libadwaita/GLib
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-{.passC: gorge("pkg-config --cflags gtk4 libadwaita-1").}
-{.passL: gorge("pkg-config --libs gtk4 libadwaita-1").}
 
 {.push header: "<glib-unix.h>".}
 type

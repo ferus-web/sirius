@@ -43,5 +43,5 @@ chroma = ">= 1.0.0"
 nint128 = ">= 0.3.3"
 
 [platforms.native]
-include = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf"]
-link = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf"]
+include = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf", "gtk4", "libadwaita-1"]
+link = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf", "gtk4", "libadwaita-1"]
