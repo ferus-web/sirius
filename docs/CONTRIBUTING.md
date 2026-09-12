@@ -61,7 +61,7 @@ Compilation can take a minute, as Sirius is a relatively larger codebase. Expect
 Now, you should have your very own build of Sirius, alongside a fully working development toolchain for some browser engine hacking! :^)
 
 # Signing In
-In order to make contributions, you must sign into my Forgejo instance. You can directly link your GitHub account to it via OAuth.
+In order to make contributions, you must sign into [my Forgejo instance](https://git.xtrayambak.xyz). You can directly link your GitHub account to it via OAuth.
 
 You can log in [here](https://git.xtrayambak.xyz/user/login) and make an account.
 

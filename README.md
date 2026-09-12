@@ -9,6 +9,9 @@ It also has a _relatively_ capable embedding API, that lets other Nim programs (
 ![An image of Sirius rendering the first test page](screenshots/test001.jpg)
 ![An image of Sirius rendering the second test page](screenshots/test003.jpg)
 
+# contributing
+In order to set up a development environment for hacking on Sirius, check the [contribution guide document](https://git.xtrayambak.xyz/ferus-web/sirius/src/branch/master/docs/CONTRIBUTING.md) for more information.
+
 # close roadmap
 
 - [X] HTML5 parsing infra/DOM types (mostly taken from Chame's minidom for now)
@@ -36,7 +39,3 @@ Also, its hypermodular nature made it extremely tiring to make minor changes in 
 
 # then how is this different?
 Most of the unstable, fast-moving components are located at `components/`, so I can make changes to them without pulling my hair out. The stable parts like the CSS3 parser are already separate packages that others rely on, so they stay as-is (albeit Stylus did get a new release to fix some of the aforementioned nasty code from ye olden days).
-
-## some improvements over ferus
-- Not written by a clueless 14 year old
-- The layout engine is actually properly extensible now, I guess.
