@@ -4,5 +4,8 @@
 !LICENSE
 !vendor/*
 
+!tools/neo/*
+!tools/neo
+
 neo.paths
 cookies.json
