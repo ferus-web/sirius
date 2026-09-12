@@ -3,16 +3,13 @@
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[options, hashes, strutils, tables, importutils]
-import components/aux/pretty
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/prelude
 import components/js/grammar/prelude
 import pkg/shakar
 import
-  components/js/runtime/[
-    normalize, types, atom_helpers, arguments, statement_utils, bridge, describe,
-    construction,
-  ]
+  components/js/runtime/
+    [normalize, types, atom_helpers, arguments, bridge, describe, construction]
 import components/js/runtime/vm/heap/boehm
 import components/js/runtime/abstract/[to_string, equating]
 import components/js/stdlib/prelude
@@ -412,7 +409,7 @@ proc genCall(
       stmt.fn.function
 
   proc fillArguments() =
-    var argumentRegs = newSeqUninitialized[uint](stmt.arguments.len)
+    var argumentRegs = newSeqUninit[uint](stmt.arguments.len)
     for i, arg in stmt.arguments:
       case arg.kind
       of cakIdent:
@@ -513,7 +510,7 @@ proc genConstructObject(
   runtime.expand(fn, stmt, internal)
   runtime.ir.resetArgs()
 
-  var argumentRegs = newSeqUninitialized[uint](stmt.args.len + 1)
+  var argumentRegs = newSeqUninit[uint](stmt.args.len + 1)
   argumentRegs[0] = runtime.index(stmt.objName, defaultParams(fn))
   for i, arg in stmt.args:
     case arg.kind
