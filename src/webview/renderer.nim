@@ -822,6 +822,12 @@ proc handleIPCMessage(view: WebRenderer) =
       keycode = &msg.argument(1, string),
       repeat = &msg.argument(2, bool),
     )
+  of RenderOp.SendGraphicsFD:
+    view.client.encoder.encode(MasterOp.UseGraphicsFD)
+    view.client.encoder.push(
+      FileDescriptor(VulkanContext(view.renderCtx.fig.ctx).exportBufferFd())
+    )
+    assert *view.client.send()
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

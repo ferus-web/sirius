@@ -59,6 +59,9 @@ proc click*(view: WebView, id: TabID) =
 proc pressKey*(view: WebView, id: TabID, key, keycode: string, repeat: bool) =
   view.master.pressKey(cast[uint32](id), key, keycode, repeat)
 
+proc requestGraphicsFd*(view: WebView, id: TabID) =
+  view.master.requestGraphicsFd(cast[uint32](id))
+
 {.pop.}
 
 proc cleanupDeadProcess(view: WebView, tab: TabID, process: Process) =
@@ -115,6 +118,7 @@ proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
     if view.bufferFd >= 0'i32:
       discard posix.close(view.bufferFd)
 
+    # debugEcho "tab " & $tab & " uses buffer " & $dmaFd
     view.bufferFd = dmaFd
     if view.callbacks.onReconstruct != nil:
       view.callbacks.onReconstruct(view, tabId)

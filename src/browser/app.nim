@@ -241,6 +241,9 @@ proc interactionSwitchTab(browser: BrowserState, tab: BrowserTab) =
   # we don't send those to unfocused tabs
   browser.view.resizeRenderTarget(tab.id, browser.viewportSize)
 
+  # we also need to request the graphics FD again because we're amnesiacs
+  browser.view.requestGraphicsFd(tab.id)
+
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
 

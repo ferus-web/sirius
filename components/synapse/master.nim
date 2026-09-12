@@ -166,6 +166,13 @@ proc pressKey*(
 
   discard master.send(process.fd)
 
+proc requestGraphicsFd*(master: Master, tab: uint32) =
+  let process = &master.tabs[tab].renderer()
+
+  # sendGraphicsFD
+  master.encoder.encode(RenderOp.SendGraphicsFD)
+  discard master.send(process.fd)
+
 proc initMaster*(zygoteRoutine: ZygoteRoutine): Master =
   let master =
     Master(encoder: initEncoder(MaxPacketSize), decoder: initDecoder(MaxPacketSize))
