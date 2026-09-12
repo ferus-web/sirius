@@ -80,6 +80,7 @@ proc compileLowered(cgen: MidtierJIT, pipeline: pipeline.Pipeline): Option[JITSe
 
       alignStack 8:
         cgen.s.mov(regRdi, cast[int64](cgen.vm))
+        cgen.s.mov(regRdx, cast[int64](index))
         cgen.s.call(cgen.callbacks.addAtom)
     of InstKind.ReadProperty:
       let
