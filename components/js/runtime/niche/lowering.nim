@@ -1406,6 +1406,13 @@ proc genDeclaration*(
         runtime.index(stmt.declValue.fieldAccessList.identifier, defaultParams(fn)),
         stmt.declValue.fieldAccessList,
       )
+    of ConstructObject:
+      let idx = runtime.realm.addrIdx
+      runtime.markLocal(fn, stmt.declIdent) # TODO: Internal
+      runtime.genConstructObject(fn = fn, stmt = stmt.declValue, internal = internal)
+      runtime.ir.readRegister(idx, Register.ReturnValue)
+
+      idx
     else:
       debugEcho stmt.declValue.kind
       unreachable
