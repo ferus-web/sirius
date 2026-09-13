@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[deques, monotimes, options, hashes, tables, times]
+import std/[algorithm, deques, monotimes, options, hashes, tables, times]
 import components/js/runtime/vm/ir/generator
 import components/js/runtime/vm/prelude
 import components/js/grammar/prelude
@@ -312,7 +312,7 @@ proc markLocal*(
 proc resolveVariable*(
     runtime: Runtime, ident: string, params: IndexParams, demangle: bool = false
 ): Option[uint] =
-  for value in runtime.realm.values:
+  for value in runtime.realm.values.sortedByIt(it.kind).reversed():
     for prio in params.priorities:
       if value.kind == vkGlobal and value.identifier == ident:
         return some(value.index)
