@@ -408,7 +408,7 @@ func consumeExclaimation*(tokenizer: var Tokenizer): Token =
       tokenizer.pos += 2
       return Token(kind: TokenKind.NotTrueEqual)
   else:
-    return Token(kind: TokenKind.Invalid)
+    return Token(kind: TokenKind.LNot)
 
 func consumePlus*(tokenizer: var Tokenizer): Token {.inline.} =
   tokenizer.advance()
