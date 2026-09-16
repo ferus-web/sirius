@@ -13,7 +13,8 @@ import
     [document, element, event, event_target, mouse_event, keyboard_event, node],
   components/scripting/[url, timeouts],
   components/scripting/html/[navigator, performance, window, htmlelement],
-  components/scripting/html/element/htmlinputelement
+  components/scripting/html/element/htmlinputelement,
+  components/scripting/websocket/websocket
 import components/aux/pretty
 
 when defined(unix):
@@ -27,6 +28,7 @@ logScope:
 type HostScriptingCallbacks* = object
   ## Callbacks that the host exposes for bindings to call, in order to talk to it.
   window*: WindowHostCallbacks
+  websocket*: WebSocketHostCallbacks
 
   getTimeOrigin*: proc(): int64
 
@@ -66,6 +68,8 @@ proc registerWebBindings(
 
   performance.generateBindings(elem.script.rt)
   performance.generateGlobal(elem.script.rt, callbacks.getTimeOrigin())
+
+  websocket.generateBindings(elem.script.rt, callbacks.websocket)
 
 proc setupRandomState(rng: out uint64) =
   when defined(unix):

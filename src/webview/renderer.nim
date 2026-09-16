@@ -21,6 +21,7 @@ import
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
   components/net/[cookie, cookie_parser, core, mime],
+  components/net/ws/types,
   components/js/grammar/prelude,
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
   components/js/runtime/vm/atom,
@@ -28,6 +29,7 @@ import
   components/js/runtime/compiler/base,
   components/scripting/[executor, types],
   components/scripting/dom/[mouse_event, keyboard_event],
+  components/scripting/websocket/websocket,
   components/scripting/url as jsurl,
   components/synapse/[client, encoder, decoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, master],
@@ -52,6 +54,13 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
           renderer.client.encoder.push(&message)
 
         discard renderer.client.send()
+    ),
+    websocket: WebSocketHostCallbacks(
+      createWebSocket: proc(url: url.URL): WebSocket {.gcsafe.} =
+        let targetNode = WebSocket(url: url) # TODO: Protocols
+        renderer.websockets[targetNode] = WebSocketClient()
+
+        targetNode
     ),
     getTimeOrigin: proc(): int64 =
       # NOTE: This doesn't account for any new realms being created, whenever that works.

@@ -417,23 +417,23 @@ func genInterface(node: Node, buffer: var string) =
       of ValueKind.Any:
         buffer &= argumentGetCall
       of ValueKind.Short:
-        buffer &= &"int16(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"int16(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.Long:
-        buffer &= &"int32(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"int32(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.UnsignedShort:
-        buffer &= &"uint16(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"uint16(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.UnsignedLong:
-        buffer &= &"uint32(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"uint32(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.Boolean:
         buffer &= &"&getBool({argumentGetCall})"
       of ValueKind.Byte:
-        buffer &= &"int8(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"int8(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.Octet:
-        buffer &= &"uint8(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"uint8(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.LongLong:
-        buffer &= &"int64(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"int64(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.UnsignedLongLong:
-        buffer &= &"uint64(runtime.ToNumeric({argumentGetCall}))"
+        buffer &= &"uint64(&getFloat(runtime.ToNumeric({argumentGetCall})))"
       of ValueKind.DOMString:
         buffer &= argumentGetCall
 

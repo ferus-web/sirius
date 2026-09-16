@@ -11,9 +11,11 @@ import
   components/layout/[output_manager, types],
   components/os/[assets, fonts],
   components/net/core,
+  components/net/ws/types,
   components/js/runtime/prelude as js,
   components/synapse/types,
-  components/css/types
+  components/css/types,
+  components/scripting/websocket/websocket
 import ./[cookie_jar]
 
 logScope:
@@ -77,6 +79,8 @@ type
     running*: bool
 
     lastCursorPredef*: CursorPredefined
+
+    websockets*: Table[WebSocket, WebSocketClient]
 
   WebRenderer* = ref WebRendererObj
 
