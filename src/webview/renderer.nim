@@ -6,7 +6,7 @@ import
     algorithm, monotimes, options, streams, strformat, strutils, sequtils, tables,
     unicode, os, times,
   ]
-import ./[branding, cookie_jar, hit_testing, resource_loader, types]
+import ./[branding, cookie_jar, hit_testing, types]
 import
   pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb],
   pkg/figdraw/vulkan/vulkan_context
@@ -21,7 +21,8 @@ import
   components/layout/[flow, node_builder, output_manager, types],
   components/os/[assets, fonts, threads],
   components/net/[cookie, cookie_parser, core, mime],
-  components/net/ws/types,
+  components/net/loader/core,
+  components/net/ws/[client, types],
   components/js/grammar/prelude,
   components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
   components/js/runtime/vm/atom,
@@ -56,9 +57,16 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
         discard renderer.client.send()
     ),
     websocket: WebSocketHostCallbacks(
-      createWebSocket: proc(url: url.URL): WebSocket {.gcsafe.} =
+      createWebSocket: proc(
+          url: url.URL, onopen: proc(ws: WebSocket)
+      ): WebSocket {.gcsafe.} =
         let targetNode = WebSocket(url: url) # TODO: Protocols
-        renderer.websockets[targetNode] = WebSocketClient()
+        let ws = newWebSocket(renderer.loader, url)
+        ws.callbacks.opened = proc(_: WebSocketClient) =
+          # HACK: I'm sure there's a better way to plug in web API bindings' dispatchers
+          onopen(targetNode)
+
+        renderer.websockets[targetNode] = ws
 
         targetNode
     ),

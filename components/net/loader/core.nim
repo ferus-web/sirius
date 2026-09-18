@@ -7,11 +7,13 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[locks, streams, tables]
 import pkg/[chronicles, shakar, url]
-import components/net/core
-import ./types
+import
+  components/net/[curl_wrapper, core],
+  components/net/loader/types,
+  components/impure/libcurl
 
 logScope:
-  topics = "webview/resource_loader"
+  topics = "loader"
 
 proc getAsyncStream*(
     loader: ResourceLoader,
@@ -43,6 +45,36 @@ proc getAsyncStream*(
 
   requestId
 
+proc getAsyncStream*(
+    loader: ResourceLoader,
+    url: url.URL,
+    handle: libcurl.CURL,
+    finalize: FinalizeCallback,
+    headers: HttpHeaders = emptyHttpHeaders(),
+    timeoutMs = 0,
+): RequestID =
+  let
+    requestId = loader.net.requestCount
+    asset = PendingAsset(finalize: finalize)
+
+  loader.net.startRequestAdhoc(
+    RequestSpec(
+      verb: HttpVerb.Get,
+      url: url,
+      headers: headers,
+      body: newString(0),
+      requestId: requestId,
+      timeoutMs: timeoutMs,
+      writerKind: BodyWriterKind.AsyncStream,
+    ),
+    handle = handle,
+  )
+
+  inc loader.net.requestCount
+  loader.pendingAssets[requestId] = asset
+
+  requestId
+
 proc poll*(loader: ResourceLoader) =
   var resp: RequestResult
 
@@ -64,6 +96,15 @@ proc poll*(loader: ResourceLoader) =
       loader.retryQueue.addFirst(queued)
     else:
       loader.pendingAssets[queued.spec.requestId] = queued.asset
+
+proc createAdhocInstance*(
+    loader: ResourceLoader, errorBuffer: var string
+): libcurl.CURL =
+  let handle = curl_easy_init()
+  discard curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, errorBuffer[0].addr)
+  discard curl_easy_setopt(handle, CURLOPT_NOSIGNAL, clong(1))
+
+  handle
 
 proc newResourceLoader*(net: NetworkClient): ResourceLoader =
   info "Starting resource loader"

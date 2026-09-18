@@ -15,7 +15,8 @@ import
   components/js/runtime/prelude as js,
   components/synapse/types,
   components/css/types,
-  components/scripting/websocket/websocket
+  components/scripting/websocket/websocket,
+  components/net/loader/types
 import ./[cookie_jar]
 
 logScope:
@@ -25,17 +26,6 @@ type
   WebViewOpts* = object
     disableImageLoading*, disableExternalStylesheets*, disableStyling*,
       disableScripting*: bool
-
-  FinalizeCallback* = proc(response: Response, err: TransportError)
-
-  PendingAsset* = object
-    finalize*: FinalizeCallback
-
-  ResourceLoader* = ref object
-    net*: NetworkClient
-    pendingAssets*: Table[RequestID, PendingAsset]
-
-    retryQueue*: Deque[tuple[spec: RequestSpec, asset: PendingAsset]]
 
   WebRendererObj = object
     renderCtx*: RenderingContext
