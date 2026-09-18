@@ -68,7 +68,14 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
 
         renderer.websockets[targetNode] = ws
 
-        targetNode
+        targetNode,
+      getReadyState: proc(node: WebSocket): WSClientState {.gcsafe.} =
+        assert(
+          renderer.websockets.contains(node),
+          "Invariant: WebSocketHostCallbacks::getReadyState() got an unregistered WebSocket target given to it.",
+        )
+
+        renderer.websockets[node].state,
     ),
     getTimeOrigin: proc(): int64 =
       # NOTE: This doesn't account for any new realms being created, whenever that works.

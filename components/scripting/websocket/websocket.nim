@@ -8,7 +8,8 @@ import
   components/js/stdlib/types/std_string_type,
   components/scripting/dom/event_target,
   components/scripting/url,
-  components/dom/dom
+  components/dom/dom,
+  components/net/ws/types
 import pkg/[chronicles, shakar, url]
 
 logScope:
@@ -23,6 +24,7 @@ type
   WebSocketHostCallbacks* = object
     createWebSocket*:
       proc(url: URL, onopen: proc(client: WebSocket)): WebSocket {.gcsafe.}
+    getReadyState*: proc(ws: WebSocket): WSClientState {.gcsafe.}
 
   JSWebSocket* = object of event_target.EventTarget
 
@@ -46,9 +48,14 @@ proc urlGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: JSWebSocket.url getter"
   undefined(rt)
 
-proc readyStateGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: JSWebSocket.readyState getter"
-  undefined(rt)
+proc readyStateGetter(
+    rt: Runtime, this: JSValue, callbacks: WebSocketHostCallbacks
+): JSValue =
+  ## https://websockets.spec.whatwg.org/#websocket-ready-state
+
+  # The readyState getter steps are to return this’s ready state.
+  rt.wrap(cast[uint16](callbacks.getReadyState(&this.getPrivateObject(WebSocket))))
+    # NOTE: Technically, WSClientState is a uint8 but it doesn't matter.
 
 proc bufferedAmountGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: JSWebSocket.bufferedAmount getter"
@@ -158,7 +165,7 @@ proc generateBindings*(runtime: Runtime, callbacks: WebSocketHostCallbacks) =
     "readyState",
     FieldAccessor(
       getter: proc(this: JSValue) =
-        ret readyStateGetter(rt = runtime, this = this)
+        ret readyStateGetter(rt = runtime, this = this, callbacks = callbacks)
     ),
   )
   runtime.defineAccessor(
