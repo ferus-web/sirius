@@ -76,6 +76,16 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
         )
 
         renderer.websockets[node].state,
+      send: proc(node: WebSocket, data: string) {.gcsafe.} =
+        assert(
+          renderer.websockets.contains(node),
+          "Invariant: WebSocketHostCallbacks::send() got an unregistered WebSocket target given to it.",
+        )
+
+        let associated = renderer.websockets[node]
+        warn "TODO: WebSocketHostCallbacks::send()",
+          data = data, state = associated.state
+      ,
     ),
     getTimeOrigin: proc(): int64 =
       # NOTE: This doesn't account for any new realms being created, whenever that works.

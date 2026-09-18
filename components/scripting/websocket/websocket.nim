@@ -2,10 +2,11 @@
 ## https://websockets.spec.whatwg.org/#dom-websocket-websocket
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[hashes, tables]
+import std/[hashes, tables, strformat]
 import
   components/js/runtime/prelude,
   components/js/stdlib/types/std_string_type,
+  components/js/stdlib/errors,
   components/scripting/dom/event_target,
   components/scripting/url,
   components/dom/dom,
@@ -25,6 +26,7 @@ type
     createWebSocket*:
       proc(url: URL, onopen: proc(client: WebSocket)): WebSocket {.gcsafe.}
     getReadyState*: proc(ws: WebSocket): WSClientState {.gcsafe.}
+    send*: proc(ws: WebSocket, data: string) {.gcsafe.}
 
   JSWebSocket* = object of event_target.EventTarget
 
@@ -135,8 +137,36 @@ proc close(rt: Runtime, this: JSValue, code: uint16, reason: JSValue): JSValue =
   warn "IMPLEMENTME: WebSocket::close()", code = code, reason = rt.ToString(reason)
   undefined(rt)
 
-proc send(rt: Runtime, this: JSValue, data: JSValue): JSValue =
-  warn "IMPLEMENTME: WebSocket::send()", data = rt.ToString(data)
+proc send(
+    rt: Runtime, this: JSValue, data: JSValue, callbacks: WebSocketHostCallbacks
+): JSValue =
+  ## https://websockets.spec.whatwg.org/#dom-websocket-send
+
+  let node = &this.getPrivateObject(WebSocket)
+
+  if not rt.isA(data, JSString):
+    rt.typeError(&"Cannot send data via WebSocket: argument 1 must be a String")
+      # TODO: Other types when I implement them (Blob/ArrayBuffer/ArrayBufferView)
+    return
+
+  # The send(data) method steps are:
+
+  # 1. If this’s ready state is CONNECTING, then throw an "InvalidStateError" DOMException.
+  if callbacks.getReadyState(node) == WSClientState.Connecting:
+    # TODO: DOMException and InvalidStateError implementations!!!
+    rt.typeError("WebSocket is still connecting to the endpoint")
+    return
+
+  # 2. Run the appropriate set of steps from the following list:
+
+  # NOTE: I know this is redundant, I'm just keeping it here for later.
+  if rt.isA(data, JSString):
+    # If data is a string
+    # If the WebSocket connection is established and the WebSocket closing handshake has not yet started, then the user agent must send a WebSocket Message comprised of the data argument using a text frame opcode; if the data cannot be sent, e.g. because it would need to be buffered but the buffer is full, the user agent must flag the WebSocket as full and then close the WebSocket connection. Any invocation of this method with a string argument that does not throw an exception must increase the bufferedAmount attribute by the number of bytes needed to express the argument as UTF-8. [UNICODE] [ENCODING] [WSP]
+
+    # NOTE: all of this stuff is to be handled directly by net::ws::client
+    callbacks.send(node, rt.ToString(data))
+
   undefined(rt)
 
 proc generateBindings*(runtime: Runtime, callbacks: WebSocketHostCallbacks) =
@@ -264,6 +294,6 @@ proc generateBindings*(runtime: Runtime, callbacks: WebSocketHostCallbacks) =
     "send",
     proc(this: JSValue) =
       let data = &runtime.argument(1, required = true)
-      ret send(rt = runtime, this = this, data = data)
+      ret send(rt = runtime, this = this, data = data, callbacks = callbacks)
     ,
   )

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebSockets 001</title>
+  </head>
+  <body>
+    <h1>WebSocket thingmajig</h1>
+    <p><strong>Status:</strong> <span id="status">???</span></p>
+    <p><strong>Received:</strong> <span id="out">???</span></p>
+  </body>
+  <script>
+    const statusElem = document.getElementById("status");
+    const outElem = document.getElementById("out");
+
+    statusElem.textContent = "Connecting..."
+    const socket = new WebSocket("wss://echo.websocket.org");
+
+    socket.addEventListener("open", function(event) {
+      statusElem.textContent = "Open";
+      console.log("WebSocket connection open :3");
+      socket.send("hello sirius!");
+      console.log(socket.readyState);
+    });
+  </script>
+</html>
