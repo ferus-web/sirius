@@ -539,22 +539,11 @@ proc genReassignVal(runtime: Runtime, fn: Function, stmt: Statement) =
     let atomIndex = runtime.loadIRAtom(stmt.reAtom)
 
     inc runtime.realm.addrIdx
-
-    # prepare for internal call
-    runtime.ir.passArgument(
-      runtime.loadIRAtom(
-        stackInteger(runtime.index(accesses.identifier, defaultParams(fn)))
-      )
-    ) # 1: Atom index that needs its field to be overwritten
-
-    inc runtime.realm.addrIdx
-
-    runtime.ir.passArgument(atomIndex) # 2: The atom to be put in the field
-
-    runtime.loadFieldAccessStrings(accesses) # 3: The field access strings
-
-    runtime.ir.call("BALI_WRITE_FIELD")
-    runtime.ir.resetArgs()
+    runtime.ir.writeField(
+      runtime.index(accesses.identifier, defaultParams(fn)),
+      accesses.next.identifier,
+      atomIndex,
+    )
 
 proc genThrowError(runtime: Runtime, fn: Function, stmt: Statement, internal: bool) =
   # info "emitter: add error-throw logic"
@@ -1723,64 +1712,6 @@ proc generateInternalIR*(runtime: Runtime) =
       if not res:
         # Jump 2 instructions ahead
         runtime.vm.currIndex += 1
-    ,
-  )
-
-  runtime.vm[].registerBuiltin(
-    "BALI_WRITE_FIELD",
-    proc(_: Operation) =
-      let
-        destinationAtomIndex = uint(&getInt(&runtime.argument(1)))
-        writeAtom = &runtime.argument(2)
-
-      var accesses = createFieldAccess(
-        (
-          proc(): seq[string] =
-            if runtime.argumentCount() < 3:
-              return
-
-            var accesses: seq[string]
-            for i in 3 .. runtime.argumentCount():
-              accesses.add(&(&runtime.argument(i)).getStr())
-
-            accesses
-        )()
-      )
-
-      var destAtom = runtime.vm.stack[destinationAtomIndex]
-
-      if destAtom.kind != Object:
-        ret writeAtom
-
-      template checkDestAtom() =
-        if destAtom.isUndefined:
-          runtime.typeError("Value is undefined")
-
-        if destAtom.isNull:
-          runtime.typeError("Value is null")
-
-      checkDestAtom
-
-      while true:
-        let next = accesses.next
-        if next == nil:
-          break
-        else:
-          accesses = accesses.next
-
-        destAtom = runtime.getProperty(destAtom, accesses.identifier)
-        checkDestAtom
-
-      if accesses.identifier in destAtom.objFields and
-          destAtom.objFields[accesses.identifier].isAccessor:
-        let accessors = destAtom.objFields[accesses.identifier].accessor
-        runtime.vm.registers.callArgs = @[writeAtom]
-        runtime.vm[].invoke(accessors.setter)
-      else:
-        destAtom[accesses.identifier] = writeAtom
-
-      runtime.vm.stack[destinationAtomIndex] = ensureMove(destAtom)
-      ret writeAtom
     ,
   )
 
