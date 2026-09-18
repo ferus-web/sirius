@@ -1,9 +1,14 @@
 with import <nixpkgs> { };
 
+let
+  curlWs = curl.override {
+    websocketSupport = true;
+  };
+in
 mkShell {
   nativeBuildInputs = [
     pkg-config
-    curl
+    curlWs
     clang
     wayland
     vulkan-loader
@@ -29,7 +34,7 @@ mkShell {
   ];
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [
-    curl.dev
+    curlWs.dev
     wayland.dev
     fontconfig.dev
     simdutf
