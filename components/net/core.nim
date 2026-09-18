@@ -83,6 +83,7 @@ type
     easy: Easy
     curlHeaders: Slist
     curlUrl: RawUrl
+    adhoc: bool
 
   NetworkClientObj = object
     lock*: Lock
@@ -96,7 +97,7 @@ type
     maxInFlight: int
     defaultTimeoutMs: int
     maxRedirects: int
-    multi: Multi
+    multi*: Multi
     availableEasy: seq[Easy]
     queue: Deque[RequestWrap]
     inFlight: Table[pointer, RequestWrap]
@@ -150,7 +151,7 @@ proc bodyWriteCb(
       warn "BodyWriterContext is NULL? Ignoring."
       result = csize_t(total)
     else:
-      # debug "Write into body buffer",
+      # info "Write into body buffer",
       #  kind = body.kind, total = total, size = size, nitems = nitems
       case body.kind
       of BodyWriterKind.SyncString:
@@ -339,23 +340,43 @@ proc dispatchQueuedRequests(client: NetworkClient) =
   var done = false
   while not done:
     var request: RequestWrap
-    var easy: Easy
+    var easy: CURL
     acquire(client.lock)
     if client.abortRequested or client.availableEasy.len == 0 or client.queue.len == 0:
       done = true
     else:
       request = client.queue.popFirst()
-      easy = client.availableEasy.pop()
+      easy =
+        if request.easy.raw == nil:
+          # If not already configured, get an idling easy handle for this request.
+          client.availableEasy.pop().raw
+        else:
+          # Else, just use the one that was configured for the spec
+          request.easy.raw
+
     release(client.lock)
 
     if not done:
       var dispatched = true
       var dispatchError = ""
       try:
-        request.easy = move easy
-        configureEasy(client, request, request.easy)
+        request.easy.raw = easy
+        if not request.adhoc:
+          configureEasy(client, request, request.easy)
+        else:
+          # If the easy object is ad-hoc, do not over-configure it like we do
+          # for short lived HTTP requests. It might cause unintended behavior.
+          request.easy.setUrl(serialize(request.url))
+          request.easy.setUserAgent(client.userAgent)
+          request.easy.setWriteCallback(
+            bodyWriteCb, cast[pointer](request.responseBody)
+          )
+          request.easy.setHeaderCallback(
+            headerWriteCb, cast[pointer](addr request.responseHeadersRaw)
+          )
+
         client.multi.addHandle(request.easy)
-      except CatchableError:
+      except CatchableError as exc:
         dispatched = false
         dispatchError = getCurrentExceptionMsg()
 
@@ -535,6 +556,27 @@ proc wrapRequest(request: sink RequestSpec): RequestWrap {.inline.} =
     responseBody: BodyWriterContext(kind: request.writerKind),
     responseHeadersRaw: "",
     easy: default(Easy),
+    adhoc: false,
+  )
+  if wrapped.responseBody.kind == BodyWriterKind.AsyncStream:
+    wrapped.responseBody.stream = newStringStream()
+
+  ensureMove(wrapped)
+
+proc wrapRequest(
+    request: sink RequestSpec, easy: CURL, adhoc: bool = true
+): RequestWrap {.inline.} =
+  var wrapped = RequestWrap(
+    verb: request.verb,
+    url: move request.url,
+    headers: move request.headers,
+    body: move request.body,
+    requestId: request.requestId,
+    timeoutMs: request.timeoutMs,
+    responseBody: BodyWriterContext(kind: request.writerKind),
+    responseHeadersRaw: "",
+    easy: Easy(raw: easy),
+    adhoc: adhoc,
   )
   if wrapped.responseBody.kind == BodyWriterKind.AsyncStream:
     wrapped.responseBody.stream = newStringStream()
@@ -561,6 +603,16 @@ proc startRequest*(client: NetworkClient, request: sink RequestSpec) =
     raise newException(IOError, "client is closed")
 
   client.queue.addLast(wrapRequest(request))
+
+  signal(client.wakeCond)
+  release(client.lock)
+
+proc startRequestAdhoc*(
+    client: NetworkClient, request: sink RequestSpec, handle: libcurl.CURL
+) =
+  acquire(client.lock)
+
+  client.queue.addLast(wrapRequest(request, easy = handle))
 
   signal(client.wakeCond)
   release(client.lock)

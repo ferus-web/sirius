@@ -1,4 +1,4 @@
-## Implementation of `JSWebSocket`
+## Implementation of `WebSocket`
 ## https://websockets.spec.whatwg.org/#dom-websocket-websocket
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
@@ -21,7 +21,8 @@ type
     protocols*: seq[string]
 
   WebSocketHostCallbacks* = object
-    createWebSocket*: proc(url: URL): WebSocket {.gcsafe.}
+    createWebSocket*:
+      proc(url: URL, onopen: proc(client: WebSocket)): WebSocket {.gcsafe.}
 
   JSWebSocket* = object of event_target.EventTarget
 
@@ -113,7 +114,9 @@ proc newJSWebSocket*(
                 # TODO: Implement this constructor properly :(
             else:
               rt.toNativeURL(url)
-          )
+          ),
+          onopen = proc(ws: WebSocket) =
+            discard dispatchEvent(ws, "open", undefined(rt)),
         )
       )
     ),
@@ -122,11 +125,11 @@ proc newJSWebSocket*(
   obj
 
 proc close(rt: Runtime, this: JSValue, code: uint16, reason: JSValue): JSValue =
-  warn "IMPLEMENTME: JSWebSocket::close()", code = code, reason = rt.ToString(reason)
+  warn "IMPLEMENTME: WebSocket::close()", code = code, reason = rt.ToString(reason)
   undefined(rt)
 
 proc send(rt: Runtime, this: JSValue, data: JSValue): JSValue =
-  warn "IMPLEMENTME: JSWebSocket::send()", data = rt.ToString(data)
+  warn "IMPLEMENTME: WebSocket::send()", data = rt.ToString(data)
   undefined(rt)
 
 proc generateBindings*(runtime: Runtime, callbacks: WebSocketHostCallbacks) =

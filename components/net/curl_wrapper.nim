@@ -4,11 +4,11 @@ export CurlMsgType, CURLMsg
 
 type
   Easy* = object
-    raw: CURL
+    raw*: CURL
     errorBuf: string
 
   Multi* = object
-    raw: CURLM
+    raw*: CURLM
 
   Slist* = object
     raw: ptr curl_slist
