@@ -340,19 +340,14 @@ proc dispatchQueuedRequests(client: NetworkClient) =
   var done = false
   while not done:
     var request: RequestWrap
-    var easy: CURL
     acquire(client.lock)
     if client.abortRequested or client.availableEasy.len == 0 or client.queue.len == 0:
       done = true
     else:
       request = client.queue.popFirst()
-      easy =
-        if request.easy.raw == nil:
-          # If not already configured, get an idling easy handle for this request.
-          client.availableEasy.pop().raw
-        else:
-          # Else, just use the one that was configured for the spec
-          request.easy.raw
+      if request.easy.raw == nil:
+        # If not already configured, get an idling easy handle for this request.
+        request.easy = client.availableEasy.pop()
 
     release(client.lock)
 
@@ -360,7 +355,6 @@ proc dispatchQueuedRequests(client: NetworkClient) =
       var dispatched = true
       var dispatchError = ""
       try:
-        request.easy.raw = easy
         if not request.adhoc:
           configureEasy(client, request, request.easy)
         else:
