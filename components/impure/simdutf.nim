@@ -85,7 +85,9 @@ func binary_to_base64*(
 
 func utf16_length_from_utf8*(input: cstring | ptr char, length: uint64): uint64
 func convert_utf8_to_utf16*(
-  input: cstring | ptr char, length: uint64, output: ptr uint16
+  input: cstring | ptr char,
+  length: uint64,
+  output: ptr uint16 | ptr UncheckedArray[uint16],
 ): uint64
 
 func validate_utf16*(buf: ptr uint16, size: uint64): bool

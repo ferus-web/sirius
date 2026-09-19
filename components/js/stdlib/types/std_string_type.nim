@@ -11,13 +11,13 @@ import components/unicode/utf16view
 import pkg/shakar
 
 type JSString* = object
-  internal*: Hidden[ptr UTF16View]
+  internal*: Hidden[UTF16View]
   length*: uint64
 
-proc newJSString*(rt: Runtime, view: ptr UTF16View): JSValue =
+proc newJSString*(rt: Runtime, view: UTF16View): JSValue =
   let str = rt.createObjFromType(JSString)
 
-  str["length"] = integer(rt, int(view.size))
+  str["length"] = integer(rt, int(view.len))
   str.setHiddenField("internal", integer(rt, cast[int64](view)))
 
   str
@@ -32,21 +32,17 @@ proc newJSString*(rt: Runtime, native: string): JSValue =
       if size > 0:
         simdutf.utf16LengthFromUtf8(native[0].addr, size)
       else:
-        0'u64
+        1'u64
 
-  let view =
-    cast[ptr UTF16View](rt.realm.heap.allocate(cast[uint64](sizeof(UTF16View))))
-  view.data =
-    cast[ptr uint16](rt.realm.heap.allocate(cast[uint64](sizeof(uint16)) * sizeUtf16))
+    view = newUtf16View(rt, sizeUtf16)
 
   if size > 0:
     discard simdutf.convertUtf8ToUtf16(native[0].addr, size, view.data)
 
-  cast[ptr UncheckedArray[uint16]](view.data)[sizeUtf16] = 0'u16
-  view.size = sizeUtf16
+  # cast[ptr UncheckedArray[uint16]](view.data)[sizeUtf16] = 0'u16
 
   newJSString(rt, view)
 
 proc toNativeString*(str: JSValue): string =
   ## Given a `JSValue`, assuming it is a proper `JSString`, convert it into its native UTF-8 string representation.
-  cast[ptr UTF16View](&getInt(&getHiddenField(str, "internal")))[].toUTF8()
+  cast[UTF16View](&getInt(&getHiddenField(str, "internal"))).toUTF8()

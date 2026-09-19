@@ -24,6 +24,6 @@ proc generateStdIR*(runtime: Runtime) =
         {';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#'}
 
       # 3. Return ? Encode (uriString, extraUnescaped)
-      ret encode(uriString, extraUnescaped)
+      ret runtime.encode(uriString, extraUnescaped)
     ,
   )

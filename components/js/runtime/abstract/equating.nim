@@ -29,8 +29,8 @@ proc equateSameValueNonNumber*(runtime: Runtime, x, y: JSValue): bool =
   if runtime.isA(x, JSString):
     # a. If x and y have the same length and the same code units in the same positions, return true; otherwise, return false.
     let
-      xVal = newUtf16View(runtime.ToString(x))
-      yVal = newUtf16View(runtime.ToString(y))
+      xVal = newUtf16View(runtime, runtime.ToString(x))
+      yVal = newUtf16View(runtime, runtime.ToString(y))
 
     if xVal.codePointLen != yVal.codePointLen:
       return false
@@ -73,8 +73,8 @@ proc isLooselyEqual*(runtime: Runtime, x, y: JSValue): bool =
   if runtime.isA(x, JSString) and runtime.isA(y, JSString):
     # a. If x and y have the same length and the same code units in the same positions, return true; otherwise, return false.
     let
-      xVal = newUtf16View(runtime.ToString(x))
-      yVal = newUtf16View(runtime.ToString(y))
+      xVal = newUtf16View(runtime, runtime.ToString(x))
+      yVal = newUtf16View(runtime, runtime.ToString(y))
 
     if xVal.codePointLen != yVal.codePointLen:
       return false

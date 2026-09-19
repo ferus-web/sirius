@@ -2,7 +2,10 @@
 ##
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, unicode]
-import components/impure/simdutf
+import
+  components/impure/simdutf,
+  components/js/runtime/types,
+  components/js/runtime/vm/heap/manager
 import pkg/[results]
 
 const
@@ -25,18 +28,14 @@ type
     Little
     Host
 
-  UTF16View* = object
-    data*: ptr uint16
-    size*: uint64
+  UTF16ViewObj = object
+    data: ptr uint16
+    size: uint64 # in UTF16 codeunits, not bytes!
 
     endianness*: UTFEndianness
     cachedCpLength*: Option[uint64]
 
-proc `=destroy`*(view: UTF16View) =
-  if view.data == nil:
-    return
-
-  deallocShared(view.data)
+  UTF16View* = ptr UTF16ViewObj
 
 proc toUTF8*(view: UTF16View): string =
   if view.size < 1:
@@ -49,25 +48,38 @@ proc toUTF8*(view: UTF16View): string =
 
   ensureMove(buffer)
 
-proc newUtf16View*(str: ptr char, size: uint64): UTF16View {.raises: [].} =
-  ## Convert a UTF-8 buffer to a `UTF16View`
-  var view: UTF16View
+func data*(view: UTF16View): ptr UncheckedArray[uint16] =
+  cast[ptr UncheckedArray[uint16]](view.data)
+
+proc newUtf16View*(rt: Runtime, size: uint64): UTF16View =
+  ## Allocate a `UTF16View` on the JavaScript heap
+  ##
+  ## **NOTE**: `size` is in UTF-16 codepoints, not bytes!
+  let view = cast[UTF16View](rt.realm.heap.allocate(cast[uint64](sizeof(UTF16ViewObj))))
+  if size > 0:
+    view.data =
+      cast[ptr uint16](rt.realm.heap.allocate(cast[uint64](sizeof(uint16)) * size))
+  view.size = size
+
+  view
+
+proc newUtf16View*(rt: Runtime, native: string): UTF16View =
+  ## Allocate a `UTF16View` on the JavaScript heap, and
+  ## convert the string `native`'s UTF-8 content into UTF-16, and store it as the view's data.
+  let
+    size = cast[uint64](native.len)
+    sizeUtf16 =
+      if size > 0:
+        simdutf.utf16LengthFromUtf8(native[0].addr, size)
+      else:
+        0'u64
+
+    view = newUtf16View(rt, sizeUtf16)
 
   if size > 0:
-    view.size = simdutf.utf16LengthFromUtf8(str, size)
-    view.data = cast[ptr uint16](allocShared0(cast[uint64](sizeof(uint16)) * view.size))
-    discard simdutf.convertUtf8ToUtf16(str, size, view.data)
+    discard simdutf.convertUtf8ToUtf16(native[0].addr, size, view.data)
 
-  ensureMove(view)
-
-proc newUtf16View*(str: sink string): UTF16View =
-  newUtf16View(
-    if str.len > 0:
-      str[0].addr
-    else:
-      nil,
-    cast[uint64](str.len),
-  )
+  view
 
 func empty*(view: UTF16View): bool {.inline, raises: [].} =
   ## Check whether this view has no data
@@ -92,8 +104,7 @@ func codeUnitAt*(
   if view.data == nil:
     raise newException(Defect, "UTF16View has no buffer attached")
 
-  cast[ptr uint16](cast[uint64](view.data) + index)[]
-    # TODO: Can we not just use ptr UncheckedArray[uint16] here?
+  cast[ptr UncheckedArray[uint16]](view.data)[index]
 
 func decodeSurrogatePair*(high, low: uint16): uint32 {.inline, raises: [ValueError].} =
   ## Decode a surrogate pair.
@@ -151,14 +162,5 @@ func valid*(view: UTF16View): bool {.inline, raises: [].} =
   of UTFEndianness.Host:
     simdutf.validateUtf16(view.data, view.size)
 
-proc isomorphicDecode*(input: string): Option[UTF16View] {.inline.} =
-  ## To isomorphic decode a byte sequence input, return a string whose code point length is equal to input’s length and whose code points have the same values as the values of input’s bytes, in the same order. 
-  if input.len > 0:
-    let view = UTF16View(
-      data: cast[ptr uint16](allocShared0(input.len)), size: cast[uint64](input.len)
-    )
-    copyMem(cast[pointer](view.data), cast[pointer](input[0].addr), input.len)
-
-    return some(view)
-
-  none(UTF16View)
+func len*(view: UTF16View): uint64 {.inline.} =
+  view.size

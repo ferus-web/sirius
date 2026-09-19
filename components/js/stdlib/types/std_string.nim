@@ -11,8 +11,8 @@ import components/js/runtime/vm/atom
 import components/unicode/utf16view
 import pkg/shakar
 
-proc getUTF16View(str: JSValue): Option[ptr UTF16View] =
-  str.getPrivateObject(ptr UTF16View)
+proc getUTF16View(str: JSValue): Option[UTF16View] =
+  str.getPrivateObject(UTF16View)
 
 proc generateStdIr*(runtime: Runtime) =
   runtime.registerType(prototype = JSString, name = "String")
@@ -43,7 +43,7 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "toString",
     proc(str: JSValue) =
-      ret str.getUTF16View().get()[].toUTF8()
+      ret str.getUTF16View().get().toUTF8()
     ,
   )
 
@@ -60,7 +60,7 @@ proc generateStdIr*(runtime: Runtime) =
       let
         # 1. Let O be ? RequireObjectCoercible(this value)
         # 2. Let S be ? ToString(O).
-        value = toUtf8((&value.getUTF16View())[])
+        value = toUtf8((&value.getUTF16View()))
         needle = runtime.argument(1)
         position = &runtime.argument(2)
 
@@ -97,7 +97,7 @@ proc generateStdIr*(runtime: Runtime) =
 
       # 1. Let O be ? RequireObjectCoercible(this value).
       # 2. Let S be ? ToString(O).
-      let value = toUtf8((&value.getUTF16View())[])
+      let value = toUtf8((&value.getUTF16View()))
 
       # 3. Let R be S.
       var res = value
@@ -161,7 +161,7 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "toLowerCase",
     proc(value: JSValue) =
-      let value = toUtf8((&value.getUTF16View())[])
+      let value = toUtf8((&value.getUTF16View()))
 
       ret strutils.toLowerAscii(value)
     ,
@@ -171,7 +171,7 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "toUpperCase",
     proc(value: JSValue) =
-      let value = toUtf8((&value.getUTF16View())[])
+      let value = toUtf8((&value.getUTF16View()))
 
       ret strutils.toUpperAscii(value)
     ,
@@ -181,7 +181,7 @@ proc generateStdIr*(runtime: Runtime) =
     JSString,
     "repeat",
     proc(value: JSValue) =
-      let value = toUtf8((&value.getUTF16View())[])
+      let value = toUtf8((&value.getUTF16View()))
       var repeatCnt: int
 
       if runtime.argumentCount() > 0:
@@ -225,10 +225,10 @@ proc generateStdIr*(runtime: Runtime) =
         obj = runtime.RequireObjectCoercible(value)
 
         # 2. Let S be ? ToString(O).
-        str = toUtf8((&obj.getUTF16View())[])
+        str = &obj.getUTF16View()
 
         # 3. Let position be ? ToIntegerOrInfinity(pos)
-        position = int(runtime.ToNumber(&runtime.argument(1)))
+        position = uint64(runtime.ToNumber(&runtime.argument(1)))
 
         # 4. Let size be the length of S
         size = str.len
@@ -238,7 +238,7 @@ proc generateStdIr*(runtime: Runtime) =
         ret undefined(runtime)
 
       # 6. Let cp be CodePointAt(S, position).
-      let codepoint = newUtf16View(str).codePointAt(position.uint())
+      let codepoint = str.codePointAt(position.uint())
 
       # Return 𝔽(cp.[[CodePoint]]).
       ret codepoint
@@ -257,25 +257,25 @@ proc generateStdIr*(runtime: Runtime) =
 
         # 2. Let S be ? ToString(O).
         str = &obj.getUTF16View()
-        strVal = str[].toUTF8()
+        strVal = str.toUTF8()
 
         # 3. Let len be the length of S.
         stringLength =
-          if str.size == 0:
-            0
+          if str.len == 0:
+            0'u64
           else:
-            int(str.size - 1)
+            str.len - 1
 
       var
-        # 4. Let intStart be ? ToIntegerOrInfinity(start).
-        start = runtime.ToNumber(&runtime.argument(1)).int()
+        # 4. Let intStart be ? oIntegerOrInfinity(start).
+        start = runtime.ToNumber(&runtime.argument(1)).uint64()
 
         # 5. If end is undefined, let intEnd be len; else let intEnd be ? ToIntegerOrInfinity(end).
         ending =
           if runtime.argumentCount() < 2:
             stringLength
           else:
-            runtime.ToNumber(&runtime.argument(2)).int()
+            uint64(runtime.ToNumber(&runtime.argument(2)))
 
       # If either argument is NaN or negative, it is replaced with zero; if either argument is strictly greater than the length
       # of the String, it is replaced with the length of the String.
@@ -322,10 +322,10 @@ proc generateStdIr*(runtime: Runtime) =
       let value = runtime.RequireObjectCoercible(value)
 
       # 2. Let S be ? ToString(O).
-      let str = (&value.getUTF16View())[].toUTF8()
+      let str = &value.getUTF16View()
 
       # 3. Let position be ? ToIntegerOrInfinity(pos).
-      let pos = int(runtime.ToNumber(&runtime.argument(1)))
+      let pos = uint64(runtime.ToNumber(&runtime.argument(1)))
 
       # 4. Let size be the length of S.
       let size = str.len
@@ -335,7 +335,9 @@ proc generateStdIr*(runtime: Runtime) =
         ret newJSString(runtime, newString(0))
 
       # 6. Return the substring of S from position to position + 1.
-      ret newJSString(runtime, str[pos ..< pos + 1])
+      let view = runtime.newUTF16View(1)
+      view.data[0] = str.codeUnitAt(pos)
+      ret newJSString(runtime, view)
     ,
   )
 

@@ -1,12 +1,12 @@
 ## URI encoding/decoding routines
-##
-## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
 ## https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf
+##
+## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak at disroot dot org)
 import std/[strutils]
-import components/js/internal/[str_padding]
+import components/js/internal/[str_padding], components/js/runtime/types
 import components/unicode/utf16view
 
-proc encode*(uri: string, extraUnescaped: set[char] = {}): string =
+proc encode*(rt: Runtime, uri: string, extraUnescaped: set[char] = {}): string =
   ## 19.2.6.5 Encode ( string, extraUnescaped )
   ## The abstract operation Encode takes arguments string (a String) and extraUnescaped (a String) and returns
   ## either a normal completion containing a String or a throw completion. It performs URI encoding and escaping,
@@ -21,7 +21,7 @@ proc encode*(uri: string, extraUnescaped: set[char] = {}): string =
   let unescapedSet = alwaysUnescaped + extraUnescaped
     # 4. Let unescapedSet be the string-concatenation of alwaysUnescaped and extraUnescaped
   var k = 0'u32 # 5. Let k be 0
-  let view = newUTF16View(uri)
+  let view = newUTF16View(rt, uri)
 
   # 6. Repeat, while k < len
   while k < length:
@@ -47,5 +47,5 @@ proc encode*(uri: string, extraUnescaped: set[char] = {}): string =
   # 7. Return res.
   res
 
-proc encodeURI*(uri: string): string =
-  encode(uri, {';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#'})
+proc encodeURI*(rt: Runtime, uri: string): string =
+  rt.encode(uri, {';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#'})
