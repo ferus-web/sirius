@@ -71,6 +71,7 @@ type
     lastCursorPredef*: CursorPredefined
 
     websockets*: Table[WebSocket, WebSocketClient]
+    eventLoop*: int32 # TODO: EventLoop abstraction
 
   WebRenderer* = ref WebRendererObj
 

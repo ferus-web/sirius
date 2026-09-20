@@ -12,6 +12,7 @@ type
   CURLoption* = distinct int32
   CURLMoption* = distinct int32
   CURLINFO* = distinct int32
+  CURLWS* = distinct int32
 
   CURLUPart* {.pure, importc, size: sizeof(uint8).} = enum
     URL
@@ -29,6 +30,12 @@ type
   curl_slist* {.
     importc: "struct curl_slist", header: "<curl/curl.h>", incompleteStruct
   .} = object
+
+  curl_ws_frame* {.importc: "struct curl_ws_frame", header: "<curl/websockets.h>".} = object
+    age*: int32
+    flags*: int32
+    offset*, bytesleft*: uint64
+    len*: int64
 
   CURLMsgData* {.union.} = object
     whatever*: pointer
@@ -90,6 +97,7 @@ const
   CURLOPT_CURLU* = CURLoption(CURLOPTTYPE_OBJECTPOINT + 282)
   CURLOPT_CONNECT_ONLY* = CURLoption(CURLOPTTYPE_LONG + 141)
 
+  CURL_HTTP_VERSION_1_1* = clong(2)
   CURL_HTTP_VERSION_2TLS* = clong(4)
 
   CURLMOPT_PIPELINING* = CURLMoption(CURLOPTTYPE_LONG + 3)
@@ -100,10 +108,13 @@ const
   CURLMSG_DONE* = CurlMsgType(1)
   CURLMSG_LAST* = CurlMsgType(2)
 
+  CURLINFO_SOCKET* = 0x500000
   CURLINFO_LONG* = 0x200000
   CURLINFO_STRING* = 0x100000
+
   CURLINFO_EFFECTIVE_URL* = CURLINFO(CURLINFO_STRING + 1)
   CURLINFO_RESPONSE_CODE* = CURLINFO(CURLINFO_LONG + 2)
+  CURLINFO_ACTIVESOCKET* = CURLINFO(CURLINFO_SOCKET + 44)
 
   CURLUE_OK* = CURLUCode(0)
   CURLUE_BAD_HANDLE* = CURLUCode(1)
@@ -137,6 +148,14 @@ const
   CURLUE_BAD_USER* = CURLUCode(29)
   CURLUE_LACKS_IDN* = CURLUCode(30)
   CURLUE_TOO_LARGE* = CURLUCode(31)
+
+  CURLWS_TEXT* = CURLWS(1 shl 0)
+  CURLWS_BINARY* = CURLWS(1 shl 1)
+  CURLWS_CONT* = CURLWS(1 shl 2)
+  CURLWS_CLOSE* = CURLWS(1 shl 3)
+  CURLWS_PING* = CURLWS(1 shl 4)
+  CURLWS_OFFSET* = CURLWS(1 shl 5)
+  CURLWS_PONG* = CURLWS(1 shl 6)
 
 {.push importc, callconv: cdecl, header: "<curl/curl.h>".}
 
@@ -187,5 +206,26 @@ proc curl_url_set*(
 ): CURLUCode
 
 proc curl_url_strerror*(err: CURLUCode): cstring
+
+{.pop.}
+
+{.push importc, callconv: cdecl, header: "<curl/websockets.h>".}
+
+proc curl_ws_recv*(
+  curl: CURL,
+  buffer: pointer,
+  buflen: int64,
+  nrecv: ptr int64,
+  metap: ptr ptr curl_ws_frame,
+): CURLCode
+
+proc curl_ws_send*(
+  curl: CURL,
+  buffer: pointer,
+  buflen: int64,
+  nsent: ptr int64,
+  fragsize: uint64,
+  flags: CURLWS,
+): CURLcode
 
 {.pop.}

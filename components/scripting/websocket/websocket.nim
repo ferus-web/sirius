@@ -11,7 +11,7 @@ import
   components/scripting/url,
   components/dom/dom,
   components/net/ws/types
-import pkg/[chronicles, shakar, url]
+import pkg/[chronicles, results, shakar, url]
 
 logScope:
   topics = "websocket"
@@ -23,8 +23,11 @@ type
     protocols*: seq[string]
 
   WebSocketHostCallbacks* = object
-    createWebSocket*:
-      proc(url: URL, onopen: proc(client: WebSocket)): WebSocket {.gcsafe.}
+    createWebSocket*: proc(
+      url: URL,
+      onopen: proc(client: WebSocket) {.gcsafe.},
+      onrecv: proc(client: WebSocket, text: string) {.gcsafe.},
+    ): Result[WebSocket, string] {.gcsafe.}
     getReadyState*: proc(ws: WebSocket): WSClientState {.gcsafe.}
     send*: proc(ws: WebSocket, data: string) {.gcsafe.}
 
@@ -109,27 +112,30 @@ proc binaryTypeSetter(rt: Runtime, this: JSValue, value: JSValue) =
 proc newJSWebSocket*(
     rt: Runtime, callbacks: WebSocketHostCallbacks, url: JSValue, protocols: JSValue
 ): JSValue =
-  let obj = rt.createObjFromType(JSWebSocket)
+  let
+    obj = rt.createObjFromType(JSWebSocket)
+    wsTarget = callbacks.createWebSocket(
+      (
+        if rt.isA(url, JSString):
+          &tryParseURL(rt.ToString(url)) # TODO: Implement this constructor properly :(
+        else:
+          rt.toNativeURL(url)
+      ),
+      onopen = proc(ws: WebSocket) {.gcsafe.} =
+        discard dispatchEvent(ws, "open", undefined(rt)),
+      onrecv = proc(ws: WebSocket, text: string) {.gcsafe.} =
+        debugEcho "text frame: " & text.repr
+      ,
+    )
+
+  if !wsTarget:
+    # TODO: Proper error type for this once that works
+    rt.typeError(&"Cannot create WebSocket: {wsTarget.error()}")
+    return
+
   obj.setHiddenField(URLField, rt.wrap(hidden(url)))
   obj.setHiddenField(ProtocolsField, rt.wrap(hidden(url)))
-  obj.setHiddenField(
-    "internal",
-    rt.wrap(
-      hidden(
-        callbacks.createWebSocket(
-          (
-            if rt.isA(url, JSString):
-              &tryParseURL(rt.ToString(url))
-                # TODO: Implement this constructor properly :(
-            else:
-              rt.toNativeURL(url)
-          ),
-          onopen = proc(ws: WebSocket) =
-            discard dispatchEvent(ws, "open", undefined(rt)),
-        )
-      )
-    ),
-  )
+  obj.setHiddenField("internal", rt.wrap(hidden(&wsTarget)))
 
   obj
 

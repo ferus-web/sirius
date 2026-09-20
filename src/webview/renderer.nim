@@ -44,6 +44,14 @@ logScope:
 
 proc loadUrl(view: WebRenderer, url: URL)
 
+proc registerIntoEventLoop*(renderer: WebRenderer, fd: int32, events: uint32) =
+  # TODO: Create an EventLoop abstraction so porting to other kernels will be less painful
+  var event = nix.EpollEvent(events: events, data: nix.EpollData(fd: fd))
+  assert(
+    nix.epoll_ctl(renderer.eventLoop, nix.EPOLL_CTL_ADD, fd, event.addr) == 0,
+    "Failed to attach epoll listener",
+  )
+
 proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
   HostScriptingCallbacks(
     window: WindowHostCallbacks(
@@ -58,17 +66,26 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
     ),
     websocket: WebSocketHostCallbacks(
       createWebSocket: proc(
-          url: url.URL, onopen: proc(ws: WebSocket)
-      ): WebSocket {.gcsafe.} =
+          url: url.URL,
+          onopen: proc(ws: WebSocket) {.gcsafe.},
+          onrecv: proc(ws: WebSocket, buffer: string) {.gcsafe.},
+      ): Result[WebSocket, string] {.gcsafe.} =
+        # TODO/EASY: Move this into a dedicated function. It's getting too big for an anonymous proc
         let targetNode = WebSocket(url: url) # TODO: Protocols
         let ws = newWebSocket(renderer.loader, url)
-        ws.callbacks.opened = proc(_: WebSocketClient) =
+        ws.callbacks.opened = proc(_: WebSocketClient) {.gcsafe.} =
+          let fd = ws.getFd()
+          renderer.registerIntoEventLoop(&fd, nix.EPOLLIN)
+
           # HACK: I'm sure there's a better way to plug in web API bindings' dispatchers
           onopen(targetNode)
 
+        ws.callbacks.textFrame = proc(_: WebSocketClient, text: string) =
+          onrecv(targetNode, text)
+
         renderer.websockets[targetNode] = ws
 
-        targetNode,
+        ok(targetNode),
       getReadyState: proc(node: WebSocket): WSClientState {.gcsafe.} =
         assert(
           renderer.websockets.contains(node),
@@ -82,9 +99,9 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
           "Invariant: WebSocketHostCallbacks::send() got an unregistered WebSocket target given to it.",
         )
 
-        let associated = renderer.websockets[node]
-        warn "TODO: WebSocketHostCallbacks::send()",
-          data = data, state = associated.state
+        let ws = renderer.websockets[node]
+        if (let res = ws.send(data); !res):
+          ws.failure(res.error())
       ,
     ),
     getTimeOrigin: proc(): int64 =
@@ -871,14 +888,9 @@ proc loop*(view: WebRenderer): int =
   # polling itself and doing stuff like handling the JS task queues
   let efd = nix.epoll_create1(0)
   assert(efd > -1'i32, "Failed to create epoll fd")
+  view.eventLoop = efd
 
-  var event =
-    nix.EpollEvent(events: nix.EPOLLIN, data: nix.EpollData(fd: view.client.fd))
-
-  assert(
-    nix.epoll_ctl(efd, nix.EPOLL_CTL_ADD, view.client.fd, event.addr) == 0,
-    "Failed to attach epoll listener to IPC channel",
-  )
+  view.registerIntoEventLoop(view.client.fd, nix.EPOLLIN)
 
   view.lastDmabufFd = -1'i32
   view.running = true
@@ -886,44 +898,23 @@ proc loop*(view: WebRenderer): int =
     view.poll()
 
     var ipcEvent: nix.EpollEvent
-    let ipcEventCount =
-      nix.epoll_wait(efd, event.addr, maxevents = 1'i32, timeout = 1'i32)
+    let ipcEventCount = nix.epoll_wait(
+      efd,
+      ipcEvent.addr,
+      maxevents = 1'i32 + int32(view.websockets.len),
+      timeout = 1'i32,
+    ) # TODO: Maybe the timeout here is too fast :P
 
-    if ipcEventCount > 0:
-      handleIPCMessage(view)
-
-    #[ view.poll()
-
-    if not view.progress and (view.target != view.dom.url):
-      view.loadURL(view.dom.url)
-
-    let eventOpt = view.app.flushQueue()
-    if !eventOpt:
+    if ipcEventCount < 1:
       continue
 
-    let event = &eventOpt
-    case event.kind
-    of EventKind.RedrawRequested:
-    of EventKind.WindowResized:
-      handleWindowResize(view, event.windowSize)
-      view.renderCtx.drawTree()
-      # print view.renderCtx.tree
-    of EventKind.KeyPressed, EventKind.KeyRepeated:
-      handleKeyboardEvent(view, event)
-    of EventKind.CursorMove:
-      view.cursor = event.cursor.pos
-      let lastFocused = view.focusedElement
-      if view.renderCtx.tree != nil:
-        view.focusedElement = hitTest(view, view.renderCtx.tree, view.cursor)
-
-      handleFocusedElement(view, clicked = false)
-    of EventKind.CursorScroll:
-      view.renderCtx.scrollVelocity = event.cursor.scroll * 0.25'f32
-    of EventKind.CursorClick:
-      if event.cursor.state == ButtonState.Released:
-        handleFocusedElement(view, clicked = true)
+    if ipcEvent.data.fd == view.client.fd:
+      handleIPCMessage(view)
     else:
-      discard # debug "Unhandled surfer event", kind = event.kind ]#
+      for _, ws in view.websockets:
+        if &ws.getFd() == ipcEvent.data.fd:
+          ws.handleMessage()
+          break
 
   info "Exiting main loop"
   VulkanContext(view.renderCtx.fig.ctx).releaseBackendResources()
