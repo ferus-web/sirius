@@ -69,6 +69,7 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
           url: url.URL,
           onopen: proc(ws: WebSocket) {.gcsafe.},
           onrecv: proc(ws: WebSocket, buffer: string) {.gcsafe.},
+          onerror: proc(ws: WebSocket, error: string) {.gcsafe.},
       ): Result[WebSocket, string] {.gcsafe.} =
         # TODO/EASY: Move this into a dedicated function. It's getting too big for an anonymous proc
         let targetNode = WebSocket(url: url) # TODO: Protocols
@@ -82,6 +83,9 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
 
         ws.callbacks.textFrame = proc(_: WebSocketClient, text: string) =
           onrecv(targetNode, text)
+
+        ws.callbacks.error = proc(_: WebSocketClient, error: string) =
+          onerror(targetNode, error)
 
         renderer.websockets[targetNode] = ws
 

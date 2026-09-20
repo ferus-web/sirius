@@ -12,6 +12,7 @@ import
   components/dom/dom,
   components/net/ws/types,
   components/html/messageevents,
+  components/scripting/dom/event,
   components/scripting/html/message_event
 import pkg/[chronicles, results, shakar, url]
 
@@ -29,6 +30,7 @@ type
       url: URL,
       onopen: proc(client: WebSocket) {.gcsafe.},
       onrecv: proc(client: WebSocket, text: string) {.gcsafe.},
+      onerror: proc(client: WebSocket, error: string) {.gcsafe.},
     ): Result[WebSocket, string] {.gcsafe.}
     getReadyState*: proc(ws: WebSocket): WSClientState {.gcsafe.}
     send*: proc(ws: WebSocket, data: string) {.gcsafe.}
@@ -133,6 +135,17 @@ proc newJSWebSocket*(
             newMessageEvent(data = text, origin = "", lastEventId = "")
           ),
         ), # TODO: Set origin properly
+      onerror = proc(ws: WebSocket, error: string) {.gcsafe.} =
+        let event = rt.createObjFromType(Event)
+        event["type"] = rt.wrap("error")
+        event["target"] = obj
+        event["currentTarget"] = obj
+
+        when not defined(release):
+          event["siriusNetError"] = rt.wrap(error)
+            # we might as well throw this in for funsies :P
+
+        discard dispatchEvent(ws, "error", event),
     )
 
   if !wsTarget:

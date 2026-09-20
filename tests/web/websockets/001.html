@@ -23,7 +23,8 @@
     });
 
     socket.addEventListener("error", function(err) {
-      console.error("WebSocket error: ", err);
+      console.error("WebSocket error: ", err.type);
+      console.error("components::net::ws said: ", err.siriusNetError);
     });
 
     socket.addEventListener("message", function(msg) {
