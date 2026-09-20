@@ -28,17 +28,26 @@ proc enterState*(client: WebSocketClient, state: WSClientState) =
       client.callbacks.opened(client)
   of WSClientState.Closed:
     if client.callbacks.closed != nil:
-      client.callbacks.closed(client)
+      client.callbacks.closed(
+        client,
+        wasClean = client.wasClosureClean,
+        code = client.closureCode,
+        reason = client.closureReason,
+      )
 
-proc close*(client: WebSocketClient) =
+proc close*(client: WebSocketClient, clean: bool, code: uint16, reason: string) =
   # TODO: Cleanup the libcurl handle too, it currently just leaks.
+
+  client.wasClosureClean = clean
+  client.closureCode = code
+  client.closureReason = reason
   client.enterState(WSClientState.Closed)
 
 proc failure*(client: WebSocketClient, message: string) {.gcsafe.} =
-  client.close()
-
   if client.callbacks.error != nil:
     client.callbacks.error(client, message)
+
+  client.close(false, 1006'u16, newString(0))
 
 proc getFd*(client: WebSocketClient): Result[int32, string] =
   var fd: int32
@@ -76,7 +85,13 @@ proc handleMessage*(client: WebSocketClient) =
   buffer.setLen(nread)
   if meta != nil:
     if (meta.flags and cast[int32](libcurl.CURLWS_CLOSE)) != 0:
-      client.close()
+      let
+        # TODO: maybe move the big endian decoding stuff into a routine. I think flatty has something for it too.
+        b0 = uint16(cast[ptr uint8](buffer[0].addr)[])
+        b1 = uint16(cast[ptr uint8](buffer[1].addr)[])
+        code = (b0 shl 8) or b1
+
+      client.close(true, code, "") # TODO: reason text
 
     if (meta.flags and cast[int32](libcurl.CURLWS_TEXT)) != 0:
       client.feedTextFrame(ensureMove(buffer))

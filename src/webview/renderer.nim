@@ -30,7 +30,7 @@ import
   components/js/runtime/compiler/base,
   components/scripting/[executor, types],
   components/scripting/dom/[mouse_event, keyboard_event],
-  components/scripting/websocket/websocket,
+  components/scripting/websocket/[close_event, websocket],
   components/scripting/url as jsurl,
   components/synapse/[client, encoder, decoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, master],
@@ -70,8 +70,10 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
           onopen: proc(ws: WebSocket) {.gcsafe.},
           onrecv: proc(ws: WebSocket, buffer: string) {.gcsafe.},
           onerror: proc(ws: WebSocket, error: string) {.gcsafe.},
+          onclose: proc(ws: WebSocket, event: CloseEvent) {.gcsafe.},
       ): Result[WebSocket, string] {.gcsafe.} =
         # TODO/EASY: Move this into a dedicated function. It's getting too big for an anonymous proc
+        # TODO: We need to probably forbid stuff like localhost sockets, or atleast limit them drastically. A rogue remotely fetched guest script can probe ports very easily right now.
         let targetNode = WebSocket(url: url) # TODO: Protocols
         let ws = newWebSocket(renderer.loader, url)
         ws.callbacks.opened = proc(_: WebSocketClient) {.gcsafe.} =
@@ -86,6 +88,13 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
 
         ws.callbacks.error = proc(_: WebSocketClient, error: string) =
           onerror(targetNode, error)
+
+        ws.callbacks.closed = proc(
+            _: WebSocketClient, wasClean: bool, code: uint16, reason: string
+        ) {.gcsafe.} =
+          onclose(
+            targetNode, CloseEvent(wasClean: wasClean, code: code, reason: reason)
+          )
 
         renderer.websockets[targetNode] = ws
 
@@ -898,27 +907,25 @@ proc loop*(view: WebRenderer): int =
 
   view.lastDmabufFd = -1'i32
   view.running = true
+  var ipcEvents = newSeqOfCap[nix.EpollEvent](16)
+
   while view.running:
     view.poll()
 
-    var ipcEvent: nix.EpollEvent
+    ipcEvents.setLen(1 + view.websockets.len)
     let ipcEventCount = nix.epoll_wait(
-      efd,
-      ipcEvent.addr,
-      maxevents = 1'i32 + int32(view.websockets.len),
-      timeout = 1'i32,
+      efd, ipcEvents[0].addr, maxevents = cast[int32](ipcEvents.len), timeout = 1'i32
     ) # TODO: Maybe the timeout here is too fast :P
 
-    if ipcEventCount < 1:
-      continue
-
-    if ipcEvent.data.fd == view.client.fd:
-      handleIPCMessage(view)
-    else:
-      for _, ws in view.websockets:
-        if &ws.getFd() == ipcEvent.data.fd:
-          ws.handleMessage()
-          break
+    for i in 0 ..< ipcEventCount:
+      let ipcEvent = ipcEvents[i]
+      if ipcEvent.data.fd == view.client.fd:
+        handleIPCMessage(view)
+      else:
+        for _, ws in view.websockets:
+          if &ws.getFd() == ipcEvent.data.fd:
+            ws.handleMessage()
+            break
 
   info "Exiting main loop"
   VulkanContext(view.renderCtx.fig.ctx).releaseBackendResources()

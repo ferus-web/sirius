@@ -14,7 +14,7 @@ import
   components/scripting/[url, timeouts],
   components/scripting/html/[navigator, performance, window, htmlelement, message_event],
   components/scripting/html/element/htmlinputelement,
-  components/scripting/websocket/websocket
+  components/scripting/websocket/[close_event, websocket]
 import components/aux/pretty
 
 when defined(unix):
@@ -66,6 +66,7 @@ proc registerWebBindings(
   mouse_event.generateBindings(elem.script.rt)
   keyboard_event.generateBindings(elem.script.rt)
   message_event.generateBindings(elem.script.rt)
+  close_event.generateBindings(elem.script.rt)
 
   performance.generateBindings(elem.script.rt)
   performance.generateGlobal(elem.script.rt, callbacks.getTimeOrigin())

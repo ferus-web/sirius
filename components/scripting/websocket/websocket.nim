@@ -13,7 +13,8 @@ import
   components/net/ws/types,
   components/html/messageevents,
   components/scripting/dom/event,
-  components/scripting/html/message_event
+  components/scripting/html/message_event,
+  components/scripting/websocket/close_event
 import pkg/[chronicles, results, shakar, url]
 
 logScope:
@@ -31,6 +32,7 @@ type
       onopen: proc(client: WebSocket) {.gcsafe.},
       onrecv: proc(client: WebSocket, text: string) {.gcsafe.},
       onerror: proc(client: WebSocket, error: string) {.gcsafe.},
+      onclose: proc(client: WebSocket, event: CloseEvent) {.gcsafe.},
     ): Result[WebSocket, string] {.gcsafe.}
     getReadyState*: proc(ws: WebSocket): WSClientState {.gcsafe.}
     send*: proc(ws: WebSocket, data: string) {.gcsafe.}
@@ -146,6 +148,8 @@ proc newJSWebSocket*(
             # we might as well throw this in for funsies :P
 
         discard dispatchEvent(ws, "error", event),
+      onclose = proc(ws: WebSocket, event: CloseEvent) {.gcsafe.} =
+        discard dispatchEvent(ws, "close", rt.newCloseEvent(event)),
     )
 
   if !wsTarget:

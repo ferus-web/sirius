@@ -13,7 +13,7 @@
     const outElem = document.getElementById("out");
 
     statusElem.textContent = "Connecting..."
-    const socket = new WebSocket("ws://localhost:8081");
+    const socket = new WebSocket("wss://echo.websocket.org");
 
     socket.addEventListener("open", function(event) {
       statusElem.textContent = "Open";
@@ -23,9 +23,19 @@
     });
 
     socket.addEventListener("error", function(err) {
-      console.error("WebSocket error: ", err.type);
+      console.error("WebSocket error");
       console.error("components::net::ws said: ", err.siriusNetError);
+      
+      statusElem.textContent = "Error";
+      outElem.textContent = err.siriusNetError;
     });
+
+    socket.addEventListener("close", function(event) {
+      console.log("close WebSocket");
+      console.log("was clean?", event.wasClean);
+      console.log("closure code:", event.code);
+      console.log("reason:", event.reason);
+    })
 
     socket.addEventListener("message", function(msg) {
       console.log("recv message:", msg.data);

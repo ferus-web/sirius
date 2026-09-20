@@ -13,11 +13,14 @@ type
   WSClientCallback* = proc(client: WebSocketClient) {.gcsafe.}
   WSClientErrorCallback* = proc(client: WebSocketClient, error: string) {.gcsafe.}
   WSClientTextFrameCallback* = proc(client: WebSocketClient, text: string) {.gcsafe.}
+  WSClientClosureCallback* = proc(
+    client: WebSocketClient, wasClean: bool, code: uint16, reason: string
+  ) {.gcsafe.}
 
   WSClientCallbacks* = object
     opened*: WSClientCallback
     error*: WSClientErrorCallback
-    closed*: WSClientCallback
+    closed*: WSClientClosureCallback
 
     textFrame*: WSClientTextFrameCallback
 
@@ -27,6 +30,10 @@ type
     state*: WSClientState
     callbacks*: WSClientCallbacks
 
-    curlErrorBuffer*: string
+    curlErrorBuffer*: string # REMOVEME
+
+    wasClosureClean*: bool
+    closureCode*: uint16
+    closureReason*: string
 
   WebSocketClient* = ref WebSocketClientObj
