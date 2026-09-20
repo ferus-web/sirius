@@ -283,7 +283,8 @@ proc flushCanceledLocked(client: NetworkClient, message: string) =
     except CatchableError:
       discard
 
-    client.availableEasy.add(move req.easy)
+    if not req.adhoc:
+      client.availableEasy.add(move req.easy)
     client.storeCompletionLocked(
       (newResponse(req), newTransportError(Canceled, message))
     )
@@ -326,15 +327,19 @@ proc processDoneMessages(client: NetworkClient) =
       if request != nil:
         var removeError = ""
         try:
-          client.multi.removeHandle(msg)
+          if not request.adhoc:
+            client.multi.removeHandle(msg)
         except CatchableError:
           removeError = getCurrentExceptionMsg()
 
         let completion = completionFromCurl(request, msg.data.result, removeError)
         acquire(client.lock)
-        client.availableEasy.add(move request.easy)
+        if not request.adhoc:
+          client.availableEasy.add(move request.easy)
         client.storeCompletionLocked(completion)
         release(client.lock)
+
+        request.easy.raw = nil # I'm a stable genius, aren't I?
 
 proc dispatchQueuedRequests(client: NetworkClient) =
   var done = false
@@ -378,7 +383,8 @@ proc dispatchQueuedRequests(client: NetworkClient) =
       if dispatched:
         client.inFlight[handleKey(request.easy)] = request
       else:
-        client.availableEasy.add(move request.easy)
+        if not request.adhoc:
+          client.availableEasy.add(move request.easy)
         client.storeCompletionLocked(
           (newResponse(request), newTransportError(Internal, dispatchError))
         )

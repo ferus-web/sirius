@@ -10,43 +10,23 @@ type
     Closing = 2
     Closed = 3
 
-  WSClientCallback* = proc(client: WebSocketClient)
-  WSClientErrorCallback* = proc(client: WebSocketClient, error: string)
+  WSClientCallback* = proc(client: WebSocketClient) {.gcsafe.}
+  WSClientErrorCallback* = proc(client: WebSocketClient, error: string) {.gcsafe.}
+  WSClientTextFrameCallback* = proc(client: WebSocketClient, text: string) {.gcsafe.}
 
   WSClientCallbacks* = object
     opened*: WSClientCallback
     error*: WSClientErrorCallback
     closed*: WSClientCallback
 
+    textFrame*: WSClientTextFrameCallback
+
   WebSocketClientObj = object
-    handle*: libcurl.CURL
+    handle*: Easy
 
     state*: WSClientState
     callbacks*: WSClientCallbacks
 
+    curlErrorBuffer*: string
+
   WebSocketClient* = ref WebSocketClientObj
-
-proc enterState*(client: WebSocketClient, state: WSClientState) =
-  if client.state == state:
-    return # We don't want to trigger any changes if the state already matches
-
-  client.state = state
-  case state
-  of WSClientState.Connecting, WSClientState.Closing:
-    discard
-  of WSClientState.Open:
-    if client.callbacks.opened != nil:
-      client.callbacks.opened(client)
-  of WSClientState.Closed:
-    if client.callbacks.closed != nil:
-      client.callbacks.closed(client)
-
-proc close*(client: WebSocketClient) =
-  # NOTE: Will the easy instance destroy itself? (I'm not sure if =destroy is called after this properly so there's a small chance it might end up leaking. Gotta verify that though)
-  client.enterState(WSClientState.Closed)
-
-proc failure*(client: WebSocketClient, message: string) =
-  client.close()
-
-  if client.callbacks.error != nil:
-    client.callbacks.error(client, message)

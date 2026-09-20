@@ -97,14 +97,14 @@ proc poll*(loader: ResourceLoader) =
     else:
       loader.pendingAssets[queued.spec.requestId] = queued.asset
 
-proc createAdhocInstance*(
-    loader: ResourceLoader, errorBuffer: var string
-): libcurl.CURL =
-  let handle = curl_easy_init()
+proc createAdhocInstance*(loader: ResourceLoader, errorBuffer: var string): Easy =
+  #[ let handle = curl_easy_init()
   discard curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, errorBuffer[0].addr)
   discard curl_easy_setopt(handle, CURLOPT_NOSIGNAL, clong(1))
 
-  handle
+  handle ]#
+
+  initEasy()
 
 proc newResourceLoader*(net: NetworkClient): ResourceLoader =
   info "Starting resource loader"
