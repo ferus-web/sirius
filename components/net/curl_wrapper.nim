@@ -3,9 +3,11 @@ import components/impure/libcurl
 export CurlMsgType, CURLMsg
 
 type
-  Easy* = object
+  EasyObj = object
     raw*: CURL
     errorBuf: string
+
+  Easy* = ref EasyObj
 
   Multi* = object
     raw*: CURLM
@@ -17,7 +19,7 @@ type
     raw: CURLU
     rc: uint8
 
-proc `=destroy`(easy: Easy) =
+proc `=destroy`(easy: EasyObj) =
   if easy.raw != nil:
     curl_easy_cleanup(easy.raw)
   `=destroy`(easy.errorBuf)
@@ -33,7 +35,7 @@ proc `=destroy`*(list: Slist) =
 proc `=destroy`*(url: var RawUrl) =
   discard "NOTE: Curl_URL lifecycles are too complex to be represented as destructors."
 
-proc `=wasMoved`*(easy: var Easy) =
+proc `=wasMoved`*(easy: var EasyObj) =
   easy.raw = nil
   `=wasMoved`(easy.errorBuf)
 
@@ -52,17 +54,17 @@ proc `=sink`*(dest: var RawUrl, src: RawUrl) =
   `=destroy`(dest)
   dest.raw = src.raw
 
-proc `=dup`*(src: Easy): Easy {.error.}
+proc `=dup`*(src: EasyObj): EasyObj {.error.}
 proc `=dup`*(src: Multi): Multi {.error.}
 proc `=dup`*(src: Slist): Slist {.error.}
 proc `=dup`*(src: RawUrl): RawUrl =
   RawUrl(raw: curl_url_dup(src.raw))
 
-proc `=copy`*(dest: var Easy, src: Easy) {.error.}
+proc `=copy`*(dest: var EasyObj, src: EasyObj) {.error.}
 proc `=copy`*(dest: var Multi, src: Multi) {.error.}
 proc `=copy`*(dest: var Slist, src: Slist) {.error.}
 
-proc `=sink`*(dest: var Easy, src: Easy) =
+proc `=sink`*(dest: var EasyObj, src: EasyObj) =
   `=destroy`(dest)
   dest.raw = src.raw
   `=sink`(dest.errorBuf, src.errorBuf)
@@ -277,6 +279,16 @@ proc responseCode*(easy: Easy): int =
     "CURLINFO_RESPONSE_CODE failed",
   )
   result = int(code)
+
+when defined(posix):
+  proc getFd*(easy: Easy): int32 =
+    var fd: int32
+    checkCurl(
+      curl_easy_getinfo(easy.raw, CURLINFO_ACTIVESOCKET, fd.addr),
+      "CURLINFO_ACTIVESOCKET failed",
+    )
+
+    fd
 
 proc effectiveUrl*(easy: Easy): string =
   var urlPtr: cstring
