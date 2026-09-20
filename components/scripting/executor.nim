@@ -12,7 +12,7 @@ import
   components/scripting/dom/
     [document, element, event, event_target, mouse_event, keyboard_event, node],
   components/scripting/[url, timeouts],
-  components/scripting/html/[navigator, performance, window, htmlelement],
+  components/scripting/html/[navigator, performance, window, htmlelement, message_event],
   components/scripting/html/element/htmlinputelement,
   components/scripting/websocket/websocket
 import components/aux/pretty
@@ -65,6 +65,7 @@ proc registerWebBindings(
   event.generateBindings(elem.script.rt)
   mouse_event.generateBindings(elem.script.rt)
   keyboard_event.generateBindings(elem.script.rt)
+  message_event.generateBindings(elem.script.rt)
 
   performance.generateBindings(elem.script.rt)
   performance.generateGlobal(elem.script.rt, callbacks.getTimeOrigin())

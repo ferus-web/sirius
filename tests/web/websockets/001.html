@@ -13,13 +13,22 @@
     const outElem = document.getElementById("out");
 
     statusElem.textContent = "Connecting..."
-    const socket = new WebSocket("wss://echo.websocket.org");
+    const socket = new WebSocket("ws://localhost:8081");
 
     socket.addEventListener("open", function(event) {
       statusElem.textContent = "Open";
       console.log("WebSocket connection open :3");
       socket.send("hello sirius!");
       console.log(socket.readyState);
+    });
+
+    socket.addEventListener("error", function(err) {
+      console.error("WebSocket error: ", err);
+    });
+
+    socket.addEventListener("message", function(msg) {
+      console.log("recv message:", msg.data);
+      outElem.textContent = msg.data;
     });
   </script>
 </html>

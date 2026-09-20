@@ -10,7 +10,9 @@ import
   components/scripting/dom/event_target,
   components/scripting/url,
   components/dom/dom,
-  components/net/ws/types
+  components/net/ws/types,
+  components/html/messageevents,
+  components/scripting/html/message_event
 import pkg/[chronicles, results, shakar, url]
 
 logScope:
@@ -124,8 +126,13 @@ proc newJSWebSocket*(
       onopen = proc(ws: WebSocket) {.gcsafe.} =
         discard dispatchEvent(ws, "open", undefined(rt)),
       onrecv = proc(ws: WebSocket, text: string) {.gcsafe.} =
-        debugEcho "text frame: " & text.repr
-      ,
+        discard dispatchEvent(
+          ws,
+          "message",
+          rt.wrapMessageEvent(
+            newMessageEvent(data = text, origin = "", lastEventId = "")
+          ),
+        ), # TODO: Set origin properly
     )
 
   if !wsTarget:
