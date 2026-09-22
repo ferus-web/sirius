@@ -31,9 +31,23 @@ const
   DocumentPositionContainedBy*: uint16 = 16
   DocumentPositionImplementationSpecific*: uint16 = 32
 
-proc nodeTypeGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: Node.nodeType getter"
-  undefined(rt)
+proc nodeTypeGetter(rt: Runtime, this: JSValue): uint16 =
+  ## https://dom.spec.whatwg.org/#dom-node-nodetype
+
+  let node = &this.getPrivateObject(dom.Node)
+
+  if node of dom.Element:
+    return ElementNode
+  elif node of dom.Document:
+    return DocumentNode
+  elif node of dom.Text:
+    return TextNode
+  elif node of dom.DocumentType:
+    return DocumentTypeNode
+  elif node of dom.DocumentFragment:
+    return DocumentFragmentNode
+
+  # TODO: CommentNode, CDataSectionNode, AttributeNode
 
 proc nodeNameGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: Node.nodeName getter"
