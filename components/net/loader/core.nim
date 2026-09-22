@@ -97,7 +97,7 @@ proc poll*(loader: ResourceLoader) =
     else:
       loader.pendingAssets[queued.spec.requestId] = queued.asset
 
-proc createAdhocInstance*(loader: ResourceLoader, errorBuffer: var string): Easy =
+proc createAdhocInstance*(loader: ResourceLoader): Easy =
   #[ let handle = curl_easy_init()
   discard curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, errorBuffer[0].addr)
   discard curl_easy_setopt(handle, CURLOPT_NOSIGNAL, clong(1))

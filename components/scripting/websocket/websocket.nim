@@ -36,6 +36,7 @@ type
     ): Result[WebSocket, string] {.gcsafe.}
     getReadyState*: proc(ws: WebSocket): WSClientState {.gcsafe.}
     send*: proc(ws: WebSocket, data: string) {.gcsafe.}
+    getURLRecord*: proc(ws: WebSocket): URL {.gcsafe.}
 
   JSWebSocket* = object of event_target.EventTarget
 
@@ -55,9 +56,11 @@ const
   URLField = "url"
   ProtocolsField = "protocols"
 
-proc urlGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: JSWebSocket.url getter"
-  undefined(rt)
+proc urlGetter(rt: Runtime, this: JSValue, callbacks: WebSocketHostCallbacks): JSValue =
+  ## https://websockets.spec.whatwg.org/#dom-websocket-url
+
+  # The url getter steps are to return this’s url, serialized.
+  rt.wrap($callbacks.getURLRecord(&this.getPrivateObject(WebSocket)))
 
 proc readyStateGetter(
     rt: Runtime, this: JSValue, callbacks: WebSocketHostCallbacks
@@ -217,7 +220,7 @@ proc generateBindings*(runtime: Runtime, callbacks: WebSocketHostCallbacks) =
     "url",
     FieldAccessor(
       getter: proc(this: JSValue) =
-        ret urlGetter(rt = runtime, this = this)
+        ret urlGetter(rt = runtime, this = this, callbacks = callbacks)
     ),
   )
   runtime.defineAccessor(

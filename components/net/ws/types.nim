@@ -2,6 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import components/net/curl_wrapper, components/impure/libcurl
+import pkg/url
 
 type
   WSClientState* {.pure, size: sizeof(uint8).} = enum
@@ -29,6 +30,8 @@ type
 
     state*: WSClientState
     callbacks*: WSClientCallbacks
+
+    url*: url.URL
 
     curlErrorBuffer*: string # REMOVEME
 

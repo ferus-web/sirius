@@ -18,6 +18,8 @@
     socket.addEventListener("open", function(event) {
       statusElem.textContent = "Open";
       console.log("WebSocket connection open :3");
+      console.log("* connected to", socket.url);
+
       socket.send("hello sirius!");
       console.log(socket.readyState);
     });
