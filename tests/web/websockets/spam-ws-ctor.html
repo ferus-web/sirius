@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebSocket hell</title>
+  </head>
+  <body>
+    <h1>The enrichment center reminds you that WebSocket hell is a real place where you will be sent at the first sign of defiance.</h1>
+    <p><strong>Spawned:</strong> <span id="status">N/A</span></p>
+    <p><strong>Last Successful:</strong><span id="out">N/A</span></p>
+    <p><strong>Failed:</strong><span id="failout">N/A</span></p>
+  </body>
+  <script>
+    const statusElem = document.getElementById("status");
+    const outElem = document.getElementById("out");
+    const failElem = document.getElementById("failout");
+
+    statusElem.textContent = "Connecting..."
+
+    var failed = 0;
+    for (var i = 0; i < 128; i++) {
+      statusElem.textContent = i;
+      const socket = new WebSocket("wss://echo.websocket.org");
+      socket.addEventListener("open", function(event) {
+	outElem.textContent = i;
+      });
+      socket.addEventListener("error", function(err) {
+        failed++;
+	failElem.textContent = failed;
+      });
+    }
+  </script>
+</html>

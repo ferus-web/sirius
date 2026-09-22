@@ -6,7 +6,7 @@ import
     algorithm, monotimes, options, streams, strformat, strutils, sequtils, tables,
     unicode, os, times,
   ]
-import ./[branding, cookie_jar, hit_testing, types]
+import ./[branding, cookie_jar, hit_testing, flags, types]
 import
   pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb],
   pkg/figdraw/vulkan/vulkan_context
@@ -74,11 +74,20 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
       ): Result[WebSocket, string] {.gcsafe.} =
         # TODO/EASY: Move this into a dedicated function. It's getting too big for an anonymous proc
         # TODO: We need to probably forbid stuff like localhost sockets, or atleast limit them drastically. A rogue remotely fetched guest script can probe ports very easily right now.
+
+        if renderer.websockets.len > flags.MaximumConcurrentWebSocketConnections:
+          return err("Maximum concurrent WebSocket connections limit reached")
+
         let targetNode = WebSocket(url: url) # TODO: Protocols
         let ws = newWebSocket(renderer.loader, url)
         ws.callbacks.opened = proc(_: WebSocketClient) {.gcsafe.} =
           let fd = ws.getFd()
-          renderer.registerIntoEventLoop(&fd, nix.EPOLLIN)
+
+          if *fd:
+            renderer.registerIntoEventLoop(&fd, nix.EPOLLIN)
+          else:
+            warn "Failed to register WebSocket file descriptor into event loop, continuing anyways.",
+              url = ws.url, state = ws.state
 
           # HACK: I'm sure there's a better way to plug in web API bindings' dispatchers
           onopen(targetNode)
