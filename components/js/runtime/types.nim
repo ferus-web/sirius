@@ -100,6 +100,8 @@ type
 
     deadline*: MonoTime
 
+  Microtask* = JSValue
+
   DeathCallback* = proc(vm: Interpreter) {.gcsafe.}
   ConsoleDelegate* = proc(level: ConsoleLevel, msg: string) {.gcsafe.}
 
@@ -146,6 +148,7 @@ type
     realm*: Realm
 
     macrotaskQueue*: Deque[Task]
+    microtaskQueue*: Deque[Microtask]
 
 proc newRealm*(): Realm {.inline.} =
   Realm(heap: initHeapManager())

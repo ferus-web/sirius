@@ -320,6 +320,9 @@ proc execFile(ctx: Input, file: string) {.inline.} =
   profileThis "execution time":
     runtime.run()
 
+  profileThis "drain microtasks":
+    runtime.drainMicrotasks()
+
   if ctx.enabled("dump-statistics"):
     runtime.dumpStatisticsPretty()
 
