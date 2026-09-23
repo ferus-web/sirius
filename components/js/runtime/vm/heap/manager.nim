@@ -50,6 +50,12 @@ proc allocate*(manager: HeapManager, size: SomeUnsignedInt): pointer =
   manager.metrics.allocatedBytesGc += size
   pntr
 
+proc allocate*[T: object](manager: HeapManager, typ: typedesc[T]): ptr T =
+  let mem = manager.allocate(cast[uint64](sizeof(typ)))
+  zeroMem(mem, sizeof(typ))
+
+  cast[ptr T](mem)
+
 proc initHeapManager*(): HeapManager =
   # # debug "vm/heap: initializing heap manager"
   var manager = HeapManager()
