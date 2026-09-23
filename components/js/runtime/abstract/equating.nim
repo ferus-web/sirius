@@ -42,6 +42,23 @@ proc equateSameValueNonNumber*(runtime: Runtime, x, y: JSValue): bool =
     # a. If x and y are both true or both false, return true; otherwise, return false.
     return &x.getBool() == &y.getBool()
 
+proc sameValue*(runtime: Runtime, x, y: JSValue): bool =
+  ## 7.2.9 SameValue ( x, y )
+  ## The abstract operation SameValue takes arguments x (an ECMAScript language value) and y (an ECMAScript language value) and returns a Boolean. It determines whether or not the two arguments are the same value.
+
+  # 1. If SameType(x, y) is false, return false.
+  # TODO: Implement SameType()
+  if x.kind != y.kind:
+    return false
+
+  # 2. If x is a Number, then
+  if x.isNumber:
+    # a. Return Number::sameValue(x, y).
+    return equateNumbers(runtime, x, y)
+
+  # 3. Return SameValueNonNumber(x, y).
+  equateSameValueNonNumber(runtime, x, y)
+
 proc isStrictlyEqual*(runtime: Runtime, x, y: JSValue): bool =
   ## 7.2.15 IsStrictlyEqual ( x, y )
 
