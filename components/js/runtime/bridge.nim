@@ -311,33 +311,34 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
         initAtomOrFunction[NativeFunction](wrapped, hidden = fatom is Hidden)
       jsType.objRepr[fname] = wrapped
 
-proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: varargs[JSValue]) =
-  if callable.kind != BytecodeCallable:
-    raise newException(ValueError, "Cannot call value of type " & $callable.kind)
-
-  for arg in arguments:
-    runtime.vm.registers.callArgs &= arg
-
-  runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
-  runtime.vm[].run()
-
-proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: seq[JSValue]) =
-  if callable.kind != BytecodeCallable:
-    raise newException(ValueError, "Cannot call value of type " & $callable.kind)
-
+proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: seq[JSValue] = @[]) =
   runtime.vm.registers.callArgs = arguments
 
   runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
   runtime.vm[].run()
 
-proc call*(runtime: Runtime, callable: JSValue, arguments: varargs[JSValue]): JSValue =
-  runtime.callNoRetval(callable, arguments)
+proc callNoRetval*(
+    runtime: Runtime, callable: JSValue, this: JSValue, arguments: seq[JSValue] = @[]
+) =
+  runtime.vm.registers.this = some(this)
+  runtime.vm.registers.callArgs = arguments
 
-  let retVal = runtime.getReturnValue()
-  if !retVal:
-    return undefined(runtime.realm.heap)
+  runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
+  runtime.vm[].run()
 
-  &retVal
+proc call*(
+    runtime: Runtime, callable: JSValue, this: JSValue, arguments: seq[JSValue] = @[]
+): JSValue =
+  runtime.vm.registers.this = some(this)
+  runtime.vm.registers.callArgs = arguments
+
+  runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
+  runtime.vm[].run()
+
+  if (let retval = runtime.getReturnValue(); *retval):
+    &retval
+  else:
+    undefined(runtime)
 
 proc setGlobal*(runtime: Runtime, name: string, value: JSValue) =
   ## Set a global in the current context.
@@ -380,7 +381,7 @@ proc getProperty*(runtime: Runtime, atom: JSValue, name: string): JSValue {.gcsa
 
   let property = atom.objFields[name]
   if property.isAccessor:
-    return runtime.call(property.accessor.getter)
+    return runtime.call(property.accessor.getter, this = atom)
 
   atom.objValues[property.index]
 

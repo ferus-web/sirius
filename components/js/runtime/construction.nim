@@ -36,4 +36,7 @@ proc boolean*(runtime: Runtime, value: bool): JSValue =
 proc obj*(runtime: Runtime): JSValue =
   obj(runtime.realm.heap)
 
+proc nativeCallable*(runtime: Runtime, fn: NativeFunction): JSValue =
+  nativeCallable(runtime.realm.heap, fn)
+
 {.pop.}
