@@ -11,11 +11,24 @@ import components/js/stdlib/types/[std_bigint, std_string_type]
 proc equateNumbers*(runtime: Runtime, x, y: JSValue): bool =
   runtime.ToNumber(x) == runtime.ToNumber(y)
 
+proc isSpecObject*(rt: Runtime, obj: JSValue): bool =
+  ## A small hack to make boxed JSValue(s) for non-Object types like String (that are represents as such in Bali for now) return false for `IsObject()`
+
+  isObject(obj) and not rt.isA(obj, JSString)
+
 proc equateSameValueNonNumber*(runtime: Runtime, x, y: JSValue): bool =
   ## 7.2.12 SameValueNonNumber ( x, y )
 
   # 1. Assert: Type(x) is Type(y).
   assert(x.kind == y.kind)
+
+  # HACK: I hate this
+  let
+    sx = runtime.isSpecObject(x)
+    sy = runtime.isSpecObject(y)
+
+  if sx xor sy:
+    return false
 
   # 2. If x is either null or undefined, return true
   if x.kind == Null or x.isUndefined:

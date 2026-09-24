@@ -314,7 +314,7 @@ proc registerType*[T](runtime: Runtime, name: string, prototype: typedesc[T]) =
 proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: seq[JSValue] = @[]) =
   runtime.vm.registers.callArgs = arguments
 
-  runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
+  runtime.vm[].invoke(callable, dontUnwindFurther = true)
   runtime.vm[].run()
 
 proc callNoRetval*(
@@ -323,7 +323,7 @@ proc callNoRetval*(
   runtime.vm.registers.this = some(this)
   runtime.vm.registers.callArgs = arguments
 
-  runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
+  runtime.vm[].invoke(callable, dontUnwindFurther = true)
   runtime.vm[].run()
 
 proc call*(
@@ -332,7 +332,7 @@ proc call*(
   runtime.vm.registers.this = some(this)
   runtime.vm.registers.callArgs = arguments
 
-  runtime.vm[].call(&callable.getBytecodeClause(), default(Operation))
+  runtime.vm[].invoke(callable, dontUnwindFurther = true)
   runtime.vm[].run()
 
   if (let retval = runtime.getReturnValue(); *retval):

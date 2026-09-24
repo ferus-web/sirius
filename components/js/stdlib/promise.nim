@@ -6,6 +6,7 @@ import
   components/js/runtime/[arguments, atom_helpers, bridge, construction, types, wrapping],
   components/js/runtime/abstract/[callables, equating],
   components/js/stdlib/[errors_common, errors],
+  components/js/stdlib/types/std_string_type,
   components/js/runtime/vm/atom,
   components/js/runtime/vm/heap/manager
 import pkg/shakar
@@ -27,12 +28,14 @@ type
     Fulfilled
     Rejected
 
-  PromiseCapability* = object
+  PromiseCapabilityObj = object
     ## https://tc39.es/ecma262/#sec-promisecapability-records
     ## A PromiseCapability Record is a Record used to encapsulate a Promise or promise-like object along with the functions that are capable of resolving or rejecting that promise.
     ## PromiseCapability Records are produced by the NewPromiseCapability abstract operation.
     promise*: Promise
     resolve*, reject*: JSValue
+
+  PromiseCapability* = ptr PromiseCapabilityObj
 
   JobCallback* = object
     ## https://tc39.es/ecma262/#sec-jobcallback-records
@@ -66,7 +69,9 @@ type
     isHandled*: bool
 
   Promise = ptr PromiseObj
+
   JSPromise = object
+  JSPromiseReaction = object # NOTE: Not exposed to JS
 
 func HostJobMakeCallback*(callback: JSValue): JobCallback {.raises: [].} =
   ## https://tc39.es/ecma262/#sec-hostmakejobcallback
@@ -94,6 +99,12 @@ proc HostCallJobCallback*(
 
   # 2. Return ? Call(jobCallback.[[Callback]], thisValue, argList).
   rt.call(jobCallback.callback, this = thisValue, arguments = argList)
+
+func HostMakeJobCallback*(callback: JSValue): JobCallback =
+  ## https://tc39.es/ecma262/#sec-hostmakejobcallback
+
+  # 1. Return the JobCallback Record { [[Callback]]: callback, [[HostDefined]]: empty }.
+  JobCallback(callback: callback, hostDefined: none(JSValue))
 
 proc NewPromiseReactionJob*(
     rt: Runtime, reactionObj: JSValue, arg: JSValue
@@ -292,7 +303,7 @@ proc CreateResolvingFunctions*(
         ret undefined(runtime)
 
       # e. If resolution is not an Object, then
-      if not resolution.isObject:
+      if not runtime.isSpecObject(resolution):
         # i. Perform FulfillPromise(promise, resolution).
         FulfillPromise(runtime, promise, resolution)
 
@@ -357,11 +368,189 @@ proc CreateResolvingFunctions*(
   # 6. Return the Record { [[Resolve]]: resolve, [[Reject]]: reject }.
   ResolvingFunctionsRecord(resolve: resolve, reject: reject)
 
+proc NewPromiseCapability*(rt: Runtime, ctor: JSValue): PromiseCapability =
+  ## https://tc39.es/ecma262/#sec-newpromisecapability
+
+  # TODO: 1. If IsConstructor(ctor) is false, throw a TypeError exception.
+
+  # 2. NOTE: ctor is assumed to be a constructor function that supports the parameter conventions of the Promise constructor (see 27.5.3.1).
+
+  # 3. Let resolvingFuncs be the Record { [[Resolve]]: undefined, [[Reject]]: undefined }.
+  let resolvingFuncs = rt.realm.heap.allocate(ResolvingFunctionsRecord)
+  resolvingFuncs.resolve = undefined(rt)
+  resolvingFuncs.reject = undefined(rt)
+
+  # 4. Let executorClosure be a new Abstract Closure with parameters (resolve, reject) that captures resolvingFuncs and performs the following steps when called:
+  let executorClosure = nativeCallable(
+    rt,
+    proc() =
+      let
+        runtime = rt # HACK: Code smell :(
+        resolve = &runtime.argument(1)
+        reject = &runtime.argument(2)
+
+      # a. If resolvingFuncs.[[Resolve]] is not undefined, throw a TypeError exception.
+      if not resolvingFuncs.resolve.isUndefined:
+        rt.typeError("Promise's Resolve function must be undefined")
+        return
+
+      # b. If resolvingFuncs.[[Reject]] is not undefined, throw a TypeError exception.
+      if not resolvingFuncs.reject.isUndefined:
+        rt.typeError("Promise's Reject function must be undefined")
+        return
+
+      # c. Set resolvingFuncs.[[Resolve]] to resolve.
+      resolvingFuncs.resolve = resolve
+
+      # d. Set resolvingFuncs.[[Reject]] to reject.
+      resolvingFuncs.reject = resolve
+
+      # e. Return NormalCompletion(undefined).
+      ret undefined(rt)
+    ,
+  )
+
+  # 5. Let executor be CreateBuiltinFunction(executorClosure, 2, "", « »).
+  let executor = executorClosure
+
+  # 6. Let promise be ? Construct(ctor, « executor »).
+  let promise = rt.call(ctor, this = undefined(rt), arguments = @[executor])
+
+  # 7. If IsCallable(resolvingFuncs.[[Resolve]]) is false, throw a TypeError exception.
+  if not IsCallable(rt, resolvingFuncs.resolve):
+    rt.typeError("Promise's Resolve function was not set by executor")
+    return
+
+  # 8. If IsCallable(resolvingFuncs.[[Reject]]) is false, throw a TypeError exception.
+  if not IsCallable(rt, resolvingFuncs.reject):
+    rt.typeError("Promise's Reject function was not set by executor")
+    return
+
+  # 9. Return the PromiseCapability Record { [[Promise]]: promise, [[Resolve]]: resolvingFuncs.[[Resolve]], [[Reject]]: resolvingFuncs.[[Reject]] }.
+  let record = rt.realm.heap.allocate(PromiseCapabilityObj)
+  record.promise = &promise.getPrivateObject(Promise)
+  record.reject = resolvingFuncs.reject
+  record.resolve = resolvingFuncs.resolve
+
+  record
+
+proc IsPromise*(rt: Runtime, value: JSValue): bool =
+  ## https://tc39.es/ecma262/#sec-ispromise
+  ## The abstract operation IsPromise takes argument arg (an ECMAScript language value) and returns a Boolean. It checks for the promise brand on an object.
+
+  # 1. If arg is not an Object, return false.
+  if not rt.isSpecObject(value):
+    return false
+
+  # 2. If arg does not have a [[PromiseState]] internal slot, return false.
+  if not *value.getPrivateObject(Promise):
+    return false
+
+  # 3. Return true.
+  true
+
 proc toJSPromise*(rt: Runtime, promise: Promise): JSValue =
   let obj = rt.createObjFromType(JSPromise)
   obj.setHiddenField("internal", rt.wrap(hidden(promise)))
 
   obj
+
+proc PerformPromiseThen*(
+    rt: Runtime,
+    promise: Promise,
+    onFulfilled, onRejected: JSValue,
+    resultCapability: Option[PromiseCapability],
+): JSValue =
+  ## https://tc39.es/ecma262/#sec-performpromisethen
+
+  # 1. Assert: IsPromise(promise) is true.
+  # TODO: 2. If resultCapability is not present, then
+  # TODO: a. Set resultCapability to undefined.
+
+  let onFulfilledJobCallback =
+    if not IsCallable(rt, onFulfilled):
+      # 3. If IsCallable(onFulfilled) is false, then
+      # a. Let onFulfilledJobCallback be empty.
+      none(JobCallback)
+    else:
+      # 4. Else,
+      # a. Let onFulfilledJobCallback be HostMakeJobCallback(onFulfilled).
+      some(HostMakeJobCallback(onFulfilled))
+
+  let onRejectedJobCallback =
+    if not IsCallable(rt, onRejected):
+      # 5. If IsCallable(onRejected) is false, then
+      # a. Let onRejectedJobCallback be empty.
+      none(JobCallback)
+    else:
+      # 6. Else,
+      # a. Let onRejectedJobCallback be HostMakeJobCallback(onRejected).
+      some(HostMakeJobCallback(onRejected))
+
+  # 7. Let fulfillReaction be the PromiseReaction Record { [[Capability]]: resultCapability, [[Type]]: fulfill, [[Handler]]: onFulfilledJobCallback }.
+  let fulfillReaction = rt.realm.heap.allocate(PromiseReactionObj)
+  fulfillReaction.capability = resultCapability
+  fulfillReaction.kind = PromiseReactionKind.Fulfill
+  fulfillReaction.handler = onFulfilledJobCallback
+
+  # 8. Let rejectReaction be the PromiseReaction Record { [[Capability]]: resultCapability, [[Type]]: reject, [[Handler]]: onRejectedJobCallback }.
+  let rejectReaction = rt.realm.heap.allocate(PromiseReactionObj)
+  rejectReaction.capability = resultCapability
+  rejectReaction.kind = PromiseReactionKind.Reject
+  rejectReaction.handler = onRejectedJobCallback
+
+  let
+    fulfillReactionObj = obj(rt)
+    rejectReactionObj = obj(rt)
+
+  fulfillReactionObj.setHiddenField("internal", rt.wrap(hidden(fulfillReaction)))
+  rejectReactionObj.setHiddenField("internal", rt.wrap(hidden(rejectReaction)))
+
+  case promise.state
+  of PromiseState.Pending:
+    # 9. If promise.[[PromiseState]] is pending, then
+    # a. Append fulfillReaction to promise.[[PromiseFulfillReactions]].
+    promise.fulfillReactions.sequence &= fulfillReactionObj
+
+    # b. Append rejectReaction to promise.[[PromiseRejectReactions]].
+    promise.rejectReactions.sequence &= rejectReactionObj
+  of PromiseState.Fulfilled:
+    # 10. Else if promise.[[PromiseState]] is fulfilled, then
+    # a. Let value be promise.[[PromiseResult]].
+    let value = promise.res
+
+    # b. Let fulfillJob be NewPromiseReactionJob(fulfillReaction, value).
+    let fulfillJob = NewPromiseReactionJob(rt, fulfillReactionObj, &value)
+
+    # c. Perform HostEnqueuePromiseJob(fulfillJob.[[Job]], fulfillJob.[[Realm]]).
+    HostEnqueuePromiseJob(rt, fulfillJob)
+  of PromiseState.Rejected:
+    # 11. Else,
+    # a. Assert: promise.[[PromiseState]] is rejected.
+
+    # b. Let reason be promise.[[PromiseResult]].
+    let reason = promise.res
+
+    # c. If promise.[[PromiseIsHandled]] is false, perform HostPromiseRejectionTracker(promise, "handle").
+    if not promise.isHandled:
+      # TODO: HostPromiseRejectionTracker(rt, promise, "handle")
+      discard
+
+    # d. Let rejectJob be NewPromiseReactionJob(rejectReaction, reason).
+    let rejectJob = NewPromiseReactionJob(rt, rejectReactionObj, &reason)
+
+    # e. Perform HostEnqueuePromiseJob(rejectJob.[[Job]], rejectJob.[[Realm]]).
+    HostEnqueuePromiseJob(rt, rejectJob)
+
+  # 12. Set promise.[[PromiseIsHandled]] to true.
+  promise.isHandled = true
+
+  # 13. If resultCapability is undefined, return undefined.
+  if !resultCapability:
+    return undefined(rt)
+
+  # 14. Return resultCapability.[[Promise]].
+  toJSPromise(rt, (&resultCapability).promise)
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType("Promise", JSPromise)
@@ -406,6 +595,9 @@ proc generateBindings*(runtime: Runtime) =
       let resolvingFuncs = CreateResolvingFunctions(runtime, promiseObj)
 
       # 10. Let completion be Completion(Call(executor, undefined, « resolvingFuncs.[[Resolve]], resolvingFuncs.[[Reject]] »)).
+
+      # HACK: Make a better way to ensure the interpreter doesn't casually waltz past into
+      # our rollback point after executing the executor
       let completion = runtime.call(
         executor,
         this = undefined(runtime),
@@ -422,5 +614,42 @@ proc generateBindings*(runtime: Runtime) =
 
       # 12. Return promise.
       ret promiseObj
+    ,
+  )
+
+  runtime.definePrototypeFn(
+    JSPromise,
+    "then",
+    proc(this: JSValue) =
+      ## 27.5.5.4 Promise.prototype.then ( onFulfilled, onRejected )
+      ## https://tc39.es/ecma262/#sec-promise.prototype.then
+
+      let
+        onFulfilled = &runtime.argument(1)
+        onRejected = &runtime.argument(2)
+
+      # 1. Let promise be the this value.
+      let promise = this
+
+      # 2. If IsPromise(promise) is false, throw a TypeError exception.
+      if not IsPromise(runtime, promise):
+        runtime.typeError("Promise.prototype.then() only works with Promise objects")
+        return
+
+      # 3. Let ctor be ? SpeciesConstructor(promise, %Promise%).
+      let ctor = runtime.getConstructor(JSPromise)
+
+      # 4. Let resultCapability be ? NewPromiseCapability(ctor).
+      let resultCapability =
+        NewPromiseCapability(runtime, nativeCallable(runtime, &ctor))
+
+      # 5. Return PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability).
+      ret PerformPromiseThen(
+        runtime,
+        &promise.getPrivateObject(Promise),
+        onFulfilled,
+        onRejected,
+        some(resultCapability),
+      )
     ,
   )

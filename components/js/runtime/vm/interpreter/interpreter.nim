@@ -40,9 +40,9 @@ type
   AddAtomsOpImpl* = proc(a, b: JSValue): JSValue {.gcsafe.}
 
   Interpreter* = object
-    currClause: int
+    currClause*: int
     currIndex*: uint = 0
-    clauses: seq[Clause]
+    clauses*: seq[Clause]
     currJumpOnErr: Option[uint]
 
     stack*: seq[JSValue]
@@ -321,7 +321,10 @@ proc swap*(interpreter: var Interpreter, a, b: int) {.inline, cdecl.} =
   interpreter.addAtom(&atomB, a)
 
 proc call*(
-    interpreter: var Interpreter, name: string, op: Operation
+    interpreter: var Interpreter,
+    name: string,
+    op: Operation,
+    dontUnwindFurther: bool = false,
 ) {.gcsafe, inline, cdecl.} =
   msg "calling function " & name
   msg "trapped? " & $interpreter.trapped
@@ -344,6 +347,8 @@ proc call*(
       msg "found bytecode clause " & name
       var newClause = &clause # get the new clause
 
+      newClause.dontUnwindFurther = dontUnwindFurther
+
       # setup rollback points
       newClause.rollback.clause = interpreter.currClause # points to current clause
       newClause.rollback.opIndex = interpreter.currIndex + 1
@@ -358,7 +363,9 @@ proc call*(
     else:
       interpreter.typeErrorHook("cannot call " & name)
 
-proc invoke*(interpreter: var Interpreter, value: JSValue) {.gcsafe.} =
+proc invoke*(
+    interpreter: var Interpreter, value: JSValue, dontUnwindFurther: bool = false
+) {.gcsafe.} =
   case value.kind
   of Integer:
     let index = &getInt(value)
@@ -366,14 +373,20 @@ proc invoke*(interpreter: var Interpreter, value: JSValue) {.gcsafe.} =
     interpreter.invoke(&interpreter.get(index))
   of String:
     msg "atom is string/ref to native function"
-    interpreter.call(&getStr(value), default(Operation))
+    interpreter.call(
+      &getStr(value), default(Operation), dontUnwindFurther = dontUnwindFurther
+    )
   of NativeCallable:
     msg "atom is native segment"
     value.fn()
     inc interpreter.currIndex
   of BytecodeCallable:
     msg "atom is bytecode segment"
-    interpreter.call(&getBytecodeClause(value), default(Operation))
+    interpreter.call(
+      &getBytecodeClause(value),
+      default(Operation),
+      dontUnwindFurther = dontUnwindFurther,
+    )
   else:
     interpreter.typeErrorHook($value.kind & " is not a function")
 
@@ -1175,6 +1188,12 @@ proc run*(interpreter: var Interpreter) {.gcsafe.} =
 
     if not *op:
       vmd "rollback", "no op to exec"
+
+      if clause.dontUnwindFurther:
+        vmd "rollback", "clause's dont-unwind-further flag is set; exec has been halted"
+        interpreter.clauses[interpreter.currClause].dontUnwindFurther = false
+          # reset it for the future
+        break
 
       if clause.rollback.clause == int.low:
         vmd "rollback", "clause == int.low; exec has finished"

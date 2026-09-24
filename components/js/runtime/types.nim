@@ -177,6 +177,14 @@ proc getMethods*(
 
   raise newException(KeyError, "No such type with proto hash: " & $proto & " exists!")
 
+proc getConstructor*[T: object](
+    runtime: Runtime, proto: typedesc[T]
+): Option[NativeFunction] =
+  let protoHash = hash($proto)
+  for typ in runtime.types:
+    if typ.proto == protoHash:
+      return some(typ.constructor)
+
 proc setupAtom*(runtime: Runtime, typ: JSType, value: JSValue) =
   ## Set up all properties and methods for a value off of a provided type.
   for name, member in typ.members:

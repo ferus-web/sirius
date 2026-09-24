@@ -20,6 +20,8 @@ type
     profIterationsSpent*: uint64 ## The number of ops spent executing this clause
     cachedJudgement*: Option[CompilationJudgement]
 
+    dontUnwindFurther*: bool
+
   CompilationJudgement* {.pure, size: sizeof(uint8).} = enum
     DontCompile ## This function is not worth compiling.
     Ineligible
