@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Clipboard 001</title></head>
+  <body>
+    <p id="out">Click here to write to the clipboard!!! :D</p>
+
+    <script>
+const out = document.getElementById('out');
+
+out.addEventListener(
+  "click",
+  function() {
+    navigator.clipboard.writeText("hello sirius!");
+  }
+)
+    </script>
+  </body>
+</html>

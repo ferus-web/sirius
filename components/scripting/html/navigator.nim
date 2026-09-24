@@ -32,8 +32,8 @@ type JSNavigator* = object
   # https://html.spec.whatwg.org/#navigator.hardwareconcurrency
   hardwareConcurrency*: int64
 
-proc generateGlobal*(runtime: Runtime) =
-  discard runtime.setGlobal(
+proc generateGlobal*(runtime: Runtime): JSValue =
+  runtime.setGlobal(
     "navigator",
     JSNavigator(
       # TODO: We should report accurate values here, eventually.

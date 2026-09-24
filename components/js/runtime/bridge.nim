@@ -6,8 +6,9 @@ import std/[tables, options, macros, strformat, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
-  components/js/runtime/
-    [arguments, atom_obj_variant, wrapping, atom_helpers, types, construction]
+  components/js/runtime/[
+    arguments, atom_obj_variant, wrapping, atom_helpers, types, construction, microtasks
+  ]
 import pkg/shakar
 
 privateAccess(Runtime)
@@ -317,6 +318,8 @@ proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: seq[JSValue] 
   runtime.vm[].invoke(callable, dontUnwindFurther = true)
   runtime.vm[].run()
 
+  runtime.drainMicrotasks()
+
 proc callNoRetval*(
     runtime: Runtime, callable: JSValue, this: JSValue, arguments: seq[JSValue] = @[]
 ) =
@@ -325,6 +328,8 @@ proc callNoRetval*(
 
   runtime.vm[].invoke(callable, dontUnwindFurther = true)
   runtime.vm[].run()
+
+  runtime.drainMicrotasks()
 
 proc call*(
     runtime: Runtime, callable: JSValue, this: JSValue, arguments: seq[JSValue] = @[]
@@ -335,10 +340,13 @@ proc call*(
   runtime.vm[].invoke(callable, dontUnwindFurther = true)
   runtime.vm[].run()
 
-  if (let retval = runtime.getReturnValue(); *retval):
-    &retval
-  else:
-    undefined(runtime)
+  result =
+    if (let retval = runtime.getReturnValue(); *retval):
+      &retval
+    else:
+      undefined(runtime)
+
+  runtime.drainMicrotasks()
 
 proc setGlobal*(runtime: Runtime, name: string, value: JSValue) =
   ## Set a global in the current context.

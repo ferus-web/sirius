@@ -1,8 +1,9 @@
 import components/js/runtime/vm/atom
 import
   components/js/runtime/
-    [atom_helpers, arguments, wrapping, bridge, construction, common, types]
+    [atom_helpers, arguments, wrapping, bridge, construction, common, types, microtasks]
 import components/js/runtime/abstract/coercion
 
 export
-  atom, atom_helpers, arguments, coercion, bridge, construction, common, types, wrapping
+  atom, atom_helpers, arguments, coercion, bridge, construction, common, types,
+  wrapping, microtasks

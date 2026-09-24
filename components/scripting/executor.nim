@@ -14,7 +14,8 @@ import
   components/scripting/[url, timeouts],
   components/scripting/html/[navigator, performance, window, htmlelement, message_event],
   components/scripting/html/element/htmlinputelement,
-  components/scripting/websocket/[close_event, websocket]
+  components/scripting/websocket/[close_event, websocket],
+  components/scripting/clipboard/[clipboard]
 import components/aux/pretty
 
 when defined(unix):
@@ -55,7 +56,7 @@ proc registerWebBindings(
   timeouts.generateBindings(elem.script.rt)
 
   navigator.generateBindings(elem.script.rt)
-  navigator.generateGlobal(elem.script.rt)
+  let navig = navigator.generateGlobal(elem.script.rt)
 
   window.generateBindings(elem.script.rt, callbacks.window)
   window.generateGlobal(elem.script.rt, doc)
@@ -72,6 +73,9 @@ proc registerWebBindings(
   performance.generateGlobal(elem.script.rt, callbacks.getTimeOrigin())
 
   websocket.generateBindings(elem.script.rt, callbacks.websocket)
+
+  clipboard.generateBindings(elem.script.rt)
+  clipboard.generateGlobal(elem.script.rt, navig)
 
 proc setupRandomState(rng: out uint64) =
   when defined(unix):
