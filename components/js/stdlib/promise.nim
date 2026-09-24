@@ -71,7 +71,6 @@ type
   Promise = ptr PromiseObj
 
   JSPromise = object
-  JSPromiseReaction = object # NOTE: Not exposed to JS
 
 func HostJobMakeCallback*(callback: JSValue): JobCallback {.raises: [].} =
   ## https://tc39.es/ecma262/#sec-hostmakejobcallback
