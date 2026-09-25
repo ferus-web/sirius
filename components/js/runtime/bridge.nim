@@ -316,9 +316,10 @@ proc callNoRetval*(runtime: Runtime, callable: JSValue, arguments: seq[JSValue] 
   runtime.vm.registers.callArgs = arguments
 
   runtime.vm[].invoke(callable, dontUnwindFurther = true)
-  runtime.vm[].run()
+  if callable.kind != NativeCallable:
+    runtime.vm[].run()
 
-  runtime.drainMicrotasks()
+  # runtime.drainMicrotasks()
 
 proc callNoRetval*(
     runtime: Runtime, callable: JSValue, this: JSValue, arguments: seq[JSValue] = @[]
@@ -327,9 +328,10 @@ proc callNoRetval*(
   runtime.vm.registers.callArgs = arguments
 
   runtime.vm[].invoke(callable, dontUnwindFurther = true)
-  runtime.vm[].run()
+  if callable.kind != NativeCallable:
+    runtime.vm[].run()
 
-  runtime.drainMicrotasks()
+  # runtime.drainMicrotasks()
 
 proc call*(
     runtime: Runtime, callable: JSValue, this: JSValue, arguments: seq[JSValue] = @[]
@@ -338,7 +340,8 @@ proc call*(
   runtime.vm.registers.callArgs = arguments
 
   runtime.vm[].invoke(callable, dontUnwindFurther = true)
-  runtime.vm[].run()
+  if callable.kind != NativeCallable:
+    runtime.vm[].run()
 
   result =
     if (let retval = runtime.getReturnValue(); *retval):
@@ -346,7 +349,7 @@ proc call*(
     else:
       undefined(runtime)
 
-  runtime.drainMicrotasks()
+  # runtime.drainMicrotasks()
 
 proc setGlobal*(runtime: Runtime, name: string, value: JSValue) =
   ## Set a global in the current context.
