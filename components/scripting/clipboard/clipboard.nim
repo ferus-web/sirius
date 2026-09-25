@@ -1,3 +1,8 @@
+## `Clipboard` implementation
+## https://www.w3.org/TR/clipboard-apis/
+##
+## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+
 import
   components/js/runtime/prelude,
   components/scripting/dom/event_target,
@@ -25,11 +30,9 @@ proc write(rt: Runtime, this: JSValue, data: JSValue): JSValue =
   warn "IMPLEMENTME: Clipboard::write()", data = rt.ToString(data)
   undefined(rt)
 
-import components/aux/pretty
 proc writeText(
     rt: Runtime, this: JSValue, data: JSValue, callbacks: ClipboardHostCallbacks
 ): JSValue =
-  debugEcho "Clipboard.prototype.writeText()"
   ## 7.3.4. writeText(data)
   ## https://www.w3.org/TR/clipboard-apis/#dom-clipboard-writetext
 
