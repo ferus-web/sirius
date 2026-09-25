@@ -18,7 +18,10 @@ type
     id: TabID
 
     tabPage: ptr EGtkWidget
+    container: ptr EGtkWidget
     viewport: ptr EGtkWidget
+
+    dead: bool
 
   BrowserState = ref object
     view: WebView
@@ -97,12 +100,19 @@ proc onFrameTick(
     widget: ptr EGtkWidget, frameClock: ptr GdkFrameClock, userData: pointer
 ): int32 {.cdecl.} =
   let browser = cast[BrowserState](userData)
-  if widget != browser.tab.viewport:
+  if widget != browser.tab.container:
     # If we're an unfocused tab, don't bother sending any IPC calls or anything.
     # let the renderer process rest :3
     return G_SOURCE_CONTINUE
 
-  let currSize = ivec2(gtk_widget_get_width(widget), gtk_widget_get_height(widget) + 1)
+  if browser.tab.dead:
+    browser.view.step()
+    return G_SOURCE_CONTINUE
+
+  let currSize = ivec2(
+    gtk_widget_get_width(browser.tab.viewport),
+    gtk_widget_get_height(browser.tab.viewport) + 1,
+  )
 
   if currSize.x == 0 or currSize.y == 0:
     return G_SOURCE_CONTINUE
@@ -121,7 +131,7 @@ proc onFrameTick(
     browser.view.scroll(browser.tab.id, browser.scrollDelta)
     browser.scrollDelta.reset()
 
-  gtk_widget_queue_draw(widget)
+  gtk_widget_queue_draw(browser.tab.viewport)
   browser.view.step()
 
   return G_SOURCE_CONTINUE
@@ -189,7 +199,13 @@ proc onKeyPress(
   )
 
 proc interactionNewTab(browser: BrowserState) =
-  let tab = BrowserTab(id: browser.view.createTab(), viewport: gtk_picture_new())
+  let container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)
+  gtk_widget_set_hexpand(container, true)
+  gtk_widget_set_vexpand(container, true)
+
+  let tab = BrowserTab(
+    id: browser.view.createTab(), container: container, viewport: gtk_picture_new()
+  )
   browser.tabs &= tab
   browser.tab = tab
 
@@ -197,22 +213,22 @@ proc interactionNewTab(browser: BrowserState) =
   gtk_widget_set_vexpand(tab.viewport, true)
   gtk_picture_set_can_shrink(tab.viewport, true)
 
-  gtk_widget_set_focusable(browser.tab.viewport, true)
+  gtk_widget_set_focusable(tab.viewport, true)
 
   let scrollCtrl = gtk_event_controller_scroll_new(3)
   discard g_signal_connect_data(
     scrollCtrl, "scroll", cast[pointer](onScroll), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(browser.tab.viewport, scrollCtrl)
+  gtk_widget_add_controller(tab.viewport, scrollCtrl)
 
   let motionCtrl = gtk_event_controller_motion_new()
   discard g_signal_connect_data(
     motionCtrl, "motion", cast[pointer](onCursorMotion), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(browser.tab.viewport, motionCtrl)
+  gtk_widget_add_controller(tab.viewport, motionCtrl)
 
   discard gtk_widget_add_tick_callback(
-    browser.tab.viewport, onFrameTick, cast[pointer](browser), nil
+    tab.container, onFrameTick, cast[pointer](browser), nil
   )
 
   let clickGest = gtk_gesture_click_new()
@@ -220,23 +236,29 @@ proc interactionNewTab(browser: BrowserState) =
   discard g_signal_connect_data(
     clickGest, "pressed", cast[pointer](onCursorClick), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(browser.tab.viewport, clickGest)
+  gtk_widget_add_controller(tab.viewport, clickGest)
 
   let keyCtrl = gtk_event_controller_key_new()
   discard g_signal_connect_data(
     keyCtrl, "key-pressed", cast[pointer](onKeyPress), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(browser.tab.viewport, keyCtrl)
+  gtk_widget_add_controller(tab.viewport, keyCtrl)
 
-  # gtk_box_append(browser.mainBox, browser.tab.viewport)
+  gtk_box_append(tab.container, tab.viewport)
 
-  discard gtk_widget_grab_focus(browser.tab.viewport)
+  discard gtk_widget_grab_focus(tab.viewport)
 
-  browser.tab.tabPage = adw_tab_view_append(browser.tabView, tab.viewport)
+  browser.tab.tabPage = adw_tab_view_append(browser.tabView, tab.container)
   adw_tab_page_set_title(browser.tab.tabPage, cstring("New Tab"))
+
+proc showDeadTabPage(browser: BrowserState)
 
 proc interactionSwitchTab(browser: BrowserState, tab: BrowserTab) =
   browser.tab = tab
+
+  if browser.tab.dead:
+    showDeadTabPage(browser)
+    return
 
   # also send it a resize packet just so it's up to date on the viewport state, since
   # we don't send those to unfocused tabs
@@ -352,11 +374,17 @@ proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
   gtk_widget_set_cursor_from_name(browser.tab.viewport, cstring($predef))
 
 proc showDeadTabPage(browser: BrowserState) =
+  browser.setPageTitle("Oopsies.")
+
+  if browser.tab.viewport == nil:
+    return
+
   let parentBox = gtk_widget_get_parent(browser.tab.viewport)
   if parentBox == nil:
     return
 
   gtk_box_remove(parentBox, browser.tab.viewport)
+  browser.tab.viewport = nil
 
   let crashBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 24)
   gtk_widget_set_hexpand(crashBox, true)
@@ -376,18 +404,17 @@ proc showDeadTabPage(browser: BrowserState) =
 
   gtk_box_append(parentBox, crashBox)
 
-  browser.setPageTitle("Oopsies.")
-
-proc handleDeadChild(state: BrowserState, tab: TabID, process: Process) =
+proc handleDeadChild(state: BrowserState, tabId: TabID, process: Process) =
   warn "Process has died unexpectedly.",
-    tab = tab, kind = process.kind, channel = process.fd
+    tab = tabId, kind = process.kind, channel = process.fd
 
   case process.kind
   of ProcessKind.Renderer:
-    if tab == state.tab.id:
-      # TODO: whenever we get tabbed browsing, we should probably track this properly
-      # TODO: also, maybe we should try to recover the renderer in the future?
+    for tab in state.tabs:
+      if tab.id == tabId:
+        tab.dead = true
 
+    if state.tab.id == tabId:
       showDeadTabPage(state)
   else:
     unreachable
