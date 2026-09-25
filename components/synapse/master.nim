@@ -173,6 +173,23 @@ proc requestGraphicsFd*(master: Master, tab: uint32) =
   master.encoder.encode(RenderOp.SendGraphicsFD)
   discard master.send(process.fd)
 
+proc clipboardWriteAck*(
+    master: Master,
+    tab: uint32,
+    promiseId: uint32,
+    errorMessage: Option[string] = none(string),
+) =
+  let process = &master.tabs[tab].renderer()
+
+  # clipboardWriteAck
+  master.encoder.encode(RenderOp.ClipboardWriteAck)
+  master.encoder.push(promiseId)
+
+  if *errorMessage:
+    master.encoder.push(&errorMessage)
+
+  discard master.send(process.fd)
+
 proc initMaster*(zygoteRoutine: ZygoteRoutine): Master =
   let master =
     Master(encoder: initEncoder(MaxPacketSize), decoder: initDecoder(MaxPacketSize))

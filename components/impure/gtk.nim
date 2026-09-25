@@ -163,10 +163,12 @@ let
 
 type
   EGtkWidget* {.importc: "GtkWidget", incompleteStruct.} = object
-  AdwApplication* {.importc: "AdwApplication", incompleteStruct.} = object
-  GdkFrameClock* {.importc: "GdkFrameClock", incompleteStruct.} = object
+  AdwApplication* {.importc, incompleteStruct.} = object
+  GdkFrameClock* {.importc, incompleteStruct.} = object
   GdkTexture* {.importc, incompleteStruct.} = object
   GdkDmabufTextureBuilder* {.importc, incompleteStruct.} = object
+  GdkDisplay* {.importc, incompleteStruct.} = object
+  GdkClipboard* {.importc, incompleteStruct.} = object
 
   GDestroyNotify* = proc(data: pointer) {.cdecl.}
 
@@ -201,6 +203,7 @@ proc gtk_widget_add_css_class*(widget: ptr EGtkWidget, class: cstring)
 proc gtk_widget_get_parent*(widget: ptr EGtkWidget): ptr EGtkWidget
 proc gtk_widget_grab_focus*(widget: ptr EGtkWidget): int32
 proc gtk_widget_set_focusable*(widget: ptr EGtkWidget, focusable: bool)
+proc gtk_widget_get_display*(widget: ptr EGtkWidget): ptr GdkDisplay
 
 proc gtk_gesture_click_new*(): ptr EGtkWidget
 proc gtk_gesture_single_set_button*(gesture: ptr EGtkWidget, btn: int32)
@@ -307,6 +310,9 @@ proc gdk_dmabuf_texture_builder_build*(
   data: pointer,
   error: ptr pointer,
 ): ptr GdkTexture
+
+proc gdk_display_get_clipboard*(display: ptr GdkDisplay): ptr GdkClipboard
+proc gdk_clipboard_set_text*(clipboard: ptr GdkClipboard, text: cstring)
 
 {.pop.}
 {.pop.}

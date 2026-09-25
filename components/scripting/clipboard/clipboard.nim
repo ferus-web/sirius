@@ -1,10 +1,17 @@
-import components/js/runtime/prelude, components/scripting/dom/event_target
+import
+  components/js/runtime/prelude,
+  components/scripting/dom/event_target,
+  components/js/stdlib/prelude
 import pkg/[chronicles, shakar]
 
 logScope:
   topics = "clipboard"
 
-type Clipboard* = object of event_target.EventTarget
+type
+  ClipboardHostCallbacks* = object
+    writeText*: proc(promise: JSValue, rt: Runtime, text: string) {.gcsafe.}
+
+  Clipboard* = object of event_target.EventTarget
 
 proc read(rt: Runtime, this: JSValue, formats: JSValue): JSValue =
   warn "IMPLEMENTME: Clipboard::read()", formats = rt.ToString(formats)
@@ -18,14 +25,29 @@ proc write(rt: Runtime, this: JSValue, data: JSValue): JSValue =
   warn "IMPLEMENTME: Clipboard::write()", data = rt.ToString(data)
   undefined(rt)
 
-proc writeText(rt: Runtime, this: JSValue, data: JSValue): JSValue =
-  warn "IMPLEMENTME: Clipboard::writeText()", data = rt.ToString(data)
-  undefined(rt)
+import components/aux/pretty
+proc writeText(
+    rt: Runtime, this: JSValue, data: JSValue, callbacks: ClipboardHostCallbacks
+): JSValue =
+  debugEcho "Clipboard.prototype.writeText()"
+  ## 7.3.4. writeText(data)
+  ## https://www.w3.org/TR/clipboard-apis/#dom-clipboard-writetext
+
+  # 1. Let realm be this’s relevant realm.
+  # 2. Let p be a new promise in realm.
+  let p = newPromise(rt)
+  let promiseObj = toJSPromise(rt, p.promise)
+
+  # 3. Run the following steps in parallel:
+  callbacks.writeText(promiseObj, rt, rt.ToString(data))
+
+  # 4. Return p.
+  promiseObj
 
 proc generateGlobal*(rt: Runtime, navigator: JSValue) =
   navigator["clipboard"] = rt.createObjFromType(Clipboard)
 
-proc generateBindings*(runtime: Runtime) =
+proc generateBindings*(runtime: Runtime, callbacks: ClipboardHostCallbacks) =
   runtime.registerType("Clipboard", Clipboard)
 
   runtime.definePrototypeFn(
@@ -59,6 +81,6 @@ proc generateBindings*(runtime: Runtime) =
     "writeText",
     proc(this: JSValue) =
       let data = &runtime.argument(1, required = true)
-      ret writeText(rt = runtime, this = this, data = data)
+      ret writeText(rt = runtime, this = this, data = data, callbacks = callbacks)
     ,
   )

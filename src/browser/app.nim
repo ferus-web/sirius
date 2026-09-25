@@ -28,6 +28,7 @@ type
     mainBox: ptr EGtkWidget
     tabBar, tabView: ptr EGtkWidget
     urlBar: ptr EGtkWidget
+    clipboard: ptr GdkClipboard
 
     tabs: seq[BrowserTab]
     tab: BrowserTab
@@ -337,6 +338,9 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
 
   gtk_window_present(browser.window)
 
+  let display = gtk_widget_get_display(browser.window)
+  browser.clipboard = gdk_display_get_clipboard(display)
+
   # browser.headerBar = headerBar
 
 proc setPageTitle(browser: BrowserState, title: string) =
@@ -424,6 +428,14 @@ proc showAlertMessage(state: BrowserState, tab: TabID, message: Option[string]) 
 
   adw_dialog_present(dialog, state.window)
 
+proc clipboardWriteText(
+    state: BrowserState, tab: TabID, text: string, promiseId: uint32
+) =
+  # TODO: Guard this better. Maybe even sanitize `text`
+  gdk_clipboard_set_text(state.clipboard, cstring(text))
+
+  state.view.clipboardWriteAck(tab, promiseId)
+
 proc attachIPCEventHandlers(state: BrowserState) =
   state.view.onFrameDrawn = proc(view: WebView, tab: TabID) =
     state.frameAcked = true
@@ -449,6 +461,12 @@ proc attachIPCEventHandlers(state: BrowserState) =
 
   state.view.onAlert = proc(view: WebView, tab: TabID, msg: Option[string]) =
     state.showAlertMessage(tab, msg)
+
+  state.view.onClipboardWriteText = proc(
+      view: WebView, tab: TabID, text: string, promiseId: uint32
+  ) =
+    # TODO: Guard this
+    state.clipboardWriteText(tab, text, promiseId)
 
 proc startBrowserShell*(view: WebView, args: argparser.Input) =
   let browser = BrowserState(

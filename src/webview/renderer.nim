@@ -24,13 +24,16 @@ import
   components/net/loader/core,
   components/net/ws/[client, types],
   components/js/grammar/prelude,
-  components/js/runtime/[arguments, bridge, common, construction, wrapping, types],
+  components/js/runtime/
+    [arguments, bridge, common, construction, microtasks, wrapping, types],
   components/js/runtime/vm/atom,
   components/js/runtime/vm/heap/manager,
   components/js/runtime/compiler/base,
+  components/js/stdlib/prelude,
   components/scripting/[executor, types],
   components/scripting/dom/[mouse_event, keyboard_event],
   components/scripting/websocket/[close_event, websocket],
+  components/scripting/clipboard/clipboard,
   components/scripting/url as jsurl,
   components/synapse/[client, encoder, decoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, master],
@@ -125,6 +128,16 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
         if (let res = ws.send(data); !res):
           ws.failure(res.error())
       ,
+    ),
+    clipboard: ClipboardHostCallbacks(
+      writeText: proc(promise: JSValue, rt: Runtime, text: string) =
+        renderer.clipboardPromises &= ClipboardPromise(rt: rt, promise: promise)
+
+        renderer.client.encoder.encode(MasterOp.ClipboardWriteText)
+        renderer.client.encoder.push(text)
+        renderer.client.encoder.push(cast[uint32](renderer.clipboardPromises.len - 1))
+
+        discard renderer.client.send()
     ),
     getTimeOrigin: proc(): int64 =
       # NOTE: This doesn't account for any new realms being created, whenever that works.
@@ -787,11 +800,20 @@ proc executeOneMacrotask(view: WebRenderer) =
       if not front.flags.contains(TaskFlag.Immortal):
         discard scriptElem.script.rt.macrotaskQueue.popFirst()
 
+proc executeMicrotasks(view: WebRenderer) =
+  # TODO: Ideally, we should comply to the spec and call this at specific boundaries, but this'll suffice for now. :P
+
+  for scriptElem in view.scripts:
+    # debugEcho $scriptElem.script.baseUrl & " has " &
+    #  $scriptElem.script.rt.microtaskQueue.len & " tasks"
+    scriptElem.script.rt.drainMicrotasks()
+
 proc poll*(view: WebRenderer) =
   view.loader.poll()
   view.progress = view.loader.pendingAssets.len > 0 or view.loader.retryQueue.len > 0
 
   view.executeOneMacrotask()
+  view.executeMicrotasks()
 
 proc handleKeyboardEvent(view: WebRenderer, key, keycode: string, repeat: bool) =
   if *view.keyboardFocusedElement:
@@ -822,6 +844,16 @@ proc handleKeyboardEvent(view: WebRenderer, key, keycode: string, repeat: bool) 
   if key == "Tab":
     view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
     view.reflow()
+
+proc handleClipboardWriteAck(
+    view: WebRenderer, promiseId: uint32, errorMessage: Option[string]
+) =
+  assert !errorMessage, "TODO: reject promise upon failure message being included"
+
+  let promise = view.clipboardPromises[promiseId]
+  FulfillPromise(promise.rt, promise.promise, undefined(promise.rt))
+
+  view.clipboardPromises.delete(promiseId)
 
 proc handleIPCMessage(view: WebRenderer) =
   let msgOpt = view.client.blockForMessage(RenderOp)
@@ -901,6 +933,12 @@ proc handleIPCMessage(view: WebRenderer) =
       FileDescriptor(VulkanContext(view.renderCtx.fig.ctx).exportBufferFd())
     )
     assert *view.client.send()
+  of RenderOp.ClipboardWriteAck:
+    let
+      promiseId = &msg.argument(0, uint32)
+      errorMessage = msg.argument(1, string)
+
+    handleClipboardWriteAck(view, promiseId, errorMessage)
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

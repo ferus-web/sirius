@@ -13,6 +13,7 @@ import
   components/net/core,
   components/net/ws/types,
   components/js/runtime/prelude as js,
+  components/js/stdlib/prelude,
   components/synapse/types,
   components/css/types,
   components/scripting/websocket/websocket,
@@ -73,6 +74,12 @@ type
     websockets*: Table[WebSocket, WebSocketClient]
     eventLoop*: int32 # TODO: EventLoop abstraction
 
+    clipboardPromises*: seq[ClipboardPromise]
+
+  ClipboardPromise* = object
+    rt*: Runtime
+    promise*: JSValue
+
   WebRenderer* = ref WebRendererObj
 
   TabID* = distinct uint32 # TODO: move this into the actual tab system?
@@ -85,6 +92,8 @@ type
   CursorShapeCallback* = proc(view: WebView, tab: TabID, predef: CursorPredefined)
   AlertCallback* = proc(view: WebView, tab: TabID, message: Option[string])
   NavigationUpdateCallback* = proc(view: WebView, tab: TabID, target: url.URL)
+  ClipboardWriteCallback* =
+    proc(view: WebView, tab: TabID, text: string, promiseId: uint32)
 
   WebViewCallbacks* = object
     onFrameDrawn*: FrameDrawnCallback
@@ -95,6 +104,8 @@ type
     onSetCursorShape*: CursorShapeCallback
     onAlert*: AlertCallback
     onNavigationUpdate*: NavigationUpdateCallback
+
+    onClipboardWriteText*: ClipboardWriteCallback
 
   WebViewObj = object
     master*: Master
@@ -132,6 +143,9 @@ func `onAlert=`*(view: WebView, cb: AlertCallback) =
 
 func `onNavigationUpdate=`*(view: WebView, cb: NavigationUpdateCallback) =
   view.callbacks.onNavigationUpdate = cb
+
+func `onClipboardWriteText=`*(view: WebView, cb: ClipboardWriteCallback) =
+  view.callbacks.onClipboardWriteText = cb
 
 {.pop.}
 

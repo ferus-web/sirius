@@ -12,3 +12,4 @@ type MasterOp* {.pure, size: sizeof(uint16).} = enum
   SetPCursorShape
   AlertMessage
   UpdateNavigation
+  ClipboardWriteText

@@ -30,6 +30,7 @@ type HostScriptingCallbacks* = object
   ## Callbacks that the host exposes for bindings to call, in order to talk to it.
   window*: WindowHostCallbacks
   websocket*: WebSocketHostCallbacks
+  clipboard*: ClipboardHostCallbacks
 
   getTimeOrigin*: proc(): int64
 
@@ -74,7 +75,7 @@ proc registerWebBindings(
 
   websocket.generateBindings(elem.script.rt, callbacks.websocket)
 
-  clipboard.generateBindings(elem.script.rt)
+  clipboard.generateBindings(elem.script.rt, callbacks.clipboard)
   clipboard.generateGlobal(elem.script.rt, navig)
 
 proc setupRandomState(rng: out uint64) =

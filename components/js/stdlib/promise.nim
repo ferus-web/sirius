@@ -68,7 +68,7 @@ type
     fulfillReactions*, rejectReactions*: JSValue
     isHandled*: bool
 
-  Promise = ptr PromiseObj
+  Promise* = ptr PromiseObj
 
   JSPromise = object
 
@@ -550,6 +550,16 @@ proc PerformPromiseThen*(
 
   # 14. Return resultCapability.[[Promise]].
   toJSPromise(rt, (&resultCapability).promise)
+
+proc newPromise*(rt: Runtime): PromiseCapability =
+  ## https://webidl.spec.whatwg.org/#js-promise-manipulation
+
+  # To create a new Promise<T> in a realm realm, perform the following steps:
+  # 1. Let constructor be realm.[[Intrinsics]].[[%Promise%]].
+  let constructor = rt.getConstructor(JSPromise)
+
+  # 2. Return ? NewPromiseCapability(constructor).
+  NewPromiseCapability(rt, nativeCallable(rt, &constructor))
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType("Promise", JSPromise)

@@ -62,6 +62,14 @@ proc pressKey*(view: WebView, id: TabID, key, keycode: string, repeat: bool) =
 proc requestGraphicsFd*(view: WebView, id: TabID) =
   view.master.requestGraphicsFd(cast[uint32](id))
 
+proc clipboardWriteAck*(
+    view: WebView,
+    id: TabID,
+    promiseId: uint32,
+    errorMessage: Option[string] = none(string),
+) =
+  view.master.clipboardWriteAck(cast[uint32](id), promiseId, errorMessage)
+
 {.pop.}
 
 proc cleanupDeadProcess(view: WebView, tab: TabID, process: Process) =
@@ -133,6 +141,13 @@ proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
 
     if view.callbacks.onNavigationUpdate != nil:
       view.callbacks.onNavigationUpdate(view, tabId, navigationUrl)
+  of MasterOp.ClipboardWriteText:
+    let
+      textData = &msg.argument(0, string)
+      promiseId = &msg.argument(1, uint32)
+
+    if view.callbacks.onClipboardWriteText != nil:
+      view.callbacks.onClipboardWriteText(view, tabId, textData, promiseId)
 
 proc step*(view: WebView) =
   var ipcEvents = newSeq[nix.EpollEvent](view.master.tabs.len)

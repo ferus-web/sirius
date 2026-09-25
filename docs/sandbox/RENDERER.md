@@ -39,3 +39,9 @@ It carries no additional data with it, so the renderer uses the data it's alread
 **Argument 3**: bool
 
 Generally sent when the user provides keyboard input in the browser.
+
+### clipboardWriteAck
+**Argument 1**: Promise ID (uint32)
+**Argument 2<sup>(optional)</sup>**: string
+
+The master sends this in response to a `ClipboardWriteText` request, along with a string with a reason in the case of failure.

@@ -7,10 +7,17 @@
     <script>
 const out = document.getElementById('out');
 
+function afterClipboardWrite() {
+  console.log("afterClipboardWrite() called")
+  out.textContent = "Wrote a nice little message to your clipboard :)";
+}
+
 out.addEventListener(
   "click",
   function() {
-    navigator.clipboard.writeText("hello sirius!");
+    const result = navigator.clipboard.writeText("hello sirius!");
+    result.then(afterClipboardWrite);
+    console.log("called writeText()");
   }
 )
     </script>

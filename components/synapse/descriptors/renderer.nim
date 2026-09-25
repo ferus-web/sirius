@@ -13,3 +13,4 @@ type RenderOp* {.pure, size: sizeof(uint16).} = enum
   KeyPressed
   SendGraphicsFD
     # HACK: This is a bad way to do things. It means that we rely solely on clients behaving well. Maybe we can guard the response UseGraphicsFD, but eh.
+  ClipboardWriteAck
