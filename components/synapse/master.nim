@@ -88,16 +88,19 @@ func renderer*(tab: Tab): Option[Process] =
 
   none(Process)
 
-proc drawFrame*(master: Master, process: Process) =
+{.push discardable.}
+proc drawFrame*(master: Master, process: Process): Result[void, string] =
   assert(process.kind == ProcessKind.Renderer)
 
   # drawFrame
   # (no arguments)
   master.encoder.encode(RenderOp.DrawFrame)
 
-  assert *master.send(process.fd)
+  master.send(process.fd)
 
-proc resizeRenderTarget*(master: Master, process: Process, dims: vmath.IVec2) =
+proc resizeRenderTarget*(
+    master: Master, process: Process, dims: vmath.IVec2
+): Result[void, string] =
   assert(process.kind == ProcessKind.Renderer)
 
   # resizeRenderTarget
@@ -105,9 +108,9 @@ proc resizeRenderTarget*(master: Master, process: Process, dims: vmath.IVec2) =
   master.encoder.encode(RenderOp.ResizeRenderTarget)
   master.encoder.push(dims)
 
-  assert *master.send(process.fd)
+  master.send(process.fd)
 
-proc gotoURL*(master: Master, tab: uint32, target: url.URL) =
+proc gotoURL*(master: Master, tab: uint32, target: url.URL): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # gotoURL
@@ -115,9 +118,11 @@ proc gotoURL*(master: Master, tab: uint32, target: url.URL) =
   master.encoder.encode(RenderOp.GotoURL)
   master.encoder.push(target)
 
-  assert *master.send(process.fd)
+  master.send(process.fd)
 
-proc scrollViewport*(master: Master, tab: uint32, velocity: vmath.Vec2) =
+proc scrollViewport*(
+    master: Master, tab: uint32, velocity: vmath.Vec2
+): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # viewportScroll
@@ -125,9 +130,11 @@ proc scrollViewport*(master: Master, tab: uint32, velocity: vmath.Vec2) =
   master.encoder.encode(RenderOp.ViewportScroll)
   master.encoder.push(velocity)
 
-  discard master.send(process.fd)
+  master.send(process.fd)
 
-proc cursorMotion*(master: Master, tab: uint32, position: vmath.Vec2) =
+proc cursorMotion*(
+    master: Master, tab: uint32, position: vmath.Vec2
+): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # cursorMotion
@@ -135,27 +142,19 @@ proc cursorMotion*(master: Master, tab: uint32, position: vmath.Vec2) =
   master.encoder.encode(RenderOp.CursorMotion)
   master.encoder.push(position)
 
-  discard master.send(process.fd)
+  master.send(process.fd)
 
-proc cursorClick*(master: Master, tab: uint32) =
+proc cursorClick*(master: Master, tab: uint32): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # cursorClick
   master.encoder.encode(RenderOp.CursorClick)
 
-  discard master.send(process.fd)
-
-func findAssociatedClientByFd*(
-    master: Master, fd: int32
-): Option[tuple[tab: uint32, process: Process]] =
-  for i, tab in master.tabs:
-    for process in tab.processes:
-      if process.fd == fd:
-        return some((tab: cast[uint32](i), process: process))
+  master.send(process.fd)
 
 proc pressKey*(
     master: Master, tab: uint32, key: string, keycode: string, repeat: bool
-) =
+): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # keyPressed
@@ -164,21 +163,21 @@ proc pressKey*(
   master.encoder.push(keycode)
   master.encoder.push(repeat)
 
-  discard master.send(process.fd)
+  master.send(process.fd)
 
-proc requestGraphicsFd*(master: Master, tab: uint32) =
+proc requestGraphicsFd*(master: Master, tab: uint32): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # sendGraphicsFD
   master.encoder.encode(RenderOp.SendGraphicsFD)
-  discard master.send(process.fd)
+  master.send(process.fd)
 
 proc clipboardWriteAck*(
     master: Master,
     tab: uint32,
     promiseId: uint32,
     errorMessage: Option[string] = none(string),
-) =
+): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # clipboardWriteAck
@@ -188,7 +187,17 @@ proc clipboardWriteAck*(
   if *errorMessage:
     master.encoder.push(&errorMessage)
 
-  discard master.send(process.fd)
+  master.send(process.fd)
+
+{.pop.}
+
+func findAssociatedClientByFd*(
+    master: Master, fd: int32
+): Option[tuple[tab: uint32, process: Process]] =
+  for i, tab in master.tabs:
+    for process in tab.processes:
+      if process.fd == fd:
+        return some((tab: cast[uint32](i), process: process))
 
 proc initMaster*(zygoteRoutine: ZygoteRoutine): Master =
   let master =
