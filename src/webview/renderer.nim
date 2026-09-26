@@ -278,6 +278,7 @@ proc reflow(view: WebRenderer) =
     node = view.renderCtx.tree,
     parent = vec2(0, 0),
   )
+  debugEcho dump(view.renderCtx.tree)
 
   view.renderCtx.imageCache = view.imageCache
   view.renderCtx.invalidate()

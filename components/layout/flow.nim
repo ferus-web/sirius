@@ -59,7 +59,8 @@ proc resolveLineHeight*(
   let value = &value
   case value.kind
   of CSSValueKind.Dimension:
-    return outputManager.computePixels(value)
+    return
+      outputManager.computePixels(value, relativeBase = fontSize, fontSize = fontSize)
   of CSSValueKind.Float:
     return value.flt * fontSize
   of CSSValueKind.Integer:
@@ -77,6 +78,34 @@ func processTextContent(text: var string, whitespaceBehaviour: Whitespace) =
   else:
     # TODO: Implement other behaviors in other components!
     discard
+
+proc applyClearance(
+    node: LayoutNode,
+    absParentY: float32,
+    currentY: var float32,
+    bfc: BlockFloatingContext,
+) =
+  # TODO: Ideally this should be on the LayoutNode and computed in node_builder, but
+  # I'm too lazy to do it properly for now. Gotta move it there eventually for consistency though
+  if "clear" notin node.style:
+    return
+
+  let clearProp = node.style["clear"]
+  if clearProp.kind != CSSValueKind.String:
+    return
+
+  let clearVal = toLowerAscii(clearProp.str)
+  var maxBottom = absParentY + currentY
+
+  if clearVal in ["left", "both"]:
+    for f in bfc.leftFloats:
+      maxBottom = max(maxBottom, f.y + f.h)
+
+  if clearVal in ["right", "both"]:
+    for f in bfc.rightFloats:
+      maxBottom = max(maxBottom, f.y + f.h)
+
+  currentY = max(currentY, maxBottom - absParentY)
 
 proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
   node.absolutePos = parent
@@ -122,27 +151,30 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
     return
 
   if isInput:
-    let element = HTMLInputElement(node.domNode)
-
-    let fSize = computePixels(ctx.outputManager, &node.fontSize, fontSize = 16'f32)
+    let fSize =
+      if *node.fontSize:
+        computePixels(ctx.outputManager, &node.fontSize, fontSize = 16'f32)
+      else:
+        16'f32
 
     let
       intrinsicWidth =
         if !node.width:
-          20.0'f32 * (fSize * 0.65'f32)
+          fSize # Compact default width for radio/checkbox inputs
         else:
           ctx.outputManager.computePixels(
-            &node.width, relativeBase = ctx.availableWidth
+            &node.width, relativeBase = ctx.availableWidth, fontSize = fSize
           )
       intrinsicHeight =
         if !node.height:
-          fSize * 1.2'f32
+          fSize
         else:
           ctx.outputManager.computePixels(
             &node.height,
             relativeBase =
               (if *ctx.parentExplicitHeight: &ctx.parentExplicitHeight
               else: 0'f32),
+            fontSize = fSize,
           )
 
     if node.dimensions.x == 0'f32:
@@ -156,14 +188,19 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
     return
 
   let
+    fontSize =
+      if *node.fontSize:
+        computePixels(ctx.outputManager, &node.fontSize, fontSize = 16'f32)
+      else:
+        16'f32
+
     borderWidth =
       if *node.border.width and *node.border.style and
           (&node.border.style) != BorderStyle.None:
-        computePixels(ctx.outputManager, &node.border.width)
+        computePixels(ctx.outputManager, &node.border.width, fontSize = fontSize)
       else:
         0.0'f32
 
-    fontSize = computePixels(ctx.outputManager, &node.fontSize, fontSize = 16'f32)
     padTop =
       resolveMargin(node.padding.top, ctx.availableWidth, ctx.outputManager, fontSize)
     padBottom = resolveMargin(
@@ -178,7 +215,7 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
       if *node.width:
         some(
           ctx.outputManager.computePixels(
-            &node.width, relativeBase = ctx.availableWidth
+            &node.width, relativeBase = ctx.availableWidth, fontSize = fontSize
           )
         )
       else:
@@ -192,6 +229,7 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
             relativeBase =
               (if *ctx.parentExplicitHeight: &ctx.parentExplicitHeight
               else: 0'f32),
+            fontSize = fontSize,
           )
         )
       else:
@@ -202,6 +240,9 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
         &explicitWidth + padLeft + padRight + (borderWidth * 2.0'f32)
       else:
         ctx.availableWidth
+
+    innerAvailableWidth =
+      max(0.0'f32, layoutWidth - (borderWidth * 2.0'f32) - padLeft - padRight)
 
   proc getLineBounds(y: float32): tuple[left, right: float32] =
     var bounds =
@@ -218,6 +259,26 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
 
     ensureMove(bounds)
 
+  proc findFloatY(startY: float32, neededWidth: float32): float32 =
+    var y = startY
+    while true:
+      let bounds = getLineBounds(y)
+      if (bounds.right - bounds.left) >= neededWidth - 0.05'f32:
+        return y
+
+      let absY = node.absolutePos.y + y
+      var nextAbsY = high(float32)
+      for f in ctx.bfc.leftFloats:
+        if absY >= f.y and absY < (f.y + f.h):
+          nextAbsY = min(nextAbsY, f.y + f.h)
+      for f in ctx.bfc.rightFloats:
+        if absY >= f.y and absY < (f.y + f.h):
+          nextAbsY = min(nextAbsY, f.y + f.h)
+
+      if nextAbsY == high(float32) or (nextAbsY - node.absolutePos.y) <= y:
+        return y
+      y = nextAbsY - node.absolutePos.y
+
   var hasInline = false
   for child in node.children:
     if child.display in {DisplayMode.Anonymous, DisplayMode.Inline}:
@@ -227,71 +288,82 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
   if not hasInline:
     node.dimensions = vec2(layoutWidth, borderWidth + padTop)
     var currentY = borderWidth + padTop
+    var lastFloatY = currentY
 
     for child in node.children:
+      applyClearance(child, node.absolutePos.y, currentY, ctx.bfc)
+
       let
-        fontSize = computePixels(ctx.outputManager, &child.fontSize, fontSize = 16'f32)
-          # FIXME: Not compliant.
-        marginTop =
-          resolveMargin(child.margins.top, layoutWidth, ctx.outputManager, fontSize)
-        marginBottom =
-          resolveMargin(child.margins.bottom, layoutWidth, ctx.outputManager, fontSize)
-        marginLeft =
-          resolveMargin(child.margins.left, layoutWidth, ctx.outputManager, fontSize)
-        marginRight =
-          resolveMargin(child.margins.right, layoutWidth, ctx.outputManager, fontSize)
+        childFontSize =
+          if *child.fontSize:
+            computePixels(ctx.outputManager, &child.fontSize, fontSize = fontSize)
+          else:
+            fontSize
+        marginTop = resolveMargin(
+          child.margins.top, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
+        marginBottom = resolveMargin(
+          child.margins.bottom, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
+        marginLeft = resolveMargin(
+          child.margins.left, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
+        marginRight = resolveMargin(
+          child.margins.right, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
 
       if child.floatMode in {FloatMode.Left, FloatMode.Right}:
-        let bounds = getLineBounds(currentY)
-        let floatWidth = bounds.right - bounds.left - marginLeft - marginRight
-
-        let fPos = vec2(
-          node.absolutePos.x + bounds.left + marginLeft,
-          node.absolutePos.y + currentY + marginTop,
+        let tempPos = vec2(
+          node.absolutePos.x + borderWidth + padLeft, node.absolutePos.y + currentY
         )
         computeLayout(
           FlowContext(
             document: ctx.document,
-            availableWidth: floatWidth,
+            availableWidth: innerAvailableWidth,
             outputManager: ctx.outputManager,
             fontProvider: ctx.fontProvider,
             parentExplicitHeight: explicitHeight,
-            bfc:
-              if child.floatMode != FloatMode.None:
-                BlockFloatingContext()
-              else:
-                ctx.bfc,
+            bfc: BlockFloatingContext(),
           ),
           node = child,
-          parent = fPos,
+          parent = tempPos,
         )
 
+        let outerW = child.dimensions.x + marginLeft + marginRight
+        let outerH = child.dimensions.y + marginTop + marginBottom
+        let floatY = findFloatY(max(currentY, lastFloatY), outerW)
+        lastFloatY = floatY
+        let bounds = getLineBounds(floatY)
+
+        let finalX =
+          if child.floatMode == FloatMode.Left:
+            node.absolutePos.x + bounds.left + marginLeft
+          else:
+            node.absolutePos.x + (bounds.right - child.dimensions.x - marginRight)
+        let finalY = node.absolutePos.y + floatY + marginTop
+
+        computeLayout(
+          FlowContext(
+            document: ctx.document,
+            availableWidth: innerAvailableWidth,
+            outputManager: ctx.outputManager,
+            fontProvider: ctx.fontProvider,
+            parentExplicitHeight: explicitHeight,
+            bfc: BlockFloatingContext(),
+          ),
+          node = child,
+          parent = vec2(finalX, finalY),
+        )
+
+        let floatRect = rect(finalX - marginLeft, finalY - marginTop, outerW, outerH)
         if child.floatMode == FloatMode.Left:
-          child.absolutePos.x = node.absolutePos.x + bounds.left + marginLeft
-          ctx.bfc.leftFloats.add(
-            rect(
-              child.absolutePos.x - marginLeft,
-              child.absolutePos.y - marginTop,
-              child.dimensions.x + marginLeft + marginRight,
-              child.dimensions.y + marginTop + marginBottom,
-            )
-          )
+          ctx.bfc.leftFloats.add(floatRect)
         else:
-          let rEdge = bounds.right - child.dimensions.x - marginRight
-          child.absolutePos.x = node.absolutePos.x + rEdge
-          ctx.bfc.rightFloats.add(
-            rect(
-              child.absolutePos.x - marginLeft,
-              child.absolutePos.y - marginTop,
-              child.dimensions.x + marginLeft + marginRight,
-              child.dimensions.y + marginTop + marginBottom,
-            )
-          )
+          ctx.bfc.rightFloats.add(floatRect)
         continue
 
       let childAvailableWidth =
-        layoutWidth - (borderWidth * 2.0'f32) - padLeft - padRight - marginLeft -
-        marginRight
+        max(0.0'f32, innerAvailableWidth - marginLeft - marginRight)
       let cpos = vec2(
         node.absolutePos.x + borderWidth + padLeft + marginLeft,
         node.absolutePos.y + currentY + marginTop,
@@ -303,11 +375,7 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
           outputManager: ctx.outputManager,
           fontProvider: ctx.fontProvider,
           parentExplicitHeight: explicitHeight,
-          bfc:
-            if child.floatMode != FloatMode.None:
-              BlockFloatingContext()
-            else:
-              ctx.bfc,
+          bfc: ctx.bfc,
         ),
         node = child,
         parent = cpos,
@@ -321,83 +389,93 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
     var cursor = vec2(borderWidth + padLeft, borderWidth + padTop)
     var currLineHeight: float32
     var maxLineWidth: float32
-    let innerAvailableWidth = layoutWidth - (borderWidth * 2.0'f32) - padLeft - padRight
+    var lastFloatY = cursor.y
 
     for child in node.children:
+      applyClearance(child, node.absolutePos.y, cursor.y, ctx.bfc)
+
       let
-        marginTop = resolveMargin(child.margins.top, layoutWidth, ctx.outputManager)
-        marginBottom =
-          resolveMargin(child.margins.bottom, layoutWidth, ctx.outputManager)
-        marginLeft = resolveMargin(child.margins.left, layoutWidth, ctx.outputManager)
-        marginRight = resolveMargin(child.margins.right, layoutWidth, ctx.outputManager)
+        childFontSize =
+          if *child.fontSize:
+            computePixels(ctx.outputManager, &child.fontSize, fontSize = fontSize)
+          else:
+            fontSize
+        marginTop = resolveMargin(
+          child.margins.top, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
+        marginBottom = resolveMargin(
+          child.margins.bottom, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
+        marginLeft = resolveMargin(
+          child.margins.left, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
+        marginRight = resolveMargin(
+          child.margins.right, innerAvailableWidth, ctx.outputManager, childFontSize
+        )
 
       if child.floatMode in {FloatMode.Left, FloatMode.Right}:
-        let bounds = getLineBounds(cursor.y)
-        let floatWidth = bounds.right - bounds.left - marginLeft - marginRight
-
-        let fPos = vec2(
-          node.absolutePos.x + bounds.left + marginLeft,
-          node.absolutePos.y + cursor.y + marginTop,
-        )
+        let tempPos = vec2(node.absolutePos.x + cursor.x, node.absolutePos.y + cursor.y)
         computeLayout(
           FlowContext(
             document: ctx.document,
             outputManager: ctx.outputManager,
             fontProvider: ctx.fontProvider,
-            availableWidth: floatWidth,
+            availableWidth: innerAvailableWidth,
             parentExplicitHeight: explicitHeight,
-            bfc:
-              if child.floatMode != FloatMode.None:
-                BlockFloatingContext()
-              else:
-                ctx.bfc,
+            bfc: BlockFloatingContext(),
           ),
           node = child,
-          parent = fPos,
+          parent = tempPos,
         )
 
+        let outerW = child.dimensions.x + marginLeft + marginRight
+        let outerH = child.dimensions.y + marginTop + marginBottom
+        let floatY = findFloatY(max(cursor.y, lastFloatY), outerW)
+        lastFloatY = floatY
+        let bounds = getLineBounds(floatY)
+
+        let finalX =
+          if child.floatMode == FloatMode.Left:
+            node.absolutePos.x + bounds.left + marginLeft
+          else:
+            node.absolutePos.x + (bounds.right - child.dimensions.x - marginRight)
+        let finalY = node.absolutePos.y + floatY + marginTop
+
+        computeLayout(
+          FlowContext(
+            document: ctx.document,
+            outputManager: ctx.outputManager,
+            fontProvider: ctx.fontProvider,
+            availableWidth: innerAvailableWidth,
+            parentExplicitHeight: explicitHeight,
+            bfc: BlockFloatingContext(),
+          ),
+          node = child,
+          parent = vec2(finalX, finalY),
+        )
+
+        let floatRect = rect(finalX - marginLeft, finalY - marginTop, outerW, outerH)
         if child.floatMode == FloatMode.Left:
-          child.absolutePos.x = node.absolutePos.x + bounds.left + marginLeft
-          child.absolutePos.y = node.absolutePos.y + cursor.y + marginTop
-          ctx.bfc.leftFloats.add(
-            rect(
-              bounds.left,
-              cursor.y,
-              child.dimensions.x + marginLeft + marginRight,
-              child.dimensions.y + marginTop + marginBottom,
-            )
-          )
-          cursor.x =
-            max(cursor.x, bounds.left + child.dimensions.x + marginLeft + marginRight)
+          ctx.bfc.leftFloats.add(floatRect)
+          if floatY == cursor.y:
+            cursor.x = max(cursor.x, bounds.left + outerW)
         else:
-          let rEdge = bounds.right - child.dimensions.x - marginRight
-          child.absolutePos.x = node.absolutePos.x + rEdge
-          child.absolutePos.y = node.absolutePos.y + cursor.y + marginTop
-          ctx.bfc.rightFloats.add(
-            rect(
-              rEdge,
-              cursor.y,
-              child.dimensions.x + marginLeft + marginRight,
-              child.dimensions.y + marginTop + marginBottom,
-            )
-          )
+          ctx.bfc.rightFloats.add(floatRect)
         continue
 
       if child.display == DisplayMode.Anonymous:
         child.textRuns.setLen(0)
 
-        let
-          fontSize =
-            computePixels(ctx.outputManager, &child.fontSize, fontSize = 16'f32)
-          lineHeight = resolveLineHeight(child.lineHeight, fontSize, ctx.outputManager)
+        let lineHeight =
+          resolveLineHeight(child.lineHeight, childFontSize, ctx.outputManager)
 
-        let words = child.content.split()
+        let words = child.content.splitWhitespace()
         let spaceArrangement = ctx.fontProvider.loader.measureTextBounds(
           child.fontFamily,
           vec2(
             99999'f32, 999999'f32 #[ FIXME ]#
           ),
-          fontSize,
+          childFontSize,
           TextAlignment.Left,
           none(string),
           " ",
@@ -439,7 +517,7 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
             vec2(
               99999'f32, 999999'f32 #[ FIXME ]#
             ),
-            fontSize,
+            childFontSize,
             TextAlignment.Left,
             none(string),
             word,
@@ -447,6 +525,7 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
 
           if cursor.x + wordArr.bounding.w > bounds.right and cursor.x > bounds.left:
             alignCurrLine(child, cast[uint](child.textRuns.len), cursor.x, bounds.right)
+            lineStartIndex = cast[uint](child.textRuns.len)
 
             cursor.y += max(currLineHeight, lineHeight)
             currLineHeight = 0.0'f32
@@ -454,7 +533,7 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
             bounds = getLineBounds(cursor.y)
             cursor.x = bounds.left
 
-          let halfLeading = (lineHeight - fontSize) * 0.5'f32
+          let halfLeading = (lineHeight - childFontSize) * 0.5'f32
           let wordPos = vec2(cursor.x, cursor.y + halfLeading)
 
           child.textRuns &= TextRun(pos: wordPos, arrangement: wordArr)
@@ -467,9 +546,27 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
 
         child.dimensions = vec2(maxLineWidth, cursor.y + currLineHeight)
         child.absolutePos = node.absolutePos
-      elif child.display == DisplayMode.Inline:
+      elif child.display == DisplayMode.Inline or (
+        child.domNode of dom.Element and tagType(Element(child.domNode)) == TAG_INPUT
+      ):
         var bounds = getLineBounds(cursor.y)
         if cursor.x < bounds.left:
+          cursor.x = bounds.left
+
+        var childHasBlockChildren: bool
+        for grandchild in child.children:
+          if grandchild.display == DisplayMode.Block and
+              not (
+                grandchild.domNode of dom.Element and
+                Element(grandchild.domNode).tagType() == TAG_INPUT
+              ):
+            childHasBlockChildren = true
+            break
+
+        if childHasBlockChildren and (currLineHeight > 0'f32 or cursor.x > bounds.left):
+          cursor.y += currLineHeight
+          currLineHeight = 0'f32
+          bounds = getLineBounds(cursor.y)
           cursor.x = bounds.left
 
         computeLayout(
@@ -477,7 +574,7 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
             document: ctx.document,
             outputManager: ctx.outputManager,
             fontProvider: ctx.fontProvider,
-            availableWidth: bounds.right - cursor.x,
+            availableWidth: max(0.0'f32, bounds.right - cursor.x),
             parentExplicitHeight: explicitHeight,
             bfc:
               if child.floatMode != FloatMode.None:
@@ -489,11 +586,46 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
           parent = vec2(node.absolutePos.x + cursor.x, node.absolutePos.y + cursor.y),
         )
 
-        let lineHeight =
-          resolveLineHeight(child.lineHeight, child.dimensions.y, ctx.outputManager)
-        cursor.x += child.dimensions.x
-        currLineHeight = max(currLineHeight, max(lineHeight, child.dimensions.y))
-        maxLineWidth = max(maxLineWidth, cursor.x + padRight + borderWidth)
+        # If inline element overflowed the remaining line width, wrap it to the next line.
+        if not childHasBlockChildren and cursor.x + child.dimensions.x > bounds.right and
+            cursor.x > bounds.left:
+          cursor.y +=
+            max(
+              currLineHeight,
+              resolveLineHeight(child.lineHeight, childFontSize, ctx.outputManager),
+            )
+          currLineHeight = 0'f32
+          bounds = getLineBounds(cursor.y)
+          cursor.x = bounds.left
+
+          computeLayout(
+            FlowContext(
+              document: ctx.document,
+              outputManager: ctx.outputManager,
+              fontProvider: ctx.fontProvider,
+              availableWidth: max(0.0'f32, bounds.right - cursor.x),
+              parentExplicitHeight: explicitHeight,
+              bfc:
+                if child.floatMode != FloatMode.None:
+                  BlockFloatingContext()
+                else:
+                  ctx.bfc,
+            ),
+            node = child,
+            parent = vec2(node.absolutePos.x + cursor.x, node.absolutePos.y + cursor.y),
+          )
+
+        if childHasBlockChildren:
+          cursor.y += child.dimensions.y
+          currLineHeight = 0'f32
+          cursor.x = borderWidth + padLeft
+          maxLineWidth = max(maxLineWidth, child.dimensions.x + padRight + borderWidth)
+        else:
+          let lineHeight =
+            resolveLineHeight(child.lineHeight, childFontSize, ctx.outputManager)
+          cursor.x += child.dimensions.x
+          currLineHeight = max(currLineHeight, max(lineHeight, child.dimensions.y))
+          maxLineWidth = max(maxLineWidth, cursor.x + padRight + borderWidth)
       elif child.display == DisplayMode.Block:
         if currLineHeight > 0'f32 or cursor.x > (borderWidth + padLeft):
           cursor.y += currLineHeight
@@ -506,7 +638,8 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
           node.absolutePos.y + cursor.y + marginTop,
         )
 
-        let childAvailableWidth = innerAvailableWidth - marginLeft - marginRight
+        let childAvailableWidth =
+          max(0.0'f32, innerAvailableWidth - marginLeft - marginRight)
 
         computeLayout(
           FlowContext(

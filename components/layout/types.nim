@@ -1,8 +1,8 @@
 ## Types for the layout engine
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[hashes, options]
-import pkg/[chroma, pixie, vmath], pkg/figdraw/common/fonttypes
+import std/[hashes, options, strutils, strformat]
+import pkg/[chroma, pixie, shakar, vmath], pkg/figdraw/common/fonttypes
 import
   components/dom/dom, components/style/types, components/os/fonts, components/css/types
 
@@ -52,6 +52,62 @@ type
     dimensions*: vmath.Vec2
 
     textRuns*: seq[TextRun]
+
+proc `$`*(value: LayoutMargins | LayoutPadding): string =
+  var buff = "{ "
+
+  if *value.top:
+    buff &= &"top: {&value.top}, "
+
+  if *value.right:
+    buff &= &"right: {&value.right}, "
+
+  if *value.bottom:
+    buff &= &"bottom: {&value.bottom}, "
+
+  if *value.left:
+    buff &= &"left: {&value.left}, "
+
+  buff &= " }"
+
+  ensureMove(buff)
+
+func `$`(vec: vmath.Vec2): string =
+  &"<{vec.x}, {vec.y}>"
+
+proc dump*(node: LayoutNode, level: uint = 0): string =
+  let indent = repeat("  ", level)
+
+  #!fmt: off
+  var buff =
+    indent & &"<LayoutNode>\n" &
+    &"{indent} * attached: 0x{cast[uint64](node.domNode):X}\n" &
+    &"{indent} * display: {node.display}\n" &
+    &"{indent} * margins: {node.margins}\n" &
+    &"{indent} * padding: {node.padding}\n" &
+    &"{indent} * font-family: {node.fontFamily.name}\n" &
+    &"{indent} * cursor: {node.cursor}\n" &
+    &"{indent} * font-size: {node.fontSize}\n" &
+    &"{indent} * color: {node.color}\n" &
+    &"{indent} * background-color: {node.backgroundColor}\n" &
+    &"{indent} * line-height: {node.lineHeight}\n" &
+    &"{indent} * text-decor: {node.textDecoration}\n" &
+    &"{indent} * width: {node.width}\n" &
+    &"{indent} * height: {node.height}\n" &
+    &"{indent} * whitespace: {node.whitespace}\n" &
+    &"{indent} * float-mode: {node.floatMode}\n" &
+    &"{indent} * border: {node.border}\n" &
+    &"{indent} * text-alignment: {node.textAlignment}\n" &
+    &"{indent} * content: {node.content.repr}\n" &
+    &"{indent} * relative-pos: {node.relativePos}\n" &
+    &"{indent} * absolute-pos: {node.absolutePos}\n" &
+    &"{indent} * dimensions: {node.dimensions}"
+  #!fmt: on
+
+  for child in node.children:
+    buff &= '\n' & dump(child, level + 1)
+
+  buff
 
 proc clone*(node: LayoutNode): LayoutNode =
   if node == nil:

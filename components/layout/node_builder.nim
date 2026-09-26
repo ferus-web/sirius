@@ -75,8 +75,8 @@ proc applyRectAttr[T: object](output: var T, prop: CSSValue): Result[void, strin
       unreachable
     of 2:
       let
-        horiz = some(prop.list[0])
-        vert = some(prop.list[1])
+        vert = some(prop.list[0])
+        horiz = some(prop.list[1])
 
       output.top = vert
       output.bottom = vert
@@ -120,7 +120,7 @@ proc execColoringFunction*(fn: CSSFunction): ColorRGBA =
 
     if g.kind == CSSValueKind.Float:
       col.g = uint8(255'f32 * g.flt)
-    elif b.kind == CSSValueKind.Integer:
+    elif g.kind == CSSValueKind.Integer:
       col.g = uint8(g.num)
 
     if b.kind == CSSValueKind.Float:
@@ -372,7 +372,7 @@ proc applyBorderAttr(
   border = Border()
 
   case value.kind
-  of CSSValueKind.Integer, CSSValueKind.Float:
+  of CSSValueKind.Integer, CSSValueKind.Float, CSSValueKind.Dimension:
     border.width = some(value)
   of CSSValueKind.Hex:
     border.color = parseHexColor(value.hex)
@@ -482,8 +482,12 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
         layoutNode.border.style = getBorderStyle(prop.str)
     elif attr == BorderWidthAttr:
       case prop.kind
-      of CSSValueKind.Float, CSSValueKind.Integer:
+      of CSSValueKind.Float, CSSValueKind.Integer, CSSValueKind.Dimension:
         layoutNode.border.width = some(prop)
+      of CSSValueKind.List:
+        # TODO: Border with list
+        if prop.list.len > 0:
+          layoutNode.border.width = some(prop.list[0])
       else:
         discard
     elif attr == TextAlignAttr:
@@ -535,18 +539,16 @@ proc propagateStyles*(node: LayoutNode, style: StyleMap, fontProvider: FontProvi
 
   var inheritedBodyProperties = false
 
+  const InheritedProperties = [
+    ColorAttr, FontFamilyAttr, FontSizeAttr, LineHeightAttr, TextAlignAttr,
+    TextDecorationAttr, WhitespaceAttr, CursorAttr,
+  ]
+
   for child in node.children:
     if child.display == DisplayMode.Anonymous:
-      # HACK: This is not how it works!
-      const AvoidInheritance =
-        [BorderAttr, BorderColorAttr, BorderStyleAttr, BorderWidthAttr]
-
-      # Make anonymous nodes inherit their parent's style, besides some.
       for property, value in node.style:
-        if property in AvoidInheritance:
-          continue
-
-        child.style[property] = value
+        if property in InheritedProperties:
+          child.style[property] = value
 
     propagateStyles(child, style, fontProvider)
 
