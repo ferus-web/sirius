@@ -5,7 +5,7 @@ It's also multiprocessed, but doesn't have sandboxing as of yet.
 
 It also has a _relatively_ capable embedding API, that lets other Nim programs (like game engines, UI toolkits, and so on) use it as a standalone web rendering view, while still using the very same multiprocessed architecture.
 
-![An image of Sirius rendering Acid1](screenshots/acid1.jpg)
+![An image of Sirius rendering Acid1](screenshots/acid1.png)
 ![An image of Sirius on the Wiby search engine](screenshots/wiby1.jpg)
 ![An image of Sirius rendering the second test page](screenshots/test003.jpg)
 
