@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, sequtils, strutils, sugar, tables]
-import components/dom/dom, components/html/dom_utils, components/style/types
+import components/dom/dom, components/html/dom_utils, components/style/[parser, types]
 import pkg/[chronicles, shakar]
 
 logScope:
@@ -147,6 +147,18 @@ proc resolveStyling*(
       var authorSpecifs = newTable[string, uint]()
       for sheet in stylesheets:
         applySheetRules(sheet, elem, factory, computed, authorSpecifs)
+
+      if (let styleAttr = elem.getAttr(factory, "style"); *styleAttr):
+        # For inline styles, just parse it impromtu with the CSS parser and apply its values.
+        # NOTE: This isn't compliant. It's a huge hack and it stinks.
+        let sheet =
+          parseStylesheet(newParser(newParserInput("pseu { " & &styleAttr & " }")))
+
+        for rule in sheet:
+          for complexSel in rule.selectors:
+            for decl in rule.declarations:
+              computed[decl.key] = decl.value
+              authorSpecifs[decl.key] = high(uint)
 
       if computed.len > 0:
         map[node] = ensureMove(computed)

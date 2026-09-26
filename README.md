@@ -5,8 +5,8 @@ It's also multiprocessed, but doesn't have sandboxing as of yet.
 
 It also has a _relatively_ capable embedding API, that lets other Nim programs (like game engines, UI toolkits, and so on) use it as a standalone web rendering view, while still using the very same multiprocessed architecture.
 
+![An image of Sirius rendering Acid1](screenshots/acid1.jpg)
 ![An image of Sirius on the Wiby search engine](screenshots/wiby1.jpg)
-![An image of Sirius rendering the first test page](screenshots/test001.jpg)
 ![An image of Sirius rendering the second test page](screenshots/test003.jpg)
 
 # contributing
@@ -27,6 +27,8 @@ In order to set up a development environment for hacking on Sirius, check the [c
 - [ ] Content caching
 - [X] Forms support
 - [X] WebIDL -> Nim stub generator
+- [X] Acid 1
+- [ ] Acid 2 (not _that_ close)
 - [ ] CSS Grid Layout
 - [ ] Sandboxing
 - [ ] MacOS support

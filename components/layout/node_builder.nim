@@ -419,6 +419,9 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
     elif attr == FontSizeAttr:
       layoutNode.fontSize = some(prop)
     elif attr == MarginBottomAttr:
+      if MarginAttr in layoutNode.style:
+        continue
+
       layoutNode.margins.bottom = some(prop)
     elif attr == "--sirius-noop":
       continue
@@ -426,10 +429,19 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
       layoutNode.fontFamily = &fontProvider.getFontByFamily(cleanFontFamily(prop))
         # TODO: Handle fallbacks
     elif attr == MarginTopAttr:
+      if MarginAttr in layoutNode.style:
+        continue
+
       layoutNode.margins.top = some(prop)
     elif attr == MarginLeftAttr:
+      if MarginAttr in layoutNode.style:
+        continue
+
       layoutNode.margins.left = some(prop)
     elif attr == MarginRightAttr:
+      if MarginAttr in layoutNode.style:
+        continue
+
       layoutNode.margins.right = some(prop)
     elif attr == MarginAttr:
       if (let warning = applyRectAttr(layoutNode.margins, prop); !warning):
@@ -545,10 +557,9 @@ proc propagateStyles*(node: LayoutNode, style: StyleMap, fontProvider: FontProvi
   ]
 
   for child in node.children:
-    if child.display == DisplayMode.Anonymous:
-      for property, value in node.style:
-        if property in InheritedProperties:
-          child.style[property] = value
+    for property, value in node.style:
+      if property in InheritedProperties and property notin child.style:
+        child.style[property] = value
 
     propagateStyles(child, style, fontProvider)
 
