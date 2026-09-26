@@ -260,7 +260,8 @@ proc reflow(view: WebRenderer) =
 
   let htmlElem = htmlElemFiltered[0] # HACK: This is stupid. Do it properly.
 
-  view.styleMap = resolveStyling(htmlElem, view.dom.factory, view.stylesheet)
+  view.styleMap =
+    resolveStyling(htmlElem, view.dom.factory, view.userAgent, view.stylesheets)
   view.tree =
     buildLayoutTree(htmlElem, view.styleMap, view.fontProvider, view.imageCache)
   propagateStyles(view.tree, view.styleMap, view.fontProvider)
@@ -283,16 +284,9 @@ proc reflow(view: WebRenderer) =
   view.renderCtx.imageCache = view.imageCache
   view.renderCtx.invalidate()
 
-proc insertStyle(view: WebRenderer, text: string) =
-  # HACK: yeah... we don't do stuff like this.
-  view.style &= text
-
-proc finishStyle(view: WebRenderer) =
-  if view.opts.disableStyling:
-    warn "Styling is explicitly disabled. All styles will be derived from the user agent."
-    return
-
-  view.stylesheet &= parseStylesheet(newParser(newParserInput(move(view.style))))
+proc insertStyle(view: WebRenderer, element: HTMLStyleElement) =
+  let parser = newParser(newParserInput(element.textContent()))
+  view.stylesheets &= parseStylesheet(parser)
 
 proc handleHTMLLinkElement(
     view: WebRenderer, element: dom.Element, factory: dom.AtomFactory
@@ -313,7 +307,7 @@ proc handleHTMLLinkElement(
       if resp.code == 200:
         let style = resp.body.stream.readAll()
         if not view.opts.disableExternalStylesheets:
-          view.stylesheet &= parseStylesheet(newParser(newParserInput(style)))
+          view.stylesheets &= parseStylesheet(newParser(newParserInput(style)))
           view.reflow()
       else:
         warn "Failed to fetch stylesheet, got non-200 response code.",
@@ -449,14 +443,14 @@ proc handleHTMLMetaElement(view: WebRenderer, element: HTMLMetaElement) =
 proc loadHTMLStream(view: WebRenderer, stream: Stream) =
   let userAgent = &view.assetProvider.openAssetStream("user-agent.css")
 
-  view.stylesheet = parseStylesheet(newParser(newParserInput(userAgent.readAll())))
+  view.stylesheets.reset()
+
+  view.userAgent = parseStylesheet(newParser(newParserInput(userAgent.readAll())))
   view.dom = parseHTML(
     stream,
     callbacks = MiniDOMBuilderCallbacks(
-      insertStyle: proc(text: string) =
-        view.insertStyle(text),
-      finishStyle: proc() =
-        view.finishStyle(),
+      insertStyle: proc(element: HTMLStyleElement) =
+        view.insertStyle(element),
       handleLinkElement: proc(element: dom.Element, factory: dom.AtomFactory) =
         view.handleHTMLLinkElement(element, factory),
       fetchImageResource: proc(

@@ -106,30 +106,47 @@ func matches*(
       return true
   return false
 
+proc applySheetRules(
+    sheet: Stylesheet,
+    elem: dom.Element,
+    factory: dom.AtomFactory,
+    computed: var ComputedStyle,
+    specifsTracker: TableRef[string, uint],
+) =
+  for rule in sheet:
+    for complexSel in rule.selectors:
+      if matches(elem, factory, complexSel):
+        let ruleSpec = getSpecificity(complexSel)
+
+        for decl in rule.declarations:
+          let lowerKey = toLowerAscii(decl.key)
+          let currentSpec = specifsTracker.getOrDefault(lowerKey, 0'u)
+
+          if ruleSpec >= currentSpec:
+            computed[lowerKey] = decl.value
+            specifsTracker[lowerKey] = ruleSpec
+
 proc resolveStyling*(
-    root: dom.Node, factory: dom.AtomFactory, stylesheet: Stylesheet
+    root: dom.Node,
+    factory: dom.AtomFactory,
+    userAgent: Stylesheet,
+    stylesheets: seq[Stylesheet],
 ): StyleMap =
-  debug "Resolve styling map", numRules = stylesheet.len
+  debug "Resolve styling map", numSheets = stylesheets.len
   var map: StyleMap
 
   proc visit(node: dom.Node) =
     if node of dom.Element:
       let elem = dom.Element(node)
       var computed: ComputedStyle
-      var specifsTracker = newTable[string, uint]()
 
-      for rule in stylesheet:
-        for complexSel in rule.selectors:
-          if matches(elem, factory, complexSel):
-            let ruleSpec = getSpecificity(complexSel)
+      # Firstly, just apply the UA's defaults and then try to find any replacements in the author stylesheets.
+      var uaSpecifs = newTable[string, uint]()
+      applySheetRules(userAgent, elem, factory, computed, uaSpecifs)
 
-            for decl in rule.declarations:
-              let lowerKey = toLowerAscii(decl.key)
-              let currentSpec = specifsTracker.getOrDefault(lowerKey, 0'u)
-
-              if ruleSpec >= currentSpec:
-                computed[lowerKey] = decl.value
-                specifsTracker[lowerKey] = ruleSpec
+      var authorSpecifs = newTable[string, uint]()
+      for sheet in stylesheets:
+        applySheetRules(sheet, elem, factory, computed, authorSpecifs)
 
       if computed.len > 0:
         map[node] = ensureMove(computed)

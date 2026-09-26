@@ -33,3 +33,5 @@ type
   HTMLFormElement* = ref object of dom.Element
     meth*: Option[FormMethod]
     action*: Option[string]
+
+  HTMLStyleElement* = ref object of dom.Element

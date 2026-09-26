@@ -44,7 +44,7 @@ type
     scripts*: seq[HTMLScriptElement]
     coreScript*: HTMLScriptElement
 
-    stylesheet*: Stylesheet
+    userAgent*: Stylesheet
     styleMap*: StyleMap
     tree*: LayoutNode
 
@@ -52,7 +52,7 @@ type
 
     loader*: ResourceLoader
 
-    style*: string
+    stylesheets*: seq[Stylesheet]
 
     cursor*: vmath.Vec2
     focusedElement*: Option[LayoutNode]

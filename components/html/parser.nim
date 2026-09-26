@@ -15,8 +15,7 @@ export tags
 type
   MiniDOMBuilderCallbacks* = object
     ## These are called to help the overarching code (generally `WebView`) prepare a list of stylesheets.
-    insertStyle*: proc(text: string)
-    finishStyle*: proc()
+    insertStyle*: proc(element: HTMLStyleElement)
 
     handleLinkElement*: proc(element: Element, factory: AtomFactory)
     fetchImageResource*: proc(element: HTMLImageElement, factory: AtomFactory)
@@ -118,6 +117,8 @@ proc createElement(document: Document, localName: Atom, namespace: Namespace): E
         HTMLMetaElement()
       of TAG_FORM:
         HTMLFormElement()
+      of TAG_STYLE:
+        HTMLStyleElement()
       else:
         Element()
     else:
@@ -136,12 +137,11 @@ proc elementPoppedImpl(builder: MiniDOMBuilder, handle: Node) =
 
     case tagType
     of TAG_STYLE:
-      builder.callbacks.finishStyle()
+      builder.callbacks.insertStyle(HTMLStyleElement(element))
     of TAG_IMG:
       builder.callbacks.fetchImageResource(HTMLImageElement(element), builder.factory)
     of TAG_LINK:
       builder.callbacks.handleLinkElement(element, builder.factory)
-      builder.callbacks.finishStyle()
     of TAG_A:
       HTMLAnchorElement(element).href = element.getAttr(builder.factory, "href")
     of TAG_SCRIPT:
@@ -337,11 +337,6 @@ proc insertBeforeImpl(
 proc insertTextImpl(
     builder: MiniDOMBuilder, parent: Node, text: string, before: Option[Node]
 ) =
-  if parent of Element:
-    let tagType = Element(parent).tagType
-    if tagType == TAG_STYLE:
-      builder.callbacks.insertStyle(text)
-
   let text = text.toValidUTF8()
   let before = before.get(nil)
   let prevSibling =
