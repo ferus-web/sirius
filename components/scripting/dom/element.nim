@@ -2,7 +2,7 @@
 ## https://dom.spec.whatwg.org/#interface-element
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-
+import std/[strutils]
 import
   components/js/runtime/prelude,
   components/scripting/dom/node,
@@ -24,8 +24,8 @@ proc prefixGetter(rt: Runtime, this: JSValue): JSValue =
   undefined(rt)
 
 proc localNameGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: Element.localName getter"
-  undefined(rt)
+  let element = &this.getPrivateObject(dom.Element)
+  rt.wrap(element.document.factory.atomToStr(element.localName))
 
 proc innerHTMLGetter(rt: Runtime, this: JSValue): JSValue =
   rt.wrap(serializeFragment(&this.getPrivateObject(dom.Node)))
@@ -40,8 +40,8 @@ proc innerHTMLSetter(rt: Runtime, this: JSValue, value: JSValue) =
     markDirty element
 
 proc tagNameGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: Element.tagName getter"
-  undefined(rt)
+  let element = &this.getPrivateObject(dom.Element)
+  rt.wrap(toUpperAscii(element.document.factory.atomToStr(element.localName)))
 
 proc idGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: Element.id getter"
