@@ -621,6 +621,7 @@ proc loadSiriusURL(view: WebRenderer, path: string) =
         )
       ),
     )
+    newTabPage.close()
     return
 
   assert(off, &"Unknown page sirius:{path}") # TODO: make this a page or something
