@@ -7,7 +7,7 @@ import
   components/js/runtime/prelude,
   components/scripting/dom/node,
   components/dom/dom,
-  components/html/[parser, serialization]
+  components/html/[dom_utils, parser, serialization]
 import pkg/[chronicles, shakar]
 
 logScope:
@@ -140,9 +140,11 @@ proc toggleAttribute(
   undefined(rt)
 
 proc hasAttribute(rt: Runtime, this: JSValue, qualifiedName: JSValue): JSValue =
-  warn "IMPLEMENTME: Element::hasAttribute()",
+  let
+    element = &this.getPrivateObject(dom.Element)
     qualifiedName = rt.ToString(qualifiedName)
-  undefined(rt)
+
+  rt.wrap(*element.getAttr(element.document.factory, qualifiedName))
 
 proc hasAttributeNS(
     rt: Runtime, this: JSValue, namespace: JSValue, localName: JSValue
