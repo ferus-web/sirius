@@ -326,18 +326,33 @@ proc parseSelectors*(parser: Parser, initial: Token): SelectorList =
 
   return sels
 
-proc handleRuleset(parser: Parser, token: Token): Option[Rule] =
+proc handleRuleset(parser: Parser, token: Option[Token]): Option[Rule] =
   var rule: Rule
 
-  let selectors = parseSelectors(parser, initial = token)
+  if *token:
+    # Only check for the curly bracket block if we're in a non-inline context
+    let selectors = parseSelectors(parser, initial = &token)
 
-  if !parser.expectCurlyBracketBlock():
-    return none(Rule)
+    if !parser.expectCurlyBracketBlock():
+      return none(Rule)
 
-  rule.selectors = selectors
+    rule.selectors = selectors
+
   eatDeclarations(parser, rule.declarations)
 
   some(ensureMove(rule))
+
+proc parseInlineRules*(parser: Parser): Stylesheet =
+  var rules: Stylesheet
+
+  while not parser.eof:
+    let rule = handleRuleset(parser, none(Token))
+    if !rule:
+      break
+
+    rules &= &rule
+
+  ensureMove(rules)
 
 proc parseStylesheet*(parser: Parser): Stylesheet =
   var rules: Stylesheet
@@ -350,7 +365,7 @@ proc parseStylesheet*(parser: Parser): Stylesheet =
     if (&token).kind in {tkWhitespace, tkComment}:
       continue
 
-    let rule = handleRuleset(parser, &token)
+    let rule = handleRuleset(parser, some(&token))
     if !rule:
       break
 

@@ -126,6 +126,7 @@ proc applySheetRules(
             computed[lowerKey] = decl.value
             specifsTracker[lowerKey] = ruleSpec
 
+import components/aux/pretty
 proc resolveStyling*(
     root: dom.Node,
     factory: dom.AtomFactory,
@@ -150,15 +151,12 @@ proc resolveStyling*(
 
       if (let styleAttr = elem.getAttr(factory, "style"); *styleAttr):
         # For inline styles, just parse it impromtu with the CSS parser and apply its values.
-        # NOTE: This isn't compliant. It's a huge hack and it stinks.
-        let sheet =
-          parseStylesheet(newParser(newParserInput("pseu { " & &styleAttr & " }")))
+        let sheet = parseInlineRules(newParser(newParserInput(&styleAttr)))
 
         for rule in sheet:
-          for complexSel in rule.selectors:
-            for decl in rule.declarations:
-              computed[decl.key] = decl.value
-              authorSpecifs[decl.key] = high(uint)
+          for decl in rule.declarations:
+            computed[decl.key] = decl.value
+            authorSpecifs[decl.key] = high(uint)
 
       if computed.len > 0:
         map[node] = ensureMove(computed)
