@@ -70,6 +70,7 @@ type
     ancester*: Option[string]
     constants*: seq[Constant]
     attributes*: seq[Attribute]
+    getters*: seq[Op]
     ops*: seq[Op]
     constructors*: seq[Ctor]
 
@@ -178,15 +179,22 @@ func genArguments(list: Node): seq[Arg] =
   ensureMove(res)
 
 func genOp(iface: var Interface, node: Node) =
-  assert(node.kind == RegularOperation)
+  case node.kind
+  of SpecialOperation:
+    let special = node.sons[1]
+    assert special.specOpKw == SpecialOperationKeyword.Getter
 
-  var op = Op(
-    name: node.sons[0].strVal,
-    returnType: &getTypeFromNodes(node.sons[1]),
-    arguments: genArguments(node.sons[2]),
-  )
+    genOp(iface, node.sons[0])
+  of RegularOperation:
+    var op = Op(
+      name: node.sons[0].strVal,
+      returnType: &getTypeFromNodes(node.sons[1]),
+      arguments: genArguments(node.sons[2]),
+    )
 
-  iface.ops &= ensureMove(op)
+    iface.ops &= ensureMove(op)
+  else:
+    unreachable
 
 func genAttr(iface: var Interface, member: Node, readonly: bool) =
   let attrName = member.sons[0].strVal
@@ -348,7 +356,8 @@ func genInterface(node: Node, buffer: var string) =
     buffer &= &"): {iface.name} =\n"
     buffer &= &"  {iface.name}()\n"
 
-  for op in iface.ops:
+  for op in iface.ops & iface.getters:
+    # NOTE: Maybe we'll need to handle getters a bit differently down the line?
     buffer &= &"\nproc {op.name}(rt: Runtime, this: JSValue"
 
     for arg in op.arguments:
@@ -395,6 +404,54 @@ func genInterface(node: Node, buffer: var string) =
   """
 
     buffer &= "    )\n  )\n"
+
+  for getter in iface.getters:
+    buffer &=
+      &"""
+  runtime.defineAccessor(
+    {iface.name},
+    "{getter.name}",
+    FieldAccessor(
+      getter: proc(this: JSValue) =
+"""
+    const InnerIndent = "      "
+
+    # TODO: Move this into a unified routine for ops and getters
+    for i, arg in getter.arguments:
+      buffer &= &"{InnerIndent}let {sanitizeIdent(arg.name)} = "
+
+      let argumentGetCall = &"&runtime.argument({i + 1}, required = {not arg.optional})"
+
+      case arg.kind
+      of ValueKind.Any:
+        buffer &= argumentGetCall
+      of ValueKind.Short:
+        buffer &= &"int16(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.Long:
+        buffer &= &"int32(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.UnsignedShort:
+        buffer &= &"uint16(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.UnsignedLong:
+        buffer &= &"uint32(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.Boolean:
+        buffer &= &"&getBool({argumentGetCall})"
+      of ValueKind.Byte:
+        buffer &= &"int8(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.Octet:
+        buffer &= &"uint8(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.LongLong:
+        buffer &= &"int64(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.UnsignedLongLong:
+        buffer &= &"uint64(&getFloat(runtime.ToNumeric({argumentGetCall})))"
+      of ValueKind.DOMString:
+        buffer &= argumentGetCall
+
+      buffer &= '\n'
+
+    buffer &= &"{InnerIndent}ret {getter.name}(rt = rt, this = this"
+    for i, arg in getter.arguments:
+      buffer &= &", {sanitizeIdent(arg.name)} = {sanitizeIdent(arg.name)}"
+    buffer &= ")\n"
 
   for op in iface.ops:
     buffer &=
