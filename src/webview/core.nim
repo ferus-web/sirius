@@ -162,9 +162,8 @@ proc step*(view: WebView) =
     handleIPCMessage(view, ipcEvents[i].events, ipcEvents[i].data.fd)
 
 proc initWebView*(opts: WebViewOpts): WebView =
-  # TODO: Make WebViewOpts work again
   WebView(
-    master: initMaster(zygote.main),
+    master: initMaster(zygote.main, params = opts),
     pollingFd: nix.epoll_create1(0),
     bufferFd: -1'i32,
     opts: opts,

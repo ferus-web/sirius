@@ -17,12 +17,12 @@ when defined(linux):
 logScope:
   topics = "webview/zygote"
 
-proc launchRendererProcess(channel: int32) =
-  let webRenderer = initRenderer(channel)
-  webRenderer.loadPage(parseURL("sirius:new"))
+proc launchRendererProcess(channel: int32, params: WebViewOpts) =
+  let webRenderer = initRenderer(channel, params)
+  webRenderer.loadPage(parseURL("sirius:new")) # TODO: Can we not do this?
   quit(webRenderer.loop())
 
-proc spawnChildProcess(master: int32, msg: Message[ZygoteOp]) =
+proc spawnChildProcess(master: int32, msg: Message[ZygoteOp], params: WebViewOpts) =
   let
     processKind = &msg.argument(0, ProcessKind)
     fd = &msg.fd(0)
@@ -44,13 +44,13 @@ proc spawnChildProcess(master: int32, msg: Message[ZygoteOp]) =
 
     case processKind
     of ProcessKind.Renderer:
-      launchRendererProcess(fd)
+      launchRendererProcess(fd, params)
     else:
       unreachable
   else:
     discard posix.close(fd) # We don't need the channel in the zygote anymore.
 
-proc main*(master: int32) {.noReturn.} =
+proc main*(master: int32, params: WebViewOpts) {.noReturn.} =
   ## Entry point for the process. This has to be called once we've forked from the master
   ## process itself, and needs to be given a socket file descriptor in order to talk with
   ## the master.
@@ -74,6 +74,6 @@ proc main*(master: int32) {.noReturn.} =
     let msg = &msgOpt
     case msg.op
     of ZygoteOp.Spawn:
-      spawnChildProcess(master, msg)
+      spawnChildProcess(master, msg, params)
 
   quit(QuitSuccess)

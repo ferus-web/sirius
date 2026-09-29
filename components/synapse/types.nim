@@ -34,7 +34,7 @@ type
 
   Process* = ref ProcessObj
 
-  ZygoteRoutine* = proc(fd: int32)
+  ZygoteRoutine*[T: object] = proc(fd: int32, params: T)
 
   ClientObj = object
     fd*: int32 ## the end of the socketpair that we (the child) need to hold

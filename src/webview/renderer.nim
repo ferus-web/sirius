@@ -171,7 +171,7 @@ proc initCoreScript(view: WebRenderer) =
   view.coreScript.executeScript(readAll(stream), getHostScriptingCallbacks(view))
   stream.close()
 
-proc initRenderer*(ipcChannel: int32): WebRenderer =
+proc initRenderer*(ipcChannel: int32, opts: WebViewOpts): WebRenderer =
   debug "Initialize Renderer", channel = ipcChannel
   setThreadName("WebRenderer")
 
@@ -188,6 +188,7 @@ proc initRenderer*(ipcChannel: int32): WebRenderer =
     failedPlaceholderImage: newImage(64, 64),
     cookieJar: loadCookieJar(),
     renderCtx: newRenderingContext(vec2(640, 480)),
+    opts: opts,
   )
 
   webview.cookieJar.collect()
@@ -285,6 +286,9 @@ proc reflow(view: WebRenderer) =
   view.renderCtx.invalidate()
 
 proc insertStyle(view: WebRenderer, element: HTMLStyleElement) =
+  if view.opts.disableStyling:
+    return
+
   let parser = newParser(newParserInput(element.textContent()))
   view.stylesheets &= parseStylesheet(parser)
 

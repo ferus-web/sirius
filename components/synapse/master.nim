@@ -8,8 +8,8 @@ import
   components/impure/nix
 import pkg/[chronicles, results, shakar, vmath, url]
 
-proc spawnZygote*(
-    master: Master, zygoteRoutine: ZygoteRoutine
+proc spawnZygote*[T: object](
+    master: Master, zygoteRoutine: ZygoteRoutine[T], params: T
 ) {.raises: [IPCDefect, IOError].} =
   info "Spawning zygote process"
   let pairOpt = createSocketPair()
@@ -35,7 +35,7 @@ proc spawnZygote*(
     {.cast(raises: []).}:
       # TODO: Can we clear the call stack prior to this and treat it like our entrypoint?
       # HACK: Exceptions in here reallu aren't our problem, but feel free to correct me :P
-      zygoteRoutine(pair.ours())
+      zygoteRoutine(pair.ours(), params)
 
     stderr.write(
       "zygote: Invariant: ZygoteRoutine returned back to spawnZygote. Your implementation is faulty. :("
@@ -199,8 +199,8 @@ func findAssociatedClientByFd*(
       if process.fd == fd:
         return some((tab: cast[uint32](i), process: process))
 
-proc initMaster*(zygoteRoutine: ZygoteRoutine): Master =
+proc initMaster*[T: object](zygoteRoutine: ZygoteRoutine, params: T): Master =
   let master =
     Master(encoder: initEncoder(MaxPacketSize), decoder: initDecoder(MaxPacketSize))
-  spawnZygote(master, zygoteRoutine)
+  spawnZygote(master, zygoteRoutine, params)
   master
