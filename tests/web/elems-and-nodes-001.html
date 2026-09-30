@@ -2,12 +2,14 @@
 <html>
   <head><title>Elements and Nodes</title></head>
   <body>
-    <p id="targ" testing-attribute>0</p>
+    <p id="targ" testing-attribute hello="hi" age=32>0</p>
     <script>
 	let elem = document.getElementById("targ");
         elem.getRootNode();
 
 	console.log("has testing attribute?", elem.hasAttribute("testing-attribute"));
+	console.log("attrib hello =", elem.getAttribute("hello"));
+	console.log("attrib age =", elem.getAttribute("age"));
     </script>
   </body>
 </html>

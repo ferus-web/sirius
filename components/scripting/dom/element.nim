@@ -89,9 +89,17 @@ proc getAttributeNames(rt: Runtime, this: JSValue): JSValue =
   undefined(rt)
 
 proc getAttribute(rt: Runtime, this: JSValue, qualifiedName: JSValue): JSValue =
-  warn "IMPLEMENTME: Element::getAttribute()",
-    qualifiedName = rt.ToString(qualifiedName)
-  undefined(rt)
+  let
+    element = &this.getPrivateObject(dom.Element)
+    qualifiedAttrName = rt.ToString(qualifiedName)
+
+  if (
+    let attribValue = element.getAttr(element.document.factory, qualifiedAttrName)
+    *attribValue
+  ):
+    rt.wrap(&attribValue)
+  else:
+    null(rt)
 
 proc getAttributeNS(
     rt: Runtime, this: JSValue, namespace: JSValue, localName: JSValue
