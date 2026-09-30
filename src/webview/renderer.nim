@@ -722,10 +722,21 @@ proc handleFocusedDomElement(
     clicked: bool = false,
 ): bool {.discardable.} =
   applyCursorState(view, layoutNode)
+  let coords = ivec2(view.cursor)
+
+  discard dispatchEvent(
+    layoutNode.domNode,
+    "mousemove",
+    newMouseEvent(
+      screenCoords = coords,
+      clientCoords = coords,
+      layerCoords = coords,
+      button = 0,
+      buttons = 1,
+    ),
+  )
 
   if clicked:
-    let coords = ivec2(view.cursor)
-
     if dispatchEvent(
       layoutNode.domNode,
       "click",

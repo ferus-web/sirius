@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Mouse Move</title></head>
+  <body>
+    <p id="targ">Start moving 'round here</p>
+    <script>
+	const elem = document.getElementById("targ");
+	function x(event) {
+	  let sx = new String(event.screenX);
+	  let sy = new String(event.screenY);
+	  let z = " ";
+
+	  z = z.concat("<", sx, ", ", sy, ">");
+	  elem.textContent = z; 
+	}
+
+	elem.addEventListener("mousemove", x);
+    </script>
+  </body>
+</html>
