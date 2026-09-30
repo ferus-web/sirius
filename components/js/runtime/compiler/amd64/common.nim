@@ -5,9 +5,9 @@ import std/[tables, posix]
 import
   components/js/runtime/compiler/base,
   components/js/runtime/compiler/amd64/native_forwarding,
-  components/js/platform/libc,
   components/js/internal/assembler/amd64,
   components/js/runtime/vm/heap/manager
+import components/impure/nix
 
 type
   ConstantPool* = seq[cstring]
@@ -73,4 +73,4 @@ proc prepareLoadString*(cgen: AMD64Codegen, str: cstring) =
 
   cgen.s.pop(regR8.reg) # get the pointer that was in rax which is likely gone now
 
-export libc, manager
+export nix, manager

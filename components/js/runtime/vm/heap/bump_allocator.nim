@@ -1,8 +1,10 @@
 ## Bump allocator implementation
 ##
 ## Copyright (C) 2025 Trayambak Rai (xtrayambak at disroot dot org)
-import std/posix
-import components/js/platform/libc
+
+when defined(posix):
+  import std/posix
+  import components/impure/nix
 
 const DefaultAllocatorBufferSize* =
   when defined(amd64) or defined(aarch64) or defined(riscv64):

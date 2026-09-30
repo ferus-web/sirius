@@ -97,3 +97,9 @@ let
   RLIMIT_MSGQUEUE*: int32
   RLIMIT_CORE*: int32
 {.pop.}
+
+{.push importc, header: "<stdlib.h>".}
+proc free*(p: pointer)
+proc malloc*(size: uint64): pointer
+proc posix_memalign*(address: ptr pointer, alignment: int64, size: uint64): int32
+{.pop.}
