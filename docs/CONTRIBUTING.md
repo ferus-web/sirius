@@ -111,7 +111,7 @@ Make sure to test the stub or implementation with a bare minimum test in the app
 Also, it would be greatly appreciated if you could link to the appropriate sections of what you implemented/stubbed in your merge request description.
 
 ### I'm working on layout/CSS.
-Again, try browsing some basic sites and test pages with your changes to ensure nothing breaks. A good anchor point would be the Acid1 test (`file://tests/spec/acid1.html`). It's currently horribly broken on Sirius, so any progress towards making it look right would be greatly appreciated too.
+Again, try browsing some basic sites and test pages with your changes to ensure nothing breaks. 
 
 ### I'm working on the IPC layer, JIT compilers or renderer.
 Firstly: awesome! :D
