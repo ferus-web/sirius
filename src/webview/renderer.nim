@@ -498,8 +498,25 @@ proc loadHTMLStream(view: WebRenderer, stream: Stream) =
 
   stream.close()
 
+proc loadImageStream(view: WebRenderer, title: string, stream: StringStream) =
+  let imageViewerTemplate =
+    &view.assetProvider.openAssetStream("resources/image-viewer.html")
+  let viewerTemplate = imageViewerTemplate.readAll() % [title, stream.encodeBase64()]
+
+  imageViewerTemplate.close()
+
+  view.loadHTMLStream(newStringStream(viewerTemplate))
+
 proc loadFile(view: WebRenderer, path: string) =
-  loadHTMLStream(view, openFileStream(path))
+  let extension = path.splitFile().ext.strip(chars = {'.'})
+
+  if extension == "html":
+    loadHTMLStream(view, openFileStream(path))
+  elif extension in ["png", "jpg", "jpeg", "webp", "gif"]:
+    # NOTE: WebP support comes in later once pixie gets an update :)
+    loadImageStream(view, path, newStringStream(openFileStream(path).readAll()))
+  else:
+    warn "Unhandled extension", ext = extension, path = path
 
 proc showTransportErrorPage(view: WebRenderer, url: URL, err: TransportError) =
   let errorTemplateFile = &view.assetProvider.openAssetStream(
@@ -531,17 +548,6 @@ proc cleanup(view: WebRenderer) =
   view.realm.heap.release()
   view.scripts.reset()
 
-proc loadImageStream(view: WebRenderer, resp: Response) =
-  let imageViewerTemplate =
-    &view.assetProvider.openAssetStream("resources/image-viewer.html")
-  let viewerTemplate =
-    imageViewerTemplate.readAll() %
-    [(&resp.url).pathname.strip(chars = {'/'}), resp.body.stream.encodeBase64()]
-
-  imageViewerTemplate.close()
-
-  view.loadHTMLStream(newStringStream(viewerTemplate))
-
 proc parseAndHandleCookie(view: WebRenderer, cookieStr: string) =
   let parsed = parseCookie(view.target, cookieStr)
   if !parsed:
@@ -572,7 +578,7 @@ proc loadStream(view: WebRenderer, resp: Response) =
     view.loadHTMLStream(resp.body.stream)
     return
   of MimeType.JPEG, MimeType.PNG, MimeType.WebP:
-    view.loadImageStream(resp)
+    view.loadImageStream((&resp.url).pathname.strip(chars = {'/'}), resp.body.stream)
   else:
     warn "Unhandled content type", typ = &contentType
 
