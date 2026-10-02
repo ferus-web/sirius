@@ -99,7 +99,9 @@ proc getDocumentImpl(builder: MiniDOMBuilder): Node =
 proc getParentNodeImpl(builder: MiniDOMBuilder, handle: Node): Option[Node] =
   return option(handle.parentNode)
 
-proc createElement(document: Document, localName: Atom, namespace: Namespace): Element =
+proc createElement*(
+    document: Document, localName: Atom, namespace: Namespace
+): Element =
   let element = block:
     if namespace == Namespace.HTML:
       case toTagType(localName)

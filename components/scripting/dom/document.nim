@@ -8,7 +8,7 @@ import
   components/js/runtime/[arguments, bridge, construction, types],
   components/js/runtime/abstract/[coercible, to_number, to_string],
   components/dom/[dom, tags],
-  components/html/dom_utils,
+  components/html/[dom_utils, parser],
   components/scripting/dom/[element],
   components/scripting/html/element/[htmlinputelement],
   components/scripting/html/htmlelement,
@@ -114,4 +114,21 @@ proc generateBindings*(runtime: Runtime) =
 
       echo htmlSrc
     ,
+  )
+
+  runtime.definePrototypeFn(
+    JSDocument,
+    "createElement",
+    proc(this: JSValue) =
+      # TODO: options arg
+      let
+        document = &this.getPrivateObject(dom.Document)
+        element = document.createElement(
+          localName = document.factory.strToAtom(
+            toLowerAscii(runtime.ToString(&runtime.argument(1)))
+          ),
+          namespace = Namespace.HTML,
+        )
+
+      bindJSElement(runtime, element),
   )

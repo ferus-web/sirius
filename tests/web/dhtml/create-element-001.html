@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <div id="thing" style="width:256px; height: 76px; background-color: red; cursor: grabbing; color: white; font-size: 32px; text-align: center;">click me for the funnies</div>
+    <div id="outlog" style="width: 512px; height: 512px; background-color: green;"></div>
+    <script>
+const button = document.getElementById("thing");
+const outlog = document.getElementById("outlog");
+
+button.addEventListener("click", function(event) {
+  const newElem = document.createElement("p");
+  newElem.textContent = "hello, document.createElement()";
+
+  console.log(newElem.textContent)
+})
+    </script>
+  </body>
+</html>
