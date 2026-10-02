@@ -58,8 +58,6 @@ proc parseValueFromToken*(parser: Parser, token: Token): Result[CSSValue, string
     return ok(hex(token.idHash))
   of tkHash:
     return ok(hex(token.hash))
-  of tkNumber:
-    return ok(number(&token.nIntVal))
   else:
     discard
 
@@ -85,22 +83,19 @@ proc parseFunction*(parser: Parser, nameTok: Token): Option[CSSValue] {.inline.}
   parser.atStartOf = none(BlockType)
   some(function(name, move(args)))
 
-proc parseDeclaration*(parser: Parser): Result[seq[Declaration], string] =
+proc parseDeclaration*(parser: Parser): Option[Declaration] =
   let startInput = parser.input.clone()
 
   let ident = parser.expectIdent()
   if !ident:
     parser.input = startInput
-    return err("Expected identifier when parsing declaration")
-
-  let key = &ident
+    return
 
   if !parser.expectColon():
     parser.input = startInput
-    return err("Expected colon after identifier when parsing declaration")
+    return
 
   var values = CSSValue(kind: CSSValueKind.List)
-  var decls: seq[Declaration] # TODO: Prealloc
 
   while not parser.eof:
     let preNextInput = parser.input.clone()
@@ -123,35 +118,10 @@ proc parseDeclaration*(parser: Parser): Result[seq[Declaration], string] =
         values.list &= &value
     of tkComma:
       discard
+    # FIXME: Proper validation
     of tkDelim:
-      if value.delim == '/' and cmpIgnoreCase(key, "font") == 0:
-        # TODO: Make a separate routine for this
-        if values.list.len < 1:
-          return
-            err("'font' property notation must have one value prior to '/' delimiter")
-
-        decls &=
-          @[
-            Declaration(key: "font-size", value: values.list[0]),
-            Declaration(
-              key: "line-height", value: &parser.parseValueFromToken(&parser.next())
-            ), # TODO: Probably shouldn't just yolo it with that
-          ]
-        continue
-
-      return err(
-        &"Got unexpected delimiter while parsing values for declaration: '{value.delim}'"
-      )
+      discard
     of tkSemicolon:
-      decls &=
-        Declaration(
-          key: key,
-          value:
-            if values.list.len == 1:
-              values.list[0]
-            else:
-              move(values),
-        )
       break
     of tkCloseCurlyBracket:
       # NOTE: We mustn't consume this. Revert back to the old state.
@@ -159,10 +129,18 @@ proc parseDeclaration*(parser: Parser): Result[seq[Declaration], string] =
       break
     else:
       # assert off, $value.kind # & ' ' & $value.delim
-      return
-        err(&"Got unexpected token while parsing values for declaration: {value.kind}")
+      return none(Declaration)
 
-  return ok(ensureMove(decls))
+  return some(
+    Declaration(
+      key: &ident,
+      value:
+        if values.list.len == 1:
+          values.list[0]
+        else:
+          ensureMove(values),
+    )
+  )
 
 proc eatDeclarations(parser: Parser, decls: var seq[Declaration]) =
   template checkEnd() =
