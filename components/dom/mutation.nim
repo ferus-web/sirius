@@ -53,11 +53,17 @@ func lastChild*(node: dom.Node): Option[dom.Node] =
   some(node.childList[^1])
 
 {.push discardable.}
-proc removeChild*(parent: dom.Node, node: dom.Node): Result[void, string] =
+proc removeChild*(parent: dom.Node, node: dom.Node): Result[dom.Node, string] =
   # To remove a node node, with an optional boolean suppressObservers (default false): 
   # debugEcho &"Node::removeChild(parent=0x{cast[uint64](parent):X}, node=0x{cast[uint64](node):X})"
 
   # 1. Let parent be node’s parent.
+  if node.parentNode == nil:
+    return err("The node to be removed has no parent.")
+
+  if node.parentNode != parent:
+    return err("The node to be removed is not a child of the provided parent node.")
+
   # 2. Assert: parent is non-null. 
   assert(parent != nil)
 
@@ -76,6 +82,9 @@ proc removeChild*(parent: dom.Node, node: dom.Node): Result[void, string] =
   node.parentNode.childList.delete(findParentIndex(node))
   node.parentNode = nil
 
+  markDirty(node)
+  markDirty(parent)
+
   # TODO: Implement the remaining steps
   # 8. If node is assigned, then run assign slottables for node’s assigned slot.
   # 9. If parent’s root is a shadow root, and parent is a slot whose assigned nodes is the empty list, then run signal a slot change for parent. 
@@ -92,7 +101,7 @@ proc removeChild*(parent: dom.Node, node: dom.Node): Result[void, string] =
   # 16. If suppressObservers is false, then queue a tree mutation record for parent with « », « node », oldPreviousSibling, and oldNextSibling.
   # 17. Run the children changed steps for parent.
 
-  ok()
+  ok(node)
 
 proc insert*(parent: dom.Node, node: dom.Node, before: dom.Node) =
   # To insert a node node into a node parent before null or a node child, with an optional boolean suppressObservers (default false): 

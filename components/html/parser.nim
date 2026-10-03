@@ -3,7 +3,7 @@
 ## https://git.sr.ht/~bptato/chame/tree/master/item/chame/minidom.nim
 
 import std/[algorithm, hashes, options, sets, streams, tables]
-import pkg/chame/[htmlparser, tags], pkg/shakar
+import pkg/chame/[htmlparser, tags], pkg/[results, shakar]
 import
   components/dom/prelude,
   components/html/[dom_utils, meta],
@@ -320,19 +320,26 @@ func preInsertionValidity*(parent, node, before: Node): bool =
         return false
   return true # no exception reached
 
-proc insertBefore*(parent, child: Node, before: Option[Node]) =
-  let before = before.get(nil)
+proc insertBefore*(
+    parent, child: Node, before: Option[Node]
+): Result[dom.Node, string] {.discardable.} =
+  let
+    before = before.get(nil)
+    validity = parent.preInsertionValidity(child, before)
   # debugEcho &"Node::insertBefore(parent=0x{cast[uint64](parent):X}, child=0x{cast[uint64](child):X}, before=0x{cast[uint64](before):X})"
 
-  if parent.preInsertionValidity(child, before):
+  if validity:
     assert child.parentNode == nil
     if before == nil:
       parent.childList.add(child)
     else:
       let i = parent.childList.find(before)
       parent.childList.insert(child, i)
+  else:
+    return err("Cannot insert DOM node: failed pre-insertion validity test")
 
   child.parentNode = parent
+  ok(child)
 
 proc insertBeforeImpl(
     builder: MiniDOMBuilder, parent, child: Node, before: Option[Node]

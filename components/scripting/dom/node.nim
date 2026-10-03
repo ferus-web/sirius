@@ -2,12 +2,13 @@
 ## https://dom.spec.whatwg.org/#interface-node
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+import std/options
 import
   components/js/runtime/prelude,
   components/js/stdlib/errors,
   components/scripting/dom/event_target,
   components/dom/[dom, mutation],
-  components/html/dom_utils
+  components/html/[dom_utils, parser]
 import pkg/[chronicles, results, shakar]
 
 logScope:
@@ -168,9 +169,22 @@ proc isDefaultNamespace(rt: Runtime, this: JSValue, namespace: JSValue): JSValue
   undefined(rt)
 
 proc insertBefore(rt: Runtime, this: JSValue, node: JSValue, child: JSValue): JSValue =
-  warn "IMPLEMENTME: Node::insertBefore()",
-    node = rt.ToString(node), child = rt.ToString(child)
-  undefined(rt)
+  let
+    parent = &this.getPrivateObject(dom.Node)
+    node = &node.getPrivateObject(dom.Node)
+    before =
+      if child.isUndefined:
+        none(dom.Node)
+      else:
+        child.getPrivateObject(dom.Node)
+
+  let res = parent.insertBefore(node, before)
+  if !res:
+    # TODO: This should be a DOMException when those work
+    rt.typeError(res.error())
+    return
+
+  toJSNode(rt, &res)
 
 proc appendChild(rt: Runtime, this: JSValue, node: JSValue): JSValue =
   let
@@ -191,8 +205,17 @@ proc replaceChild(rt: Runtime, this: JSValue, node: JSValue, child: JSValue): JS
   undefined(rt)
 
 proc removeChild(rt: Runtime, this: JSValue, child: JSValue): JSValue =
-  warn "IMPLEMENTME: Node::removeChild()", child = rt.ToString(child)
-  undefined(rt)
+  let
+    parent = &this.getPrivateObject(dom.Node)
+    node = &child.getPrivateObject(dom.Node)
+
+  let res = parent.removeChild(node)
+  if !res:
+    # TODO: This should be a DOMException when those work
+    rt.typeError(res.error())
+    return
+
+  toJSNode(rt, &res)
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType("Node", Node)
