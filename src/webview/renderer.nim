@@ -8,7 +8,7 @@ import
   ]
 import ./[branding, cookie_jar, hit_testing, flags, types]
 import
-  pkg/[chronicles, chroma, pixie, results, shakar, url, vmath, xkb],
+  pkg/[chronicles, chroma, pixie, results, shakar, url, vmath],
   pkg/figdraw/vulkan/vulkan_context
 import
   components/aux/[pretty, stream_utils],
