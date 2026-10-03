@@ -1,15 +1,26 @@
+## `Node` implementation
+## https://dom.spec.whatwg.org/#interface-node
+##
+## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import
   components/js/runtime/prelude,
+  components/js/stdlib/errors,
   components/scripting/dom/event_target,
-  components/dom/dom,
+  components/dom/[dom, mutation],
   components/html/dom_utils
-import pkg/[chronicles, shakar]
+import pkg/[chronicles, results, shakar]
 
 logScope:
   topics = "dom/node"
 
 type Node* = object of event_target.EventTarget
   internal*: Hidden[dom.Node]
+
+proc toJSNode*(rt: Runtime, node: dom.Node): JSValue =
+  let wrapper = rt.createObjFromType(Node)
+  wrapper.setHiddenField("internal", rt.wrap(hidden(node)))
+
+  wrapper
 
 const
   ElementNode*: uint16 = 1
@@ -162,8 +173,17 @@ proc insertBefore(rt: Runtime, this: JSValue, node: JSValue, child: JSValue): JS
   undefined(rt)
 
 proc appendChild(rt: Runtime, this: JSValue, node: JSValue): JSValue =
-  warn "IMPLEMENTME: Node::appendChild()", node = rt.ToString(node)
-  undefined(rt)
+  let
+    parent = &this.getPrivateObject(dom.Node)
+    node = &node.getPrivateObject(dom.Node)
+
+  let res = parent.append(node)
+  if !res:
+    # TODO: This should be a DOMException when those work
+    rt.typeError(res.error())
+    return
+
+  toJSNode(rt, &res)
 
 proc replaceChild(rt: Runtime, this: JSValue, node: JSValue, child: JSValue): JSValue =
   warn "IMPLEMENTME: Node::replaceChild()",

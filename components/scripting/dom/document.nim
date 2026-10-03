@@ -49,6 +49,10 @@ proc generateGlobal*(runtime: Runtime, doc: dom.Document): JSValue =
   )
 
 template bindJSElement(runtime: Runtime, elem: dom.Element) =
+  GC_ref(elem)
+    # HACK: Basically, we do not want the Nim runtime to deallocate this node while we're still working with it, otherwise that causes absolutely scrumptious and delectable heisenbugs :3
+    # NOTE: Maybe we should allocate the DOM with the current realm's GC, honestly. Leaving it up to Nim's runtime refcounting is already causing some problems.
+
   if elem of tags.HTMLInputElement:
     ret toJSHTMLInputElement(runtime, tags.HTMLInputElement(elem))
   else:

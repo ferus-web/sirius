@@ -28,6 +28,7 @@ In order to set up a development environment for hacking on Sirius, check the [c
 - [X] Forms support
 - [X] WebIDL -> Nim stub generator
 - [X] Acid 1
+- [X] Basic DHTML (`document.createElement()`, `Node.appendChild()`, etc.)
 - [ ] Acid 2 (not _that_ close)
 - [ ] CSS Grid Layout
 - [ ] Sandboxing

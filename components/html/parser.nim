@@ -320,8 +320,10 @@ func preInsertionValidity*(parent, node, before: Node): bool =
         return false
   return true # no exception reached
 
-proc insertBefore(parent, child: Node, before: Option[Node]) =
+proc insertBefore*(parent, child: Node, before: Option[Node]) =
   let before = before.get(nil)
+  # debugEcho &"Node::insertBefore(parent=0x{cast[uint64](parent):X}, child=0x{cast[uint64](child):X}, before=0x{cast[uint64](before):X})"
+
   if parent.preInsertionValidity(child, before):
     assert child.parentNode == nil
     if before == nil:
@@ -329,7 +331,8 @@ proc insertBefore(parent, child: Node, before: Option[Node]) =
     else:
       let i = parent.childList.find(before)
       parent.childList.insert(child, i)
-    child.parentNode = parent
+
+  child.parentNode = parent
 
 proc insertBeforeImpl(
     builder: MiniDOMBuilder, parent, child: Node, before: Option[Node]
