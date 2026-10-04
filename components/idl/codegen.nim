@@ -219,7 +219,10 @@ func genInterfaceMember(iface: var Interface, member: Node) =
     genAttr(iface, member.sons[0], readonly = true)
   of Constructor:
     genCtor(iface, member.sons[0])
+  of Stringifier:
+    genInterfaceMember(iface, member.sons[0])
   else:
+    debugEcho member.kind
     unreachable
 
 func pascalCase(ident: string): string =
