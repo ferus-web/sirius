@@ -130,7 +130,7 @@ func asgnNodeAsValue(node: Node, constant: var Constant) =
   of ValueKind.Boolean:
     constant.boolean = node.boolVal
   else:
-    unreachable
+    discard
 
 func genConstStmt(iface: var Interface, def: Node) =
   assert(def.kind == IdentDefs)
@@ -521,6 +521,8 @@ proc generateWrapper*(tree: seq[Node]): string =
       genInterface(node, buffer)
     of Dictionary:
       discard
+    of Partial:
+      genInterface(node.sons[0], buffer)
     else:
       unreachable
 
