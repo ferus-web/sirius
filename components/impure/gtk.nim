@@ -30,7 +30,11 @@ let
 
   GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES*: int32
   GTK_ORIENTATION_VERTICAL*: int32
+  GTK_ORIENTATION_HORIZONTAL*: int32
+
+  GTK_ALIGN_START*: int32
   GTK_ALIGN_CENTER*: int32
+  GTK_ALIGN_END*: int32
 
   GDK_BUTTON_PRIMARY*: int32
 
@@ -229,6 +233,7 @@ proc gtk_widget_add_tick_callback*(
 
 proc gtk_widget_queue_draw*(widget: ptr EGtkWidget)
 proc gtk_widget_set_tooltip_text*(widget: ptr EGtkWidget, text: cstring)
+proc gtk_widget_set_visible*(widget: ptr EGtkWidget, value: bool)
 
 proc g_signal_connect_data*(
   instance: pointer,
@@ -243,6 +248,9 @@ proc gtk_image_new_from_icon_name*(name: cstring): ptr EGtkWidget
 proc gtk_image_set_pixel_size*(widget: ptr EGtkWidget, size: int32)
 
 proc gtk_label_new*(text: cstring): ptr EGtkWidget
+proc gtk_label_set_wrap*(label: ptr EGtkWidget, value: bool)
+proc gtk_label_set_max_width_chars*(label: ptr EGtkWidget, value: int32)
+proc gtk_label_set_label*(label: ptr EGtkWidget, str: cstring)
 
 proc gtk_event_controller_scroll_new*(axes: int32): ptr EGtkWidget
 proc gtk_event_controller_motion_new*(): ptr EGtkWidget
@@ -269,6 +277,15 @@ proc adw_tab_bar_set_autohide*(bar: ptr EGTkWidget, autohide: bool)
 proc adw_tab_view_get_selected_page*(view: ptr EGtkWidget): ptr EGtkWidget
 
 proc gtk_button_new_from_icon_name*(icon: cstring): ptr EGtkWidget
+
+proc gtk_widget_set_margin_start*(widget: ptr EGtkWidget, value: int32)
+proc gtk_widget_set_margin_bottom*(widget: ptr EGtkWidget, value: int32)
+proc gtk_widget_set_margin_end*(widget: ptr EGtkWidget, value: int32)
+proc gtk_widget_set_margin_top*(widget: ptr EGtkWidget, value: int32)
+
+proc gtk_overlay_new*(): ptr EGtkWidget
+proc gtk_overlay_set_child*(overlay: ptr EGtkWidget, child: ptr EGtkWidget)
+proc gtk_overlay_add_overlay*(overlay: ptr EGtkWidget, widget: ptr EGtkWidget)
 
 proc gdk_display_get_default*(): pointer
 proc gdk_dmabuf_texture_builder_new*(): ptr GdkDmabufTextureBuilder

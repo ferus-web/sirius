@@ -148,6 +148,11 @@ proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
 
     if view.callbacks.onClipboardWriteText != nil:
       view.callbacks.onClipboardWriteText(view, tabId, textData, promiseId)
+  of MasterOp.UpdateStatusBar:
+    let statusText = msg.argument(0, string)
+
+    if view.callbacks.onStatusBarUpdate != nil:
+      view.callbacks.onStatusBarUpdate(view, tabId, statusText)
 
 proc step*(view: WebView) =
   var ipcEvents = newSeq[nix.EpollEvent](view.master.tabs.len)

@@ -13,3 +13,4 @@ type MasterOp* {.pure, size: sizeof(uint16).} = enum
   AlertMessage
   UpdateNavigation
   ClipboardWriteText
+  UpdateStatusBar

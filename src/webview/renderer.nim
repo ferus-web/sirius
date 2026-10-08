@@ -742,6 +742,20 @@ proc handleFocusedDomElement(
     ),
   )
 
+  if view.dom.factory != nil and layoutNode.domNode != nil and
+      layoutNode.domNode of dom.Element and
+      Element(layoutNode.domNode).tagType() == TAG_A:
+    # TODO: rate-limit this.
+    let href = Element(layoutNode.domNode).getAttr(view.dom.factory, "href")
+
+    view.client.encoder.encode(MasterOp.UpdateStatusBar)
+    if *href:
+      view.client.encoder.push(serialize(&view.resolveURLSegment(&href)))
+  else:
+    view.client.encoder.encode(MasterOp.UpdateStatusBar)
+
+  discard view.client.send()
+
   if clicked:
     if dispatchEvent(
       layoutNode.domNode,
@@ -784,7 +798,6 @@ proc handleFocusedDomElement(
 
 proc handleFocusedElement(view: WebRenderer, clicked: bool = false) =
   if !view.focusedElement:
-    # view.app.setCursorShape(if view.progress: Shape.Progress else: Shape.Default)
     return
 
   let elem = &view.focusedElement

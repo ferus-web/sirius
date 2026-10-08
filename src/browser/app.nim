@@ -33,6 +33,9 @@ type
     urlBar: ptr EGtkWidget
     clipboard: ptr GdkClipboard
 
+    statusBar*: ptr EGtkWidget
+    statusLabel*: ptr EGtkWidget
+
     tabs: seq[BrowserTab]
     tab: BrowserTab
 
@@ -267,6 +270,16 @@ proc interactionSwitchTab(browser: BrowserState, tab: BrowserTab) =
   # we also need to request the graphics FD again because we're amnesiacs
   browser.view.requestGraphicsFd(tab.id)
 
+proc setStatusText*(browser: BrowserState, text: Option[string] = none(string)) =
+  if browser.statusBar == nil or browser.statusLabel == nil:
+    return
+
+  if *text:
+    gtk_label_set_label(browser.statusLabel, cstring(&text))
+    gtk_widget_set_visible(browser.statusBar, true)
+  else:
+    gtk_widget_set_visible(browser.statusBar, false)
+
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
 
@@ -347,7 +360,39 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
 
   gtk_box_append(mainBox, headerBar)
   gtk_box_append(mainBox, browser.tabBar)
-  gtk_box_append(mainBox, browser.tabView)
+
+  let overlay = gtk_overlay_new()
+  gtk_widget_set_hexpand(overlay, true)
+  gtk_widget_set_vexpand(overlay, true)
+
+  gtk_overlay_set_child(overlay, browser.tabView)
+
+  browser.statusBar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)
+
+  gtk_widget_add_css_class(browser.statusBar, "osd")
+
+  # Align to bottom-left
+  gtk_widget_set_halign(browser.statusBar, GTK_ALIGN_START)
+  gtk_widget_set_valign(browser.statusBar, GTK_ALIGN_END)
+
+  gtk_widget_set_margin_start(browser.statusBar, 4)
+  gtk_widget_set_margin_bottom(browser.statusBar, 4)
+
+  browser.statusLabel = gtk_label_new(cstring(""))
+  gtk_widget_set_margin_start(browser.statusLabel, 8)
+  gtk_widget_set_margin_end(browser.statusLabel, 8)
+  gtk_widget_set_margin_top(browser.statusLabel, 4)
+  gtk_widget_set_margin_bottom(browser.statusLabel, 4)
+
+  gtk_label_set_wrap(browser.statusLabel, false)
+  gtk_label_set_max_width_chars(browser.statusLabel, 80)
+
+  gtk_box_append(browser.statusBar, browser.statusLabel)
+
+  gtk_overlay_add_overlay(overlay, browser.statusBar)
+  gtk_box_append(mainBox, overlay)
+
+  browser.setStatusText(none(string))
 
   # let windowTitle = adw_window_title_new("Sirius", "")
   # adw_header_bar_set_title_widget(headerBar, windowTitle)
@@ -494,6 +539,12 @@ proc attachIPCEventHandlers(state: BrowserState) =
   ) =
     # TODO: Guard this
     state.clipboardWriteText(tab, text, promiseId)
+
+  state.view.onStatusBarUpdate = proc(
+      view: WebView, tab: TabID, status: Option[string]
+  ) =
+    # TODO: guard this as well
+    state.setStatusText(status)
 
 proc startBrowserShell*(view: WebView, args: argparser.Input) =
   let browser = BrowserState(

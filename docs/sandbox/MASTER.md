@@ -41,7 +41,12 @@ Sent when the renderer's `window.alert()` host bindings are triggered, usually b
 Sent when the renderer has either navigated to a new page, or a new section of the page. This is to ensure that the master is aware as to where the user is.
 
 ### clipboardWriteText
-**Argument 1**: UTF-8 string
+**Argument 1**: UTF-8 string \
 **Argument 2**: Promise ID (uint32)
 
 Sent when the renderer wants to copy some text to the clipboard. The master should ideally respond with a `ClipboardWriteAck` command, along with the same Promise ID.
+
+### updateStatusBar
+**Argument 1<sup>(optional)</sup>**: UTF-8 string
+
+Sent when the renderer wants to update the page's loading status. If no argument is provided, the document is presumed to have been fully loaded and/or no navigable anchors are currently being hovered over.
