@@ -19,7 +19,7 @@ import
   components/html/form/[owner, encoder, types],
   components/style/[parser, matching],
   components/layout/[flow, node_builder, output_manager, types],
-  components/os/[assets, fonts, threads],
+  components/os/[assets, event_loop, fonts, threads],
   components/net/[cookie, cookie_parser, core, mime],
   components/net/loader/core,
   components/net/ws/[client, types],
@@ -46,14 +46,6 @@ logScope:
   topics = "webview/renderer"
 
 proc loadUrl(view: WebRenderer, url: URL)
-
-proc registerIntoEventLoop*(renderer: WebRenderer, fd: int32, events: uint32) =
-  # TODO: Create an EventLoop abstraction so porting to other kernels will be less painful
-  var event = nix.EpollEvent(events: events, data: nix.EpollData(fd: fd))
-  assert(
-    nix.epoll_ctl(renderer.eventLoop, nix.EPOLL_CTL_ADD, fd, event.addr) == 0,
-    "Failed to attach epoll listener",
-  )
 
 proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
   HostScriptingCallbacks(
@@ -86,11 +78,16 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
         ws.callbacks.opened = proc(_: WebSocketClient) {.gcsafe.} =
           let fd = ws.getFd()
 
-          if *fd:
-            renderer.registerIntoEventLoop(&fd, nix.EPOLLIN)
-          else:
+          if !fd:
+            warn "Failed to register WebSocket, initialization seems to have failed"
+            return
+
+          let registerRes =
+            renderer.eventLoop.register(websocket(&fd), {EventMode.Input})
+
+          if !registerRes:
             warn "Failed to register WebSocket file descriptor into event loop, continuing anyways.",
-              url = ws.url, state = ws.state
+              url = ws.url, state = ws.state, msg = registerRes.error()
 
           # HACK: I'm sure there's a better way to plug in web API bindings' dispatchers
           onopen(targetNode)
@@ -973,34 +970,34 @@ proc handleIPCMessage(view: WebRenderer) =
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"
 
-  # we have to set up epoll on the IPC channel to wake up and tend to it whenever
-  # the master sends us any message, since the main WebRenderer thread will be busy
-  # polling itself and doing stuff like handling the JS task queues
-  let efd = nix.epoll_create1(0)
-  assert(efd > -1'i32, "Failed to create epoll fd")
-  view.eventLoop = efd
+  let loop = initEventLoop()
+  if !loop:
+    fatal "initEventLoop() has failed.", msg = loop.error()
+    return -1
 
-  view.registerIntoEventLoop(view.client.fd, nix.EPOLLIN)
+  view.eventLoop = &loop
+  if (let res = view.eventLoop.register(ipc(view.client.fd), {EventMode.Input}); !res):
+    fatal "Failed to register IPC channel into event loop", msg = res.error()
+    return -1
 
   view.lastDmabufFd = -1'i32
   view.running = true
-  var ipcEvents = newSeqOfCap[nix.EpollEvent](16)
 
   while view.running:
     view.poll()
 
-    ipcEvents.setLen(1 + view.websockets.len)
-    let ipcEventCount = nix.epoll_wait(
-      efd, ipcEvents[0].addr, maxevents = cast[int32](ipcEvents.len), timeout = 1'i32
-    ) # TODO: Maybe the timeout here is too fast :P
+    let events = view.eventLoop.wait()
+    if !events:
+      warn "EventLoop::wait() failed!", msg = events.error()
+      continue
 
-    for i in 0 ..< ipcEventCount:
-      let ipcEvent = ipcEvents[i]
-      if ipcEvent.data.fd == view.client.fd:
+    for event in &events:
+      case event.trigger.kind
+      of TriggerKind.IPC:
         handleIPCMessage(view)
-      else:
+      of TriggerKind.WebSocket:
         for _, ws in view.websockets:
-          if &ws.getFd() == ipcEvent.data.fd:
+          if &ws.getFd() == event.trigger.fd:
             ws.handleMessage()
             break
 

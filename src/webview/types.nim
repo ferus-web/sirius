@@ -9,7 +9,7 @@ import
   components/html/parser,
   components/style/types,
   components/layout/[output_manager, types],
-  components/os/[assets, fonts],
+  components/os/[assets, event_loop, fonts],
   components/net/core,
   components/net/ws/types,
   components/js/runtime/prelude as js,
@@ -72,7 +72,7 @@ type
     lastCursorPredef*: CursorPredefined
 
     websockets*: Table[WebSocket, WebSocketClient]
-    eventLoop*: int32 # TODO: EventLoop abstraction
+    eventLoop*: EventLoop
 
     clipboardPromises*: seq[ClipboardPromise]
 
