@@ -2,7 +2,7 @@
 name = "sirius"
 description = "A tiny, experimental web engine"
 version = "0.1.0"
-license = "BSD-3-Clause"
+license = "GPL3"
 kind = "Binary"
 backend = "C"
 binaries = ["sirius", "balde", "niskriya"]
