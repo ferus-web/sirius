@@ -59,6 +59,12 @@ proc `=destroy`*(loop: EventLoopObj) =
 func hash*(trigger: Trigger): Hash =
   hash(trigger.fd)
 
+func `==`*(a, b: Trigger): bool =
+  if a.isNil or b.isNil:
+    a.isNil and b.isNil
+  else:
+    a.fd == b.fd
+
 func ipc*(fd: int32): Trigger =
   Trigger(kind: TriggerKind.IPC, fd: fd)
 
@@ -118,9 +124,8 @@ proc register*(
     # OPTIMIZATION: we'll stuff the trigger into the epoll listener data so we don't need to do silly lookups every time an event is polled for it
     # NOTE: ensure that this can _NEVER_ blow up or cause problems.
     GC_ref(trigger)
-    var event = nix.EpollEvent(
-      events: eventsSet, data: nix.EpollData(fd: trigger.fd, u64: cast[uint64](trigger))
-    )
+    var event =
+      nix.EpollEvent(events: eventsSet, data: nix.EpollData(u64: cast[uint64](trigger)))
 
     if nix.epoll_ctl(loop.fd, nix.EPOLL_CTL_ADD, trigger.fd, event.addr) != 0:
       return err(
@@ -134,8 +139,7 @@ proc register*(
     {.error: "Implement EventLoop::register() for your platform!".}
 
 proc wait*(loop: EventLoop): Result[seq[Event], string] {.raises: [KeyError].} =
-  loop.buffer.setLen(loop.triggers.len)
-  loop.epollBuffer.setLen(loop.triggers.len)
+  loop.epollBuffer.setLen(1 + loop.triggers.len)
 
   when UsingEpoll:
     let eventCount = nix.epoll_wait(
@@ -150,8 +154,7 @@ proc wait*(loop: EventLoop): Result[seq[Event], string] {.raises: [KeyError].} =
         &"Failed to wait on loop <{loop.fd}>: {posix.strerror(posix.errno)} ({posix.errno})"
       )
 
-    var events = newSeq[Event](eventCount)
-
+    loop.buffer.setLen(eventCount)
     for i in 0 ..< eventCount:
       let event = loop.epollBuffer[i]
 
@@ -165,9 +168,9 @@ proc wait*(loop: EventLoop): Result[seq[Event], string] {.raises: [KeyError].} =
       if (event.events and nix.EPOLLHUP) != 0'u32:
         modes.incl(EventMode.Hangup)
 
-      events[i] = Event(trigger: cast[Trigger](event.data.u64), modes: modes)
+      loop.buffer[i] = Event(trigger: cast[Trigger](event.data.u64), modes: modes)
 
-    ok(ensureMove(events))
+    ok(loop.buffer)
   else:
     {.error: "Implement EventLoop::wait() for your platform!".}
 
