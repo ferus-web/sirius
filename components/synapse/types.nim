@@ -2,6 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/options
+import components/os/event_loop
 import pkg/url
 
 const
@@ -29,7 +30,7 @@ type
     Network
 
   ProcessObj = object
-    fd*: int32 ## the end of the socketpair that we (the master) need to hold
+    trig*: Trigger
     kind*: ProcessKind
 
   Process* = ref ProcessObj

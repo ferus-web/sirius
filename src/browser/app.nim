@@ -451,7 +451,7 @@ proc showDeadTabPage(browser: BrowserState) =
 
 proc handleDeadChild(state: BrowserState, tabId: TabID, process: Process) =
   warn "Process has died unexpectedly.",
-    tab = tabId, kind = process.kind, channel = process.fd
+    tab = tabId, kind = process.kind, channel = process.trig.fd
 
   case process.kind
   of ProcessKind.Renderer:

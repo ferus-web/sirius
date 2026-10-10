@@ -116,7 +116,7 @@ type
     bufferFd*: int32
     bufferStride*: uint32
 
-    pollingFd*: int32
+    loop*: EventLoop
 
   WebView* = ref WebViewObj
 

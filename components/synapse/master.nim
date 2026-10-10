@@ -5,6 +5,7 @@ import std/[strformat, options, posix]
 import
   components/synapse/[decoder, encoder, types, transport/socketpairs],
   components/synapse/descriptors/[renderer, zygote],
+  components/os/event_loop,
   components/impure/nix
 import pkg/[chronicles, results, shakar, vmath, url]
 
@@ -45,7 +46,7 @@ proc spawnZygote*[T: object](
     info "Created Zygote process successfully"
 
     discard posix.close(pair.theirs()) # We don't need the zygote=>master fd.
-    master.zygote = Process(fd: pair.ours(), kind: ProcessKind.Zygote)
+    master.zygote = Process(trig: ipc(pair.ours()), kind: ProcessKind.Zygote)
 
 proc send*(master: Master, fd: int32): Result[void, string] =
   let res = send(fd, master.encoder.fds, master.encoder.finalize())
@@ -65,7 +66,7 @@ proc spawn*(master: Master, tab: uint32, kind: static ProcessKind, socks: Socket
   master.encoder.push(kind)
   master.encoder.push(FileDescriptor(socks.theirs()))
 
-  assert *master.send(master.zygote.fd)
+  assert *master.send(master.zygote.trig.fd)
 
   discard posix.close(socks.theirs())
 
@@ -73,7 +74,7 @@ proc spawn*(master: Master, tab: uint32, kind: static ProcessKind, socks: Socket
   let flags = posix.fcntl(ourFd, posix.F_GETFL, 0'i32)
   assert(posix.fcntl(ourFd, posix.F_SETFL, flags or posix.O_NONBLOCK) >= 0'i32)
 
-  master.tabs[tab].processes &= Process(fd: ourFd, kind: kind)
+  master.tabs[tab].processes &= Process(trig: ipc(ourFd), kind: kind)
 
 func renderer*(tab: Tab): Option[Process] =
   ## Get the Renderer process for this tab.
@@ -96,7 +97,7 @@ proc drawFrame*(master: Master, process: Process): Result[void, string] =
   # (no arguments)
   master.encoder.encode(RenderOp.DrawFrame)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc resizeRenderTarget*(
     master: Master, process: Process, dims: vmath.IVec2
@@ -108,7 +109,7 @@ proc resizeRenderTarget*(
   master.encoder.encode(RenderOp.ResizeRenderTarget)
   master.encoder.push(dims)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc gotoURL*(master: Master, tab: uint32, target: url.URL): Result[void, string] =
   let process = &master.tabs[tab].renderer()
@@ -118,7 +119,7 @@ proc gotoURL*(master: Master, tab: uint32, target: url.URL): Result[void, string
   master.encoder.encode(RenderOp.GotoURL)
   master.encoder.push(target)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc scrollViewport*(
     master: Master, tab: uint32, velocity: vmath.Vec2
@@ -130,7 +131,7 @@ proc scrollViewport*(
   master.encoder.encode(RenderOp.ViewportScroll)
   master.encoder.push(velocity)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc cursorMotion*(
     master: Master, tab: uint32, position: vmath.Vec2
@@ -142,7 +143,7 @@ proc cursorMotion*(
   master.encoder.encode(RenderOp.CursorMotion)
   master.encoder.push(position)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc cursorClick*(master: Master, tab: uint32): Result[void, string] =
   let process = &master.tabs[tab].renderer()
@@ -150,7 +151,7 @@ proc cursorClick*(master: Master, tab: uint32): Result[void, string] =
   # cursorClick
   master.encoder.encode(RenderOp.CursorClick)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc pressKey*(
     master: Master, tab: uint32, key: string, keycode: string, repeat: bool
@@ -163,14 +164,14 @@ proc pressKey*(
   master.encoder.push(keycode)
   master.encoder.push(repeat)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc requestGraphicsFd*(master: Master, tab: uint32): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
   # sendGraphicsFD
   master.encoder.encode(RenderOp.SendGraphicsFD)
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 proc clipboardWriteAck*(
     master: Master,
@@ -187,7 +188,7 @@ proc clipboardWriteAck*(
   if *errorMessage:
     master.encoder.push(&errorMessage)
 
-  master.send(process.fd)
+  master.send(process.trig.fd)
 
 {.pop.}
 
@@ -196,7 +197,7 @@ func findAssociatedClientByFd*(
 ): Option[tuple[tab: uint32, process: Process]] =
   for i, tab in master.tabs:
     for process in tab.processes:
-      if process.fd == fd:
+      if process.trig.fd == fd:
         return some((tab: cast[uint32](i), process: process))
 
 proc initMaster*[T: object](zygoteRoutine: ZygoteRoutine, params: T): Master =

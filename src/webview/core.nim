@@ -1,12 +1,13 @@
 ## Core routines for `WebView`
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, posix]
+import std/[options, posix, strformat]
 import
   components/synapse/[encoder, decoder, master, types, transport/socketpairs],
   components/synapse/descriptors/[master],
   components/css/types,
-  components/impure/nix
+  components/impure/nix,
+  components/os/event_loop
 import pkg/[chronicles, url, vmath, results, shakar]
 import ../webview/[zygote], ./[types]
 
@@ -14,28 +15,23 @@ logScope:
   topics = "webview/core"
 
 proc attachPollingForTab(view: WebView, id: TabID) =
-  let rendererFd = (&view.master.tabs[cast[uint32](id)].renderer()).fd
+  let rendererTrigger = (&view.master.tabs[cast[uint32](id)].renderer()).trig
 
-  var event = nix.EpollEvent(
-    events: nix.EPOLLIN or nix.EPOLLHUP, data: nix.EpollData(fd: rendererFd)
-  )
-
-  assert(
-    nix.epoll_ctl(view.pollingFd, nix.EPOLL_CTL_ADD, rendererFd, event.addr) == 0,
-    "Failed to attach epoll listener to IPC channel",
-  )
+  let rendererRegisterRes =
+    view.loop.register(rendererTrigger, modes = {EventMode.Input, EventMode.Hangup})
+  assert(*rendererRegisterRes, &"{rendererRegisterRes.error()}")
 
 proc createTab*(view: WebView): TabID =
-  let tabId = cast[uint32](view.master.tabs.len)
+  let tabId = cast[TabID](view.master.tabs.len)
   view.master.tabs &= Tab()
 
   let sockPair = createSocketPair()
   assert(*sockPair, sockPair.error())
 
-  view.master.spawn(tabId, ProcessKind.Renderer, &sockPair)
-  view.attachPollingForTab(cast[TabID](tabId))
+  view.master.spawn(cast[uint32](tabId), ProcessKind.Renderer, &sockPair)
+  view.attachPollingForTab(tabId)
 
-  cast[TabID](tabId)
+  tabId
 
 {.push inline.}
 proc loadURL*(view: WebView, id: TabID, target: url.URL) =
@@ -73,28 +69,27 @@ proc clipboardWriteAck*(
 {.pop.}
 
 proc cleanupDeadProcess(view: WebView, tab: TabID, process: Process) =
-  discard nix.epoll_ctl(view.pollingFd, nix.EPOLL_CTL_DEL, process.fd, nil)
-  discard posix.close(process.fd)
+  discard view.loop.unregister(process.trig)
 
   if view.callbacks.onProcessFault != nil:
     view.callbacks.onProcessFault(view, tab, process)
 
-proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
-  let assoc = view.master.findAssociatedClientByFd(fd)
+proc handleIPCMessage(view: WebView, event: Event) =
+  let assoc = view.master.findAssociatedClientByFd(event.trigger.fd)
   if !assoc:
-    warn "Received message from non-associated channel", chan = fd
+    warn "Received message from non-associated channel", chan = event.trigger.fd
     return
 
   let (tab, process) = &assoc
 
-  if (events and nix.EPOLLHUP) != 0'u32:
+  if EventMode.Hangup in event.modes:
     warn "Process channel sent hang-up", tab = tab, kind = process.kind
     cleanupDeadProcess(view, cast[TabID](tab), process)
     return
 
-  let msgOpt = view.master.blockForMessage(MasterOp, fd = some(fd))
+  let msgOpt = view.master.blockForMessage(MasterOp, fd = some(event.trigger.fd))
   if !msgOpt:
-    warn "Received no message, did this process die?", sender = fd
+    warn "Received no message, did this process die?", sender = event.trigger.fd
     return
 
   let
@@ -155,21 +150,23 @@ proc handleIPCMessage(view: WebView, events: uint32, fd: int32) =
       view.callbacks.onStatusBarUpdate(view, tabId, statusText)
 
 proc step*(view: WebView) =
-  var ipcEvents = newSeq[nix.EpollEvent](view.master.tabs.len)
-  let ipcEventCount = nix.epoll_wait(
-    view.pollingFd,
-    ipcEvents[0].addr,
-    maxevents = cast[int32](view.master.tabs.len),
-    timeout = 6'i32,
-  )
+  let events = view.loop.wait()
+  if !events:
+    warn "EventLoop::wait() failed!", msg = events.error()
+    return
 
-  for i in 0 ..< ipcEventCount:
-    handleIPCMessage(view, ipcEvents[i].events, ipcEvents[i].data.fd)
+  for event in &events:
+    assert(event.trigger.kind == TriggerKind.IPC)
+      # None of the other triggers should apply to the UI process.
+    view.handleIPCMessage(event)
 
 proc initWebView*(opts: WebViewOpts): WebView =
+  let loop = initEventLoop()
+  assert(*loop, &"{loop.error()}")
+
   WebView(
     master: initMaster(zygote.main, params = opts),
-    pollingFd: nix.epoll_create1(0),
+    loop: &loop,
     bufferFd: -1'i32,
     opts: opts,
   )
