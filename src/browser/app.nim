@@ -411,16 +411,19 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
 
   # browser.headerBar = headerBar
 
-proc setPageTitle(browser: BrowserState, title: string) =
+proc setPageTitle(browser: BrowserState, tab: TabID, title: string) =
   let finalTitle = title.strip()
-  gtk_window_set_title(browser.window, cstring(&"{finalTitle} — Sirius"))
-  adw_tab_page_set_title(browser.tab.tabPage, cstring(finalTitle))
+
+  if tab == browser.tab.id:
+    gtk_window_set_title(browser.window, cstring(&"{finalTitle} — Sirius"))
+
+  adw_tab_page_set_title(browser.tabs[cast[uint32](tab)].tabPage, cstring(finalTitle))
 
 proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
   gtk_widget_set_cursor_from_name(browser.tab.viewport, cstring($predef))
 
 proc showDeadTabPage(browser: BrowserState) =
-  browser.setPageTitle("Oopsies.")
+  browser.setPageTitle(browser.tab.id, "Oopsies.")
 
   if browser.tab.viewport == nil:
     return
@@ -525,7 +528,7 @@ proc attachIPCEventHandlers(state: BrowserState) =
     state.handleDeadChild(tab, process)
 
   state.view.onPageTitleChange = proc(view: WebView, tab: TabID, title: string) =
-    state.setPageTitle(title)
+    state.setPageTitle(tab, title)
 
   state.view.onSetCursorShape = proc(
       view: WebView, tab: TabID, predef: CursorPredefined
