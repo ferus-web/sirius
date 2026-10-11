@@ -253,6 +253,7 @@ proc interactionNewTab(browser: BrowserState) =
 
   browser.tab.tabPage = adw_tab_view_append(browser.tabView, tab.container)
   adw_tab_page_set_title(browser.tab.tabPage, cstring("New Tab"))
+  adw_tab_view_set_selected_page(browser.tabView, browser.tab.tabPage)
 
 proc showDeadTabPage(browser: BrowserState)
 

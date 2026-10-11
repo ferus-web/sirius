@@ -275,6 +275,7 @@ proc adw_tab_bar_new*(): ptr EGtkWidget
 proc adw_tab_bar_set_view*(bar: ptr EGtkWidget, view: ptr EGtkWidget)
 proc adw_tab_bar_set_autohide*(bar: ptr EGTkWidget, autohide: bool)
 proc adw_tab_view_get_selected_page*(view: ptr EGtkWidget): ptr EGtkWidget
+proc adw_tab_view_set_selected_page*(view: ptr EGtkWidget, page: ptr EGtkWidget)
 
 proc gtk_button_new_from_icon_name*(icon: cstring): ptr EGtkWidget
 
