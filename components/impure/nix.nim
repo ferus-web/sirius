@@ -1,10 +1,12 @@
 ## Different *NIX API bindings
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+import std/posix
 
 const
   SupportsLinuxPrctls* = defined(linux)
   SupportsEpoll* = defined(linux)
+  SupportsPidfd* = defined(linux)
 
 proc prctl*(
   op: int32,
@@ -103,3 +105,14 @@ proc free*(p: pointer)
 proc malloc*(size: uint64): pointer
 proc posix_memalign*(address: ptr pointer, alignment: int64, size: uint64): int32
 {.pop.}
+
+when SupportsPidfd:
+  type Pidfd* = distinct int32
+
+  {.push importc, header: "<sys/pidfd.h>".}
+  proc pidfd_open*(pid: posix.Pid, flags: int32): Pidfd
+  proc pidfd_send_signal*(
+    fd: Pidfd, sig: int32, info: ptr Siginfo, flags: uint32
+  ): int32
+
+  {.pop.}
