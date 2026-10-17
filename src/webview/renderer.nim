@@ -966,6 +966,8 @@ proc handleIPCMessage(view: WebRenderer) =
       errorMessage = msg.argument(1, string)
 
     handleClipboardWriteAck(view, promiseId, errorMessage)
+  of RenderOp.Exit:
+    view.running = false
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

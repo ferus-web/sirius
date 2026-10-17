@@ -281,6 +281,9 @@ proc setStatusText*(browser: BrowserState, text: Option[string] = none(string)) 
   else:
     gtk_widget_set_visible(browser.statusBar, false)
 
+proc interactionCloseTab*(browser: BrowserState, tab: BrowserTab) =
+  browser.view.exit(tab.id)
+
 proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
   let browser = cast[BrowserState](userData)
 
@@ -350,6 +353,29 @@ proc onActivate(app: ptr AdwApplication, userData: pointer) {.cdecl.} =
           interactionSwitchTab(browser, tab)
           return
     ),
+    cast[pointer](browser),
+    nil,
+    0,
+  )
+
+  discard g_signal_connect_data(
+    browser.tabView,
+    "close-page",
+    cast[pointer](proc(
+        tabView: ptr EGtkWidget, page: ptr EGtkWidget, userData: pointer
+    ): bool {.cdecl.} =
+      let browser = cast[BrowserState](userData)
+      var tab: Option[BrowserTab]
+
+      for browserTab in browser.tabs:
+        if browserTab.tabPage == page:
+          tab = some(browserTab)
+          break
+
+      assert(*tab, &"Invariant: No tab has `tabPage` as 0x{cast[uint64](page):X}")
+      interactionCloseTab(cast[BrowserState](userData), &tab)
+
+      false),
     cast[pointer](browser),
     nil,
     0,
@@ -464,6 +490,9 @@ proc handleDeadChild(state: BrowserState, tabId: TabID, process: Process) =
         tab.dead = true
 
     if state.tab.id == tabId:
+      gtk_picture_set_paintable(state.tab.viewport, nil)
+      discard posix.close(state.view.bufferFd)
+
       showDeadTabPage(state)
   else:
     unreachable

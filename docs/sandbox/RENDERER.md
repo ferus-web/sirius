@@ -45,3 +45,8 @@ Generally sent when the user provides keyboard input in the browser.
 **Argument 2<sup>(optional)</sup>**: string
 
 The master sends this in response to a `ClipboardWriteText` request, along with a string with a reason in the case of failure.
+
+### exit
+The master sends this, generally when the user closes the tab that this renderer process was associated with.
+
+**Note**: The renderer might just fully ignore this, especially if it's stuck in a deadlock or infinite yield loop. It is recommended for the master to follow this up with a process-kill, as necessary.

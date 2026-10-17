@@ -66,6 +66,10 @@ proc clipboardWriteAck*(
 ) =
   view.master.clipboardWriteAck(cast[uint32](id), promiseId, errorMessage)
 
+proc exit*(view: WebView, id: TabID) =
+  view.master.exit(cast[uint32](id))
+  discard view.loop.unregister((&view.master.tabs[cast[uint32](id)].renderer()).trig)
+
 {.pop.}
 
 proc cleanupDeadProcess(view: WebView, tab: TabID, process: Process) =

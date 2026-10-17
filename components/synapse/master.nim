@@ -190,6 +190,13 @@ proc clipboardWriteAck*(
 
   master.send(process.trig.fd)
 
+proc exit*(master: Master, tab: uint32): Result[void, string] =
+  let process = &master.tabs[tab].renderer()
+
+  # exit
+  master.encoder.encode(RenderOp.Exit)
+  master.send(process.trig.fd)
+
 {.pop.}
 
 func findAssociatedClientByFd*(
