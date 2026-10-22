@@ -8,10 +8,12 @@ import pkg/[shakar]
 import
   components/js/runtime/compiler/madhyasthal/ir,
   components/js/runtime/vm/[atom, shared],
-  components/js/runtime/vm/interpreter/[types, operation]
+  components/js/runtime/vm/interpreter/[types, operation],
+  components/aux/pretty
 
 type OpStream* = object
   ops*: seq[operation.Operation]
+  cpool*: seq[cstring]
   cursor*: int = 0
 
   opToIrMap*: Table[int, int]
@@ -280,6 +282,34 @@ proc lowerStream*(fn: var Function, stream: var OpStream): bool =
       let op = stream.consume()
 
       fn.insts &= increment(uint32(&op.arguments[0].getInt()))
+    of ResolveField:
+      let
+        op = stream.consume()
+        indexAt = uint32(&op.arguments[0].getInt())
+        storeAt = uint32(&op.arguments[1].getInt())
+
+      let cstart = cast[uint32](stream.cpool.len)
+      if op.arguments.len > 2:
+        for arg in 2 ..< op.arguments.len:
+          let
+            strData = &op.arguments[arg].getStr()
+            constant = allocShared0(strData.len + 1)
+
+          copyMem(constant, strData[0].addr, strData.len)
+          stream.cpool &= cast[cstring](constant)
+
+      let cstop = cast[uint32](max(0, stream.cpool.len - 1))
+
+      # This is a particularly dynamic operation.
+      fn.insts &= resolveField(indexAt, storeAt, cstart, cstop)
+    of PassMultipleArguments:
+      # TODO: Make a dedicated operation for this. I guess we'll need a new arg type.
+      let op = stream.consume()
+      for arg in op.arguments:
+        fn.insts &= passArgument(cast[uint32](&arg.getInt()))
+    of SetThisBinding:
+      # TODO: implementme
+      discard consume stream
     else:
       bailout "cannot find predictable pattern for op: " & $stream.peekKind()
 

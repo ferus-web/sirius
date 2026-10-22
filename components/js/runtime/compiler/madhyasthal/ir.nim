@@ -29,6 +29,7 @@ type
     Increment
     GreaterThanInt
     GreaterThanEqualInt
+    ResolveField
 
   Register* {.size: sizeof(uint8), pure.} = enum
     ReturnValue = 0
@@ -40,15 +41,19 @@ type
     avkPos
     avkStr
     avkNum
+    avkSrcDest
+    avkPoolRef
 
   Reg* = uint32
 
   ArgVariant* = object
     case kind*: ArgVariantKind
     of avkInt: vint*: int
-    of avkPos: vreg*: Reg
+    of avkPos: vreg*: ir.Reg
     of avkStr: str*: string
     of avkNum: flt*: float
+    of avkSrcDest: vsrc*, vdst*: ir.Reg
+    of avkPoolRef: start*, stop*: uint32
 
   Inst* = object
     kind*: InstKind
@@ -197,4 +202,14 @@ func greaterThanEqI*(a, b: uint32): Inst =
     kind: InstKind.GreaterThanEqualInt,
     args: [ArgVariant(kind: avkPos, vreg: a), ArgVariant(kind: avkPos, vreg: b)],
   )
+
+func resolveField*(index, storeAt, cstart, cstop: uint32): Inst =
+  Inst(
+    kind: InstKind.ResolveField,
+    args: [
+      ArgVariant(kind: avkSrcDest, vsrc: index, vdst: storeAt),
+      ArgVariant(kind: avkPoolRef, start: cstart, stop: cstop),
+    ],
+  )
+
 {.pop.}

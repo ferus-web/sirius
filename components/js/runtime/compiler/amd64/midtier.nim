@@ -6,7 +6,8 @@ import
   components/js/runtime/compiler/madhyasthal/[ir, lowering, pipeline, optimizer, dumper],
   components/js/runtime/compiler/amd64/[common, native_forwarding],
   components/js/runtime/compiler/base,
-  components/js/internal/assembler/amd64
+  components/js/internal/assembler/amd64,
+  components/aux/pretty
 import pkg/shakar
 
 const
@@ -71,9 +72,8 @@ proc compileLowered(cgen: MidtierJIT, pipeline: pipeline.Pipeline): Option[JITSe
 
       # Heap allocation path
       alignStack 8:
-        cgen.s.mov(regR9, cast[int64](num))
-        cgen.s.movq(regR9.reg, regXmm0)
         cgen.s.mov(regRdi, cast[int64](cgen.vm))
+        cgen.s.mov(regRsi, cast[int64](num))
         cgen.s.call(cgen.callbacks.allocEncodedFloat)
 
       cgen.s.mov(regRsi.reg, regRax)
@@ -432,6 +432,41 @@ proc compileLowered(cgen: MidtierJIT, pipeline: pipeline.Pipeline): Option[JITSe
       cgen.patchConditionalJmps &=
         ConditionalJump(label: cgen.s.label(), op: i + 2, condition: condBequal)
       cgen.s.jcc(condBequal, BackwardsLabel(EnsureNoInt8Align))
+    of InstKind.ResolveField:
+      let
+        index = inst.args[0].vsrc
+        storeAt = inst.args[0].vdst
+
+        fieldsData = inst.args[1]
+
+      assert(
+        fieldsData.stop >= fieldsData.start,
+        "x64/midtier: Invariant: constant pool ref for ResolveField starts after its end index?",
+      ) # TODO: make this invariant clear somewhere...
+
+      let numFields = (fieldsData.stop - fieldsData.start) + 1
+
+      alignStack 8:
+        cgen.s.mov(regRdi, cast[int64](cgen.vm))
+        cgen.s.mov(regRsi, cast[int64](index))
+        cgen.s.call(cgen.callbacks.getAtom)
+
+        # %rax => %rsi (JSValue *)
+        cgen.s.mov(regRsi.reg, regRax)
+
+        # prep getNestedProperty(vm: var Interpreter, sourceObject: JSValue, fields: ptr UncheckedArray[cstring], numFields: uint64)
+        cgen.s.mov(regRdi, cast[int64](cgen.vm))
+        cgen.s.mov(regRdx, cast[int64](cgen.cpool[fieldsData.start].addr))
+        cgen.s.mov(regRcx, cast[int64](numFields)) # `numFields` (%rcx)
+        cgen.s.call(cgen.callbacks.getNestedProperty)
+
+        # %rax => %rsi (resolved JSValue *)
+        cgen.s.mov(regRdi, cast[int64](cgen.vm))
+        cgen.s.mov(regRsi.reg, regRax)
+        cgen.s.mov(regRdx, cast[int64](storeAt))
+        cgen.s.call(cgen.callbacks.addAtom)
+    of InstKind.LoadNull:
+      discard
     else:
       # # debug "jit/amd64: midtier cannot lower op into x64 code: " & $inst.kind
       return
@@ -462,6 +497,8 @@ proc compile*(
   if not lowerStream(lowered, cgen.stream):
     # # warn "jit/amd64: midtier compiler failed to lower clause, falling back to VM"
     return
+
+  cgen.cpool = move(cgen.stream.cpool)
 
   var pipeline = Pipeline(fn: ensureMove(lowered))
 

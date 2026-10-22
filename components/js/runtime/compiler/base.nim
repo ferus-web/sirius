@@ -30,6 +30,8 @@ type
     allocInt*: pointer
     getProperty*: pointer
     equate*: pointer
+    getNestedProperty*: pointer
+    allocNull*: pointer
 
   JITSegment* = proc(): void {.cdecl, gcsafe.}
 

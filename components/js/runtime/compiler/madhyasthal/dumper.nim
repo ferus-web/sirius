@@ -21,6 +21,22 @@ func dumpInst*(buffer: var string, inst: ir.Inst) =
       buffer &= $arg.vint
     of avkNum:
       buffer &= $arg.flt
+    of avkSrcDest:
+      buffer &= '<'
+      buffer &= '%'
+      buffer &= $arg.vsrc
+      buffer &= " => %"
+      buffer &= $arg.vdst
+      buffer &= '>'
+    of avkPoolRef:
+      buffer &= "const<"
+      buffer &= '%'
+      buffer &= $arg.start
+
+      if arg.start != arg.stop:
+        buffer &= " .. %"
+        buffer &= $arg.stop
+      buffer &= '>'
 
     if i < inst.args.len - 1:
       buffer &= ' '

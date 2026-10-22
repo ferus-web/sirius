@@ -10,6 +10,7 @@ import components/js/runtime/vm/ir/shared
 import components/js/runtime/normalize
 import components/js/runtime/compiler/base
 import components/js/runtime/atom_helpers
+import components/aux/pretty
 import pkg/[shakar]
 
 when hasJITSupport:
@@ -982,6 +983,27 @@ func createFieldAccess(vm: var Interpreter, values: seq[string]): ptr FieldAcces
 
   top
 
+func createFieldAccess(
+    vm: var Interpreter, values: ptr UncheckedArray[cstring], nvalues: uint64
+): ptr FieldAccess =
+  # TODO: possibly replace the upper one that takes a seq[string] with this fully?
+  template newFieldAccess(): ptr FieldAccess =
+    vm.heapManager.allocate(FieldAccess)
+
+  var top = newFieldAccess()
+  var curr: ptr FieldAccess
+  top.field = cstring(values[0])
+  curr = top
+
+  for nVal in 1 ..< nvalues:
+    var next = newFieldAccess()
+    next.field = cstring(values[nVal])
+    next.prev = curr
+    curr.next = next
+    curr = next
+
+  top
+
 proc findField(vm: var Interpreter, atom: JSValue, accesses: ptr FieldAccess): JSValue =
   let field = $accesses.field
 
@@ -1400,6 +1422,7 @@ proc tryInitializeJIT(interp: ptr Interpreter) =
     getProperty: proc(
         vm: var Interpreter, value: JSValue, field: cstring
     ): JSValue {.cdecl.} =
+      # TODO: Replace this with a Interpreter::findField call. It seems very hacky.
       jitd "callback", "getProperty(field: " & $field & ')'
       let field = $field
       if value.contains(field):
@@ -1413,6 +1436,15 @@ proc tryInitializeJIT(interp: ptr Interpreter) =
           return value.objValues[prop.index]
 
       undefined(vm.heapManager),
+    getNestedProperty: proc(
+        vm: var Interpreter,
+        sourceObject: JSValue,
+        fields: ptr UncheckedArray[cstring],
+        numFields: uint64,
+    ): JSValue {.cdecl.} =
+      jitd "callback", "getNestedProperty"
+      let accesses = createFieldAccess(vm, fields, numFields)
+      vm.findField(sourceObject, accesses),
     equate: proc(vm: var Interpreter, a, b: JSValue): bool {.cdecl.} =
       jitd "callback", "equate"
       assert vm.equationHook != nil
