@@ -506,8 +506,6 @@ Options:
   --dump-allocation-metrics, -A           Dump information about all allocations performed during the JavaScript execution phase.
 
 Codegen Flags:
-  --disable-loop-elision                  Don't attempt to elide loops in the bytecode generation phase.
-  --disable-loop-allocation-elim          Don't attempt to rewrite loops to avoid unnecessary atom allocations.
   --aggressively-free-retvals             Aggressively zero-out the return-value register.
 
 JIT Compiler Flags:
