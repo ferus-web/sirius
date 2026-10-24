@@ -45,10 +45,12 @@ proc registerEcmaTypes*(runtime: Runtime) =
     return
 
   runtime.realm.registeredEcmaTypes = true
+
+  # TODO: Rename all of these to `generateBindings()` instead
   std_string.generateStdIR(runtime)
   console.generateStdIR(runtime)
   math.generateStdIR(runtime)
-  errors_ir.generateStdIR(runtime)
+  errors_ir.generateBindings(runtime)
   base64.generateStdIR(runtime)
   json.generateStdIR(runtime)
   encodeUri.generateStdIR(runtime)

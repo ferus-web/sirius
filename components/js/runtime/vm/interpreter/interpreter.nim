@@ -149,6 +149,7 @@ proc throw*(
 
   var exception = exception.clone()
 
+  # NOTE: Can we do something about JIT'd segments here too?
   interpreter.halt = true
 
   let clause =
@@ -253,7 +254,9 @@ proc generateTraceback*(interpreter: Interpreter): Option[string] {.inline, cdec
 
         msg &= "\n\t\t" & sourceLine
         msg &= "\n\t\t" & repeat('^', sourceLine.len - 1)
-        msg &= "\n\n" & currTrace.exception.message
+        msg &=
+          "\n\n" & &getStr((&interpreter.registers.error).getSimpleProperty("name")) &
+          ": " & &getStr((&interpreter.registers.error).getSimpleProperty("message"))
         break
 
   some(ensureMove(msg))

@@ -10,6 +10,8 @@ import components/js/runtime/[atom_obj_variant, atom_helpers, normalize]
 import components/js/runtime/vm/heap/manager
 import pkg/shakar
 
+const BuiltinInvokeCtor* = "BALI_ICTOR"
+
 type
   NativeFunction* = proc() {.gcsafe.}
   NativePrototypeFunction* = proc(value: JSValue) {.gcsafe.}
@@ -379,7 +381,7 @@ proc loadIRAtom*(runtime: Runtime, atom: MAtom): uint =
     runtime.ir.passMultipleArguments(
       @[runtime.index("String", globalIndex()), runtime.realm.addrIdx]
     )
-    runtime.ir.call("BALI_ICTOR")
+    runtime.ir.call(BuiltinInvokeCtor)
     runtime.ir.resetArgs()
     runtime.ir.readRegister(runtime.realm.addrIdx, Register.ReturnValue)
     runtime.ir.zeroRetval()

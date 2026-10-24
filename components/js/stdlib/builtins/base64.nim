@@ -3,6 +3,8 @@
 ## 
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
 
+# TODO: Make these use JSString
+
 import std/[options]
 import components/js/runtime/[arguments, types, bridge, construction]
 import components/js/runtime/abstract/coercion
@@ -43,7 +45,7 @@ proc generateStdIr*(runtime: Runtime) =
       )
 
       if res.error == ErrorCode.Success:
-        ret str(runtime, ensureMove(buffer))
+        ret str(runtime, buffer)
       else:
         runtime.typeError("atob: String contains an invalid character"),
   )
@@ -74,6 +76,6 @@ proc generateStdIr*(runtime: Runtime) =
           {Base64Options.DefaultAcceptGarbage},
         )
       )
-      ret str(runtime, ensureMove(buffer))
+      ret str(runtime, buffer)
     ,
   )

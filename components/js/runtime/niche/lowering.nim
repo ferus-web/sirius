@@ -546,26 +546,39 @@ proc genReassignVal(runtime: Runtime, fn: Function, stmt: Statement) =
     )
 
 proc genThrowError(runtime: Runtime, fn: Function, stmt: Statement, internal: bool) =
-  # info "emitter: add error-throw logic"
+  # I suppose we can allocate a completely unmarked temporary.
+  # NOTE: Perhaps I should start doing stuff like this across the lowering logic for other temporaries, because many things really do not deserve the extra overhead to be tracked.
+  # Just food for thought, though.
+  inc runtime.realm.addrIdx
+  let errorTmp = runtime.realm.addrIdx
+
+  runtime.ir.resetArgs()
 
   if *stmt.error.str:
     runtime.expand(fn, stmt, internal)
 
+    runtime.ir.passArgument(runtime.index("Error", globalIndex()))
     runtime.ir.passArgument(runtime.index("error_msg", internalIndex(stmt)))
-    runtime.ir.call("BALI_THROWERROR")
-    runtime.ir.resetArgs()
 
     runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
       (message: stmt.source, line: stmt.line)
   elif *stmt.error.ident:
+    # TODO: Handle already-constructed `Error` objects
+    runtime.ir.passArgument(runtime.index("Error", globalIndex()))
     runtime.ir.passArgument(runtime.index(&stmt.error.ident, defaultParams(fn)))
-    runtime.ir.call("BALI_THROWERROR")
-    runtime.ir.resetArgs()
 
     runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
       (message: stmt.source, line: stmt.line)
   else:
     unreachable
+
+  runtime.ir.call(BuiltinInvokeCtor)
+  runtime.ir.resetArgs()
+  runtime.ir.readRegister(errorTmp, Register.ReturnValue)
+
+  runtime.ir.passArgument(errorTmp)
+  runtime.ir.call("BALI_THROWERROR")
+  runtime.ir.resetArgs()
 
 proc genBinaryOp(
     runtime: Runtime,
@@ -1666,7 +1679,7 @@ proc generateInternalIR*(runtime: Runtime) =
   )
 
   runtime.vm[].registerBuiltin(
-    "BALI_ICTOR",
+    BuiltinInvokeCtor,
     proc(op: Operation) =
       let typ = &runtime.argument(1)
       let ctor = typ.tagged("Construct")

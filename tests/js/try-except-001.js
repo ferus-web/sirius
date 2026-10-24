@@ -1,5 +1,6 @@
 try {
 	throw "YOLOOOOOOOOOOOOOOOOO";
 } catch (err) {
-	console.log("Failed to execute code i think:", err)
+	console.log("name:", err.name)
+	console.log("message:", err.message)
 }
