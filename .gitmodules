@@ -1,3 +1,6 @@
 [submodule "tools/neo"]
 	path = tools/neo
 	url = https://github.com/xTrayambak/neo.git
+[submodule "tests/spec/test262"]
+	path = tests/spec/test262
+	url = https://github.com/tc39/test262.git

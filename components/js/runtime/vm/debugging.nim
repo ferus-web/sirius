@@ -12,7 +12,7 @@ template msg*(message: string) =
     stdout.write("vm [pc=" & $pc & ", clause=" & $clause)
 
     if clauseObj.operations.len.uint > pc:
-      let op = clauseObj.operations[pc].opcode
+      let op = clauseObj.operations[pc - 1].opcode
       stdout.write(", op=" & $op)
 
     stdout.write("] " & message & '\n')
