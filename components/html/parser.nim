@@ -322,7 +322,7 @@ func preInsertionValidity*(parent, node, before: Node): bool =
 
 proc insertBefore*(
     parent, child: Node, before: Option[Node]
-): Result[dom.Node, string] {.discardable.} =
+): Result[dom.Node, DOMExceptionCode] {.discardable.} =
   let
     before = before.get(nil)
     validity = parent.preInsertionValidity(child, before)
@@ -336,7 +336,10 @@ proc insertBefore*(
       let i = parent.childList.find(before)
       parent.childList.insert(child, i)
   else:
-    return err("Cannot insert DOM node: failed pre-insertion validity test")
+    # return err("Cannot insert DOM node: failed pre-insertion validity test")
+
+    # TODO: Return the appropriate DOMExceptionCode by making `preInsertionValidity()` do the needful.
+    return err(DOMExceptionCode.HierarchyRequest)
 
   child.parentNode = parent
   ok(child)

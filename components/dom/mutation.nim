@@ -5,6 +5,11 @@ import std/options
 import components/dom/dom, components/html/parser
 import pkg/[results, shakar]
 
+type MutationError* = object
+  ## This is used by the DOM manipulation methods to return both the appropriate DOM error code, as well as a human-friendly string in the event of failure.
+  code*: dom.DOMExceptionCode
+  message*: string
+
 func findParentIndex(node: dom.Node): uint =
   ## Find the index at which the node resides in its parent's children-list.
   ##
@@ -53,16 +58,25 @@ func lastChild*(node: dom.Node): Option[dom.Node] =
   some(node.childList[^1])
 
 {.push discardable.}
-proc removeChild*(parent: dom.Node, node: dom.Node): Result[dom.Node, string] =
+proc removeChild*(parent: dom.Node, node: dom.Node): Result[dom.Node, MutationError] =
   # To remove a node node, with an optional boolean suppressObservers (default false): 
-  # debugEcho &"Node::removeChild(parent=0x{cast[uint64](parent):X}, node=0x{cast[uint64](node):X})"
 
   # 1. Let parent be node’s parent.
   if node.parentNode == nil:
-    return err("The node to be removed has no parent.")
+    return err(
+      MutationError(
+        code: DOMExceptionCode.NotFound,
+        message: "The node to be removed has no parent.",
+      )
+    )
 
   if node.parentNode != parent:
-    return err("The node to be removed is not a child of the provided parent node.")
+    return err(
+      MutationError(
+        code: DOMExceptionCode.NotFound,
+        message: "The node to be removed is not a child of the provided parent node.",
+      )
+    )
 
   # 2. Assert: parent is non-null. 
   assert(parent != nil)
@@ -175,15 +189,19 @@ proc insert*(parent: dom.Node, node: dom.Node, before: dom.Node) =
 
 proc preInsert*(
     parent: dom.Node, node: dom.Node, child: dom.Node
-): Result[dom.Node, string] =
+): Result[dom.Node, MutationError] =
   ## https://dom.spec.whatwg.org/#concept-node-pre-insert
-  # debugEcho &"Node::preInsert(parent=0x{cast[uint64](parent):X}, node=0x{cast[uint64](node):X}, child=0x{cast[uint64](child):X})"
-
   # To pre-insert a node node into a node parent before null or node child: 
 
   # 1. Ensure pre-insert validity given node, parent, child, and « ».
   if not preInsertionValidity(parent = parent, node = node, before = child):
-    return err("Cannot pre-insert: parent node failed validity test")
+    # TODO: Make `preInsertionValidity()` return a Result[void, DOMExceptionCode] instead of making up a code.
+    return err(
+      MutationError(
+        code: DOMExceptionCode.HierarchyRequest,
+        message: "Cannot pre-insert: parent node failed validity test",
+      )
+    )
 
   # 2. Let referenceChild be child. 
   var referenceChild = child
@@ -207,8 +225,7 @@ proc preInsert*(
   # 5. Return node.
   ok(node)
 
-proc append*(parent: dom.Node, node: dom.Node): Result[dom.Node, string] =
-  # debugEcho &"Node::append(parent=0x{cast[uint64](parent):X}, node=0x{cast[uint64](node):X})"
+proc append*(parent: dom.Node, node: dom.Node): Result[dom.Node, MutationError] =
   # To append a node node to a node parent: pre-insert node into parent before null.
   parent.preInsert(node, nil)
 

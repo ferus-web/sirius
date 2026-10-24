@@ -81,6 +81,36 @@ type
 
   DocumentFragment* = ref object of Node
 
+  DOMExceptionCode* {.pure, size: sizeof(uint16).} = enum
+    ## All DOM exception codes.
+    ##
+    ## **Note**: This is taken from the bindings Niskriya generated for `spec/dom/exception.idl`, so any updates to the aforementioned file will require updation here, too.
+    IndexSize = 1
+    DomstringSize = 2
+    HierarchyRequest = 3
+    WrongDocument = 4
+    InvalidCharacter = 5
+    NoDataAllowed = 6
+    NoModificationAllowed = 7
+    NotFound = 8
+    NotSupported = 9
+    InuseAttribute = 10
+    InvalidState = 11
+    Syntax = 12
+    InvalidModification = 13
+    Namespace = 14
+    InvalidAccess = 15
+    Validation = 16
+    TypeMismatch = 17
+    Security = 18
+    Network = 19
+    Abort = 20
+    UrlMismatch = 21
+    QuotaExceeded = 22
+    Timeout = 23
+    InvalidNodeType = 24
+    DataClone = 25
+
 func markDirty*(node: Node) =
   node.state = NodeState.Dirty
 
