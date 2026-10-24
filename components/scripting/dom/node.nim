@@ -6,7 +6,7 @@ import std/options
 import
   components/js/runtime/prelude,
   components/js/stdlib/errors,
-  components/scripting/dom/event_target,
+  components/scripting/dom/[exception, event_target],
   components/dom/[dom, mutation],
   components/html/[dom_utils, parser]
 import pkg/[chronicles, results, shakar]
@@ -180,8 +180,8 @@ proc insertBefore(rt: Runtime, this: JSValue, node: JSValue, child: JSValue): JS
 
   let res = parent.insertBefore(node, before)
   if !res:
-    # TODO: This should be a DOMException when those work
-    rt.typeError(res.error())
+    let mutationError = res.error()
+    rt.throwDomException(code = mutationError, message = "Cannot insert node")
     return
 
   toJSNode(rt, &res)
@@ -193,8 +193,8 @@ proc appendChild(rt: Runtime, this: JSValue, node: JSValue): JSValue =
 
   let res = parent.append(node)
   if !res:
-    # TODO: This should be a DOMException when those work
-    rt.typeError(res.error())
+    let mutationError = res.error()
+    rt.throwDomException(code = mutationError.code, message = mutationError.message)
     return
 
   toJSNode(rt, &res)
@@ -211,8 +211,8 @@ proc removeChild(rt: Runtime, this: JSValue, child: JSValue): JSValue =
 
   let res = parent.removeChild(node)
   if !res:
-    # TODO: This should be a DOMException when those work
-    rt.typeError(res.error())
+    let mutationError = res.error()
+    rt.throwDomException(code = mutationError.code, message = mutationError.message)
     return
 
   toJSNode(rt, &res)

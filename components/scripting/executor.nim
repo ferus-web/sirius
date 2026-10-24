@@ -9,8 +9,9 @@ import
   components/js/runtime/prelude,
   components/js/runtime/vm/interpreter/interpreter
 import
-  components/scripting/dom/
-    [document, element, event, event_target, mouse_event, keyboard_event, node],
+  components/scripting/dom/[
+    document, element, event, event_target, exception, mouse_event, keyboard_event, node
+  ],
   components/scripting/[url, timeouts],
   components/scripting/html/[navigator, performance, window, htmlelement, message_event],
   components/scripting/html/element/htmlinputelement,
@@ -44,6 +45,7 @@ proc registerWebBindings(
   # we have to register ECMA types earlier, as otherwise bindings below would fail as they rely on ECMA primitives existing
   elem.script.rt.registerEcmaTypes()
 
+  exception.generateBindings(elem.script.rt)
   event_target.generateBindings(elem.script.rt)
   node.generateBindings(elem.script.rt)
   element.generateBindings(elem.script.rt)
