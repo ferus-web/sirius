@@ -7,7 +7,7 @@ import
   components/js/runtime/prelude,
   components/js/stdlib/types/std_string_type,
   components/js/stdlib/errors,
-  components/scripting/dom/event_target,
+  components/scripting/dom/[exception, event_target],
   components/scripting/url,
   components/dom/dom,
   components/net/ws/types,
@@ -186,8 +186,9 @@ proc send(
 
   # 1. If this’s ready state is CONNECTING, then throw an "InvalidStateError" DOMException.
   if callbacks.getReadyState(node) == WSClientState.Connecting:
-    # TODO: DOMException and InvalidStateError implementations!!!
-    rt.typeError("WebSocket is still connecting to the endpoint")
+    rt.throwDomException(
+      DOMExceptionCode.InvalidState, "WebSocket is still connecting to the endpoint"
+    )
     return
 
   # 2. Run the appropriate set of steps from the following list:
