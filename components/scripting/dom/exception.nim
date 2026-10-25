@@ -1,7 +1,7 @@
 ## `DOMException` implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-
+import std/options
 import
   components/dom/dom,
   components/js/runtime/prelude,
@@ -22,7 +22,8 @@ proc throwDomException*(rt: Runtime, code: DOMExceptionCode, message: string) =
   let err = rt.createObjFromType(DOMException)
   err.setHiddenField(CodeField, rt.wrap(cast[uint16](code)))
 
-  rt.throw(DOMException, err = err, message = message)
+  rt.throw(DOMException, err = err, message = message, name = some($code & "Error"))
+    # HACK: It just happens to be that all DOMExceptionCode enum names are like this. Maybe we _should_ have a case statement for this.
 
 proc generateBindings*(runtime: Runtime) =
   runtime.registerType("DOMException", DOMException)

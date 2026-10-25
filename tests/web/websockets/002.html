@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Premature writes</title>
+  </head>
+  <body>
+  </body>
+  <script>
+    const n = new WebSocket("wss://echo.websocket.org");
+    try {
+	n.send("woopsies");
+    } catch(exc) {
+	console.log("caught DOMException");
+	console.log("name: ", exc.name);
+	console.log("message: ", exc.message);
+	console.log("dom error code: ", exc.code);
+	console.log("stack: ", exc.stack);
+    }
+  </script>
+</html>
