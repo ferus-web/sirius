@@ -13,7 +13,8 @@ import
     document, element, event, event_target, exception, mouse_event, keyboard_event, node
   ],
   components/scripting/[url, timeouts],
-  components/scripting/html/[navigator, performance, window, htmlelement, message_event],
+  components/scripting/html/
+    [htmldocument, navigator, performance, window, htmlelement, message_event],
   components/scripting/html/element/htmlinputelement,
   components/scripting/websocket/[close_event, websocket],
   components/scripting/clipboard/[clipboard]
@@ -52,6 +53,8 @@ proc registerWebBindings(
   htmlelement.generateBindings(elem.script.rt)
 
   document.generateBindings(elem.script.rt)
+  htmldocument.generateBindings(elem.script.rt)
+
   let doc = document.generateGlobal(elem.script.rt, elem.script.document)
 
   htmlinputelement.generateBindings(elem.script.rt)

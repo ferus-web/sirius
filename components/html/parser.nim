@@ -326,10 +326,9 @@ proc insertBefore*(
   let
     before = before.get(nil)
     validity = parent.preInsertionValidity(child, before)
-  # debugEcho &"Node::insertBefore(parent=0x{cast[uint64](parent):X}, child=0x{cast[uint64](child):X}, before=0x{cast[uint64](before):X})"
 
   if validity:
-    assert child.parentNode == nil
+    # assert child.parentNode == nil
     if before == nil:
       parent.childList.add(child)
     else:
