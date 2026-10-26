@@ -2,8 +2,9 @@
 ## Based on RFC 2397 (https://www.rfc-editor.org/rfc/rfc2397.html)
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[tables, options]
+import std/[strutils, tables, options]
 import components/impure/simdutf
+import pkg/results, pkg/url/[unicode, views]
 
 type
   MediaType* = object
@@ -24,9 +25,9 @@ type
     ParamValue
     Data
 
-func decodeBase64*(url: DataURL): Option[string] =
-  if not url.base64:
-    return none(string)
+func decodeBase64*(url: DataURL): Result[string, simdutf.ErrorCode] =
+  # if not url.base64:
+  #  return err(string)
 
   let
     opts = {Base64Options.DefaultAcceptGarbage}
@@ -48,9 +49,9 @@ func decodeBase64*(url: DataURL): Option[string] =
   )
 
   if res.error != ErrorCode.Success:
-    return none(string)
+    return err(res.error)
 
-  some(ensureMove(buffer))
+  ok(ensureMove(buffer))
 
 func parseDataURL*(buffer: string): Option[DataURL] =
   if buffer.len > cast[int64](uint32.high):
@@ -60,6 +61,8 @@ func parseDataURL*(buffer: string): Option[DataURL] =
   var i = 0'u64
     # We use 64-bit ints internally for the position just to ensure we don't overflow.
   var state = ParserState.Magic
+  let buffer =
+    unicode.percentDecode(toStringView(buffer), cast[uint32](buffer.find('%')))
   let size = cast[uint64](buffer.len)
 
   var url: DataURL

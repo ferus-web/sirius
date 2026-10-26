@@ -366,7 +366,8 @@ proc fetchHTMLImageResource(
         element.document.state = NodeState.Dirty
           # TODO: Ideally, we should only mark the element that needed this as dirty. But it doesn't really matter since the document being non-clean triggers a full, untargetted reflow anyways.
       else:
-        warn "Image element has data URL, but its content could not be decoded as base64."
+        warn "Image element has data URL, but its content could not be decoded as base64.",
+          failure = decodedData.error()
     except pixie.PixieError as exc:
       error "Failed to decode image, it will not be shown!",
         err = exc.msg, src = &srcRaw
