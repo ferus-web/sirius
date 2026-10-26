@@ -6,9 +6,8 @@ import std/[tables, options, macros, strformat, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
-  components/js/runtime/[
-    arguments, atom_obj_variant, wrapping, atom_helpers, types, construction, microtasks
-  ]
+  components/js/runtime/
+    [atom_obj_variant, wrapping, atom_helpers, types, construction, microtasks]
 import pkg/shakar
 
 privateAccess(Runtime)
@@ -436,8 +435,10 @@ proc setFieldAccessor*(
             accessor != nil and accessor.setter != nil,
             &"bridge: Invariant: Setter (or FieldAccessor) for property `{name}` of object 0x{cast[uint64](atom):X} is not defined. Did you forget to write an implementation for it?",
           )
+          assert(runtime.vm.registers.callArgs.len == 1)
+            # XXX: Do we really need to ensure arity purity here by ensuring only ONE argument is present? I guess it's a nice thing to have.
           accessor.setter(
-            runtime.vm[].getThisBinding(), &runtime.argument(1, required = true)
+            runtime.vm[].getThisBinding(), runtime.vm.registers.callArgs[0]
           ),
       ),
     ),

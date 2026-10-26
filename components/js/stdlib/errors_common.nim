@@ -5,6 +5,15 @@ import pkg/shakar
 
 privateAccess(Interpreter)
 
+type
+  Error* = object of RootObj
+
+  # NOTE: Maybe we should move all these to a separate file?
+  TypeError* = object of Error
+  RangeError* = object of Error
+  ReferenceError* = object of Error
+  SyntaxError* = object of Error
+
 type JSException* = ref object of RuntimeException
   name: string = ""
 

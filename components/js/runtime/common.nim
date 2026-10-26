@@ -126,7 +126,7 @@ proc run*(runtime: Runtime) {.gcsafe.} =
 
   when not defined(baliDontEmitSyntaxErrors):
     for error in runtime.ast.errors:
-      runtime.syntaxError($error, if runtime.opts.test262: 0 else: 1)
+      runtime.syntaxError($error)
 
   if runtime.ast.doNotEvaluate and runtime.opts.test262:
     # debug "runtime: `doNotEvaluate` is set to `true` in Test262 mode - skipping execution."

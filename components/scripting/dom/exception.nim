@@ -5,7 +5,7 @@ import std/options
 import
   components/dom/dom,
   components/js/runtime/prelude,
-  components/js/stdlib/[errors, errors_ir]
+  components/js/stdlib/[errors, errors_ir, errors_common]
 import pkg/[chronicles, shakar]
 
 logScope:
