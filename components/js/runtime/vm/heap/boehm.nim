@@ -1,6 +1,9 @@
 ## Taken from the Nim compiler source code
 import std/[strutils]
 
+when defined(windows):
+  {.passL: "-lgc".}
+
 {.pragma: boehmGC, header: "<gc.h>".}
 
 proc boehmGCinit*() {.importc: "GC_init", boehmGC.}

@@ -217,12 +217,6 @@
       "url": "gh:xTrayambak/overdrive",
       "checksum": "83eec5d8addec46c1f1060b47d6b30d74f89be6cfc0b57f1c18f76b7bf06c9d0"
     },
-    "gh:ferus-web/nim-gmp": {
-      "version": "0.1.0",
-      "commit": "338711b3d3abcccfd1dcda534653522e827333cb",
-      "url": "gh:ferus-web/nim-gmp",
-      "checksum": "6269fbad5b3ac6d8cc5e5a9c6863149159f422fa182748f8d33a4c3121d2e185"
-    },
     "libcurl": {
       "version": "1.0.0",
       "commit": "23f3d90e60d7a233b5eb27fb13e57fd198c73697",

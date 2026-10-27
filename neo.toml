@@ -34,11 +34,10 @@ chronicles = ">= 0.12.3"
 vmath = ">= 3.0.0"
 stack_strings = ">= 1.1.4"
 stylus = ">= 0.1.5"
-"gh:ferus-web/nim-gmp" = ">= 0.1.0"
 opengl = ">= 1.2.9"
 chroma = ">= 1.0.0"
 nint128 = ">= 0.3.3"
 
 [platforms.native]
-include = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf", "gtk4", "libadwaita-1"]
-link = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf", "gtk4", "libadwaita-1"]
+include = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf", "gtk4", "libadwaita-1", "gmp", "bdw-gc"]
+link = ["vulkan", "wayland-egl", "libcurl", "fontconfig", "wayland-client", "wayland-egl-backend", "glesv2", "egl", "simdutf", "gtk4", "libadwaita-1", "gmp", "bdw-gc"]

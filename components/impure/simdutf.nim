@@ -2,6 +2,9 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 
+when defined(windows):
+  {.passL: "-lsimdutf".}
+
 {.push header: "<simdutf_c.h>".}
 
 type

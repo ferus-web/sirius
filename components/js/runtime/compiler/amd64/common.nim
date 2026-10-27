@@ -7,7 +7,11 @@ import
   components/js/runtime/compiler/amd64/native_forwarding,
   components/js/internal/assembler/amd64,
   components/js/runtime/vm/heap/manager
-import components/impure/nix
+
+when defined(posix):
+  import components/impure/nix
+
+import components/impure/libc
 
 type
   ConstantPool* = seq[cstring]
@@ -42,7 +46,7 @@ proc `=destroy`*(cgen: AMD64CodegenObj) =
   for cnst in cgen.cpool:
     dealloc(cast[pointer](cnst))
 
-  free(cgen.s.data)
+  libc.free(cgen.s.data)
 
 proc prepareGCAlloc*(cgen: AMD64Codegen, size: uint) =
   cgen.s.mov(regRdi, cast[int64](cgen.vm))

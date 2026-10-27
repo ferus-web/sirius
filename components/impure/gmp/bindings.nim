@@ -1,6 +1,10 @@
 ## Low-level Nim bindings to GMP
 ##
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak@disroot.org)
+
+when defined(windows):
+  {.passL: "-lgmp".}
+
 type
   mp_limb_t* = BiggestUint
   mp_bitcnt_t* = BiggestUint

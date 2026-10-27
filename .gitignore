@@ -12,3 +12,6 @@ cookies.json
 
 !tests/spec/test262
 !tests/spec/test262/*
+
+*.exe
+*.zip

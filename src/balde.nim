@@ -12,11 +12,12 @@ import components/js/grammar/prelude
 import components/js/runtime/prelude
 import
   components/js/runtime/vm/heap/[boehm],
-  components/js/runtime/vm/interpreter/interpreter
+  components/js/runtime/vm/interpreter/interpreter,
+  components/js/runtime/compiler/base
 import pkg/[jsony, noise, fuzzy, shakar]
 import ./argparser
 
-when defined(amd64):
+when hasJITSupport:
   import components/js/internal/assembler/amd64 # FIXME: This sucks
 
 const Version {.strdefine: "NimblePkgVersion".} = "<version not defined>"
@@ -359,8 +360,6 @@ proc baldeRepl(ctx: Input) =
     if prevRuntime != nil:
       runtime.realm = prevRuntime.realm
       runtime.vm.stack = prevRuntime.vm.stack
-
-    print runtime.vm.stack
 
     runtime.realm.clauses.reset()
     runtime.run()
