@@ -8,7 +8,7 @@ As this is currently, at large, a solo project, I'm more than happy to accept an
 
 As one might expect, Sirius has a ton of dependencies, both native libraries and Nim packages.
 
-Sirius expects that you'll use [clang](https://clang.llvm.org/) as the C compiler. `gcc` *might* work, but there are no guarantees for it.
+Sirius _should_ work with both [clang](https://clang.llvm.org), as well as [GCC](https://gcc.gnu.org). Any alternative C compilers like TCC, even if supported by Nim, are uncharted territory.
 
 ## Building the build system
 Sirius uses the `neo` package manager and build system to build itself. You don't need to go and fetch it, you can simply run the following command to bootstrap a development environment for you.

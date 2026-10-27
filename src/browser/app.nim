@@ -19,7 +19,7 @@ type
 
     tabPage: ptr EGtkWidget
     container: ptr EGtkWidget
-    viewport: ptr EGtkWidget
+    viewport: ptr GtkPicture
 
     dead: bool
 
@@ -113,8 +113,8 @@ proc onFrameTick(
     return G_SOURCE_CONTINUE
 
   let currSize = ivec2(
-    gtk_widget_get_width(browser.tab.viewport),
-    gtk_widget_get_height(browser.tab.viewport) + 1,
+    gtk_widget_get_width(cast[ptr EGtkWidget](browser.tab.viewport)),
+    gtk_widget_get_height(cast[ptr EGtkWidget](browser.tab.viewport)) + 1,
   )
 
   if currSize.x == 0 or currSize.y == 0:
@@ -134,7 +134,7 @@ proc onFrameTick(
     browser.view.scroll(browser.tab.id, browser.scrollDelta)
     browser.scrollDelta.reset()
 
-  gtk_widget_queue_draw(browser.tab.viewport)
+  gtk_widget_queue_draw(cast[ptr EGtkWidget](browser.tab.viewport))
   browser.view.step()
 
   return G_SOURCE_CONTINUE
@@ -207,28 +207,30 @@ proc interactionNewTab(browser: BrowserState) =
   gtk_widget_set_vexpand(container, true)
 
   let tab = BrowserTab(
-    id: browser.view.createTab(), container: container, viewport: gtk_picture_new()
+    id: browser.view.createTab(),
+    container: container,
+    viewport: cast[ptr GtkPicture](gtk_picture_new()),
   )
   browser.tabs &= tab
   browser.tab = tab
 
-  gtk_widget_set_hexpand(tab.viewport, true)
-  gtk_widget_set_vexpand(tab.viewport, true)
-  gtk_picture_set_can_shrink(tab.viewport, true)
+  gtk_widget_set_hexpand(cast[ptr EGtkWidget](tab.viewport), true)
+  gtk_widget_set_vexpand(cast[ptr EGtkWidget](tab.viewport), true)
+  gtk_picture_set_can_shrink(cast[ptr GtkPicture](tab.viewport), true)
 
-  gtk_widget_set_focusable(tab.viewport, true)
+  gtk_widget_set_focusable(cast[ptr EGtkWidget](tab.viewport), true)
 
   let scrollCtrl = gtk_event_controller_scroll_new(3)
   discard g_signal_connect_data(
     scrollCtrl, "scroll", cast[pointer](onScroll), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(tab.viewport, scrollCtrl)
+  gtk_widget_add_controller(cast[ptr EGtkWidget](tab.viewport), scrollCtrl)
 
   let motionCtrl = gtk_event_controller_motion_new()
   discard g_signal_connect_data(
     motionCtrl, "motion", cast[pointer](onCursorMotion), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(tab.viewport, motionCtrl)
+  gtk_widget_add_controller(cast[ptr EGtkWidget](tab.viewport), motionCtrl)
 
   discard gtk_widget_add_tick_callback(
     tab.container, onFrameTick, cast[pointer](browser), nil
@@ -239,17 +241,21 @@ proc interactionNewTab(browser: BrowserState) =
   discard g_signal_connect_data(
     clickGest, "pressed", cast[pointer](onCursorClick), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(tab.viewport, clickGest)
+  gtk_widget_add_controller(
+    cast[ptr EGtkWidget](tab.viewport), cast[ptr GtkEventController](clickGest)
+  )
 
   let keyCtrl = gtk_event_controller_key_new()
   discard g_signal_connect_data(
     keyCtrl, "key-pressed", cast[pointer](onKeyPress), cast[pointer](browser), nil, 0
   )
-  gtk_widget_add_controller(tab.viewport, keyCtrl)
+  gtk_widget_add_controller(cast[ptr EGtkWidget](tab.viewport), keyCtrl)
 
-  gtk_box_append(tab.container, tab.viewport)
+  gtk_box_append(
+    cast[ptr EGtkWidget](tab.container), cast[ptr EGtkWidget](tab.viewport)
+  )
 
-  discard gtk_widget_grab_focus(tab.viewport)
+  discard gtk_widget_grab_focus(cast[ptr EGtkWidget](tab.viewport))
 
   browser.tab.tabPage = adw_tab_view_append(browser.tabView, tab.container)
   adw_tab_page_set_title(browser.tab.tabPage, cstring("New Tab"))
@@ -446,7 +452,9 @@ proc setPageTitle(browser: BrowserState, tab: TabID, title: string) =
   adw_tab_page_set_title(browser.tabs[cast[uint32](tab)].tabPage, cstring(finalTitle))
 
 proc setPCursorShape*(browser: BrowserState, predef: CursorPredefined) =
-  gtk_widget_set_cursor_from_name(browser.tab.viewport, cstring($predef))
+  gtk_widget_set_cursor_from_name(
+    cast[ptr EGtkWidget](browser.tab.viewport), cstring($predef)
+  )
 
 proc showDeadTabPage(browser: BrowserState) =
   browser.setPageTitle(browser.tab.id, "Oopsies.")
@@ -454,11 +462,11 @@ proc showDeadTabPage(browser: BrowserState) =
   if browser.tab.viewport == nil:
     return
 
-  let parentBox = gtk_widget_get_parent(browser.tab.viewport)
+  let parentBox = gtk_widget_get_parent(cast[ptr EGtkWidget](browser.tab.viewport))
   if parentBox == nil:
     return
 
-  gtk_box_remove(parentBox, browser.tab.viewport)
+  gtk_box_remove(parentBox, cast[ptr EgtkWidget](browser.tab.viewport))
   browser.tab.viewport = nil
 
   let crashBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 24)

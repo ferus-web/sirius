@@ -5,7 +5,10 @@
 type
   CURL* = ptr object
   CURLM* = ptr object
-  CURLU* = ptr object
+
+  CURLUObj {.importc: "CURLU", incompleteStruct.} = object
+  CURLU* = ptr CURLUObj
+
   CURLcode* = distinct int32
   CURLUCode* = distinct int32
   CURLMcode* = distinct int32
@@ -216,7 +219,7 @@ proc curl_ws_recv*(
   buffer: pointer,
   buflen: int64,
   nrecv: ptr int64,
-  metap: ptr ptr curl_ws_frame,
+  metap: pointer, # ptr ptr curl_ws_frame,
 ): CURLCode
 
 proc curl_ws_send*(

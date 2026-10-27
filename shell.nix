@@ -4,6 +4,8 @@ let
   curlWs = curl.override {
     websocketSupport = true;
   };
+
+  mingw = pkgsCross.mingwW64;
 in
 mkShell {
   nativeBuildInputs = [
@@ -31,6 +33,10 @@ mkShell {
     # browser shell
     gtk4
     libadwaita
+
+    # cross compilation for windows builds
+    mingw.buildPackages.gcc
+    mingw.buildPackages.binutils
   ];
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [

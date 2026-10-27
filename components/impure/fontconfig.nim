@@ -44,13 +44,13 @@ type
     FcMatchFont
     FcMatchScan
 
-  FcConfig* = object
-  FcFileCache* = object
-  FcBlanks* = object
-  FcStrList* = object
-  FcStrSet* = object
-  FcCache* = object
-  FcPattern* = object
+  FcConfig* {.incompleteStruct.} = object
+  FcFileCache* {.incompleteStruct.} = object
+  FcBlanks* {.incompleteStruct.} = object
+  FcStrList* {.incompleteStruct.} = object
+  FcStrSet* {.incompleteStruct.} = object
+  FcCache* {.incompleteStruct.} = object
+  FcPattern* {.incompleteStruct.} = object
 
 let
   FC_MAJOR*, FC_MINOR*, FC_REVISION*: int32

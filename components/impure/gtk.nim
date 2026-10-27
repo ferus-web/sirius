@@ -174,6 +174,10 @@ type
   GdkDisplay* {.importc, incompleteStruct.} = object
   GdkClipboard* {.importc, incompleteStruct.} = object
 
+  GtkPicture* {.importc, incompleteStruct.} = object
+  GtkEventController* {.importc, incompleteStruct.} = object # distinct EGtkWidget
+  GtkGestureSingle* {.importc, incompleteStruct.} = object
+
   GDestroyNotify* = proc(data: pointer) {.cdecl.}
 
   GtkTickCallback* = proc(
@@ -209,13 +213,13 @@ proc gtk_widget_grab_focus*(widget: ptr EGtkWidget): int32
 proc gtk_widget_set_focusable*(widget: ptr EGtkWidget, focusable: bool)
 proc gtk_widget_get_display*(widget: ptr EGtkWidget): ptr GdkDisplay
 
-proc gtk_gesture_click_new*(): ptr EGtkWidget
-proc gtk_gesture_single_set_button*(gesture: ptr EGtkWidget, btn: int32)
+proc gtk_gesture_click_new*(): ptr GtkGestureSingle
+proc gtk_gesture_single_set_button*(gesture: ptr GtkGestureSingle, btn: int32)
 
-proc gtk_picture_set_can_shrink*(picture: ptr EGtkWidget, canShrink: bool)
+proc gtk_picture_set_can_shrink*(picture: ptr GtkPicture, canShrink: bool)
 
-proc gtk_picture_new*(): ptr EGtkWidget
-proc gtk_picture_set_paintable*(picture: ptr EGtkWidget, paintable: pointer)
+proc gtk_picture_new*(): ptr GtkPicture
+proc gtk_picture_set_paintable*(picture: ptr GtkPicture, paintable: pointer)
 
 proc gtk_entry_new*(): ptr EGtkWidget
 proc gtk_entry_set_placeholder_text*(entry: ptr EGtkWidget, text: cstring)
@@ -252,12 +256,14 @@ proc gtk_label_set_wrap*(label: ptr EGtkWidget, value: bool)
 proc gtk_label_set_max_width_chars*(label: ptr EGtkWidget, value: int32)
 proc gtk_label_set_label*(label: ptr EGtkWidget, str: cstring)
 
-proc gtk_event_controller_scroll_new*(axes: int32): ptr EGtkWidget
-proc gtk_event_controller_motion_new*(): ptr EGtkWidget
+proc gtk_event_controller_scroll_new*(axes: int32): ptr GtkEventController
+proc gtk_event_controller_motion_new*(): ptr GtkEventController
 
-proc gtk_event_controller_key_new*(): ptr EGtkWidget
+proc gtk_event_controller_key_new*(): ptr GtkEventController
 
-proc gtk_widget_add_controller*(widget: ptr EGtkWidget, controller: ptr EGtkWidget)
+proc gtk_widget_add_controller*(
+  widget: ptr EGtkWidget, controller: ptr GtkEventController
+)
 
 proc g_application_run*(app: ptr AdwApplication, argc: int32, argv: ptr cstring): int32
 proc g_object_unref*(obj: pointer)
