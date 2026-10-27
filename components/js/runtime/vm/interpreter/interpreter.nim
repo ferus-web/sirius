@@ -61,7 +61,7 @@ type
     referenceErrorHook*: ReferenceErrorHook
     addOpImpl*: AddAtomsOpImpl
 
-    when defined(amd64):
+    when hasJITSupport:
       baseline*: BaselineJIT
       midtier*: MidtierJIT
       useJit*: bool = true
