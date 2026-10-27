@@ -6,6 +6,13 @@ let
   };
 
   mingw = pkgsCross.mingwW64;
+
+  mingwInputs = with mingw; [
+    windows.pthreads
+    gmp
+    boehmgc
+    simdutf
+  ];
 in
 mkShell {
   nativeBuildInputs = [
@@ -39,14 +46,8 @@ mkShell {
     mingw.buildPackages.binutils
   ];
 
-  # HACK: Is there a better way to expose these to MingW without having to define them over and over again?
-  MINGW_PTHREADS = "${mingw.windows.pthreads}";
-  MINGW_GMP = "${mingw.gmp}";
-  MINGW_GC = "${mingw.boehmgc}";
-  MINGW_SIMDUTF = "${mingw.simdutf}";
-
   shellHook = ''
-    export CROSS_LDFLAGS="-L$MINGW_PTHREADS/lib -L$MINGW_GMP/lib -L$MINGW_GC/lib -L$MINGW_SIMDUTF/lib"
+    export CROSS_LDFLAGS="${lib.concatMapStringsSep " " (pkg: "-L${pkg}/lib") mingwInputs}"
   '';
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [
