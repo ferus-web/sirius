@@ -6,6 +6,8 @@ when defined(posix):
   import std/posix
   import components/impure/nix
 
+import components/impure/libc
+
 const DefaultAllocatorBufferSize* =
   when defined(amd64) or defined(aarch64) or defined(riscv64):
     8_388_608'u64 # 8MB
@@ -33,7 +35,7 @@ func allocate*(allocator: var BumpAllocator, size: uint64): pointer {.cdecl.} =
   pntr
 
 proc release*(allocator: var BumpAllocator) =
-  free(allocator.pool)
+  libc.free(allocator.pool)
 
 proc initBumpAllocator*(
     size: uint64 = DefaultAllocatorBufferSize

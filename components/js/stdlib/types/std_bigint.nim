@@ -7,7 +7,8 @@ import components/js/runtime/abstract/coercion
 import components/js/stdlib/errors
 import components/js/internal/[trim_string]
 import components/js/runtime/vm/atom
-import pkg/[gmp, shakar]
+import components/impure/gmp/prelude
+import pkg/[shakar]
 
 type JSBigInt* = object
   value*: Hidden[JSValue]

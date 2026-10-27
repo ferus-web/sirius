@@ -7,12 +7,17 @@ when defined(posix):
   import std/posix
   import components/impure/nix
 
-proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer =
-  var address: pointer
-  discard posix_memalign(address.addr, sysconf(SC_PAGESIZE), size)
-  discard mprotect(address, size.int32, PROT_NONE)
+import components/impure/libc
 
-  address
+proc allocateExecutableBuffer*(size: uint64, readable, writable: bool): pointer =
+  when defined(posix):
+    var address: pointer
+    discard posix_memalign(address.addr, sysconf(SC_PAGESIZE), size)
+    discard mprotect(address, size.int32, PROT_NONE)
+
+    address
+  else:
+    {.error: "Implement allocateExecutableBuffer() on your platform.".}
 
 proc setBufferProtection*(
     address: pointer, size: int64, readable, writable, executable: bool
@@ -36,4 +41,4 @@ proc releaseExecutableBuffer*(buffer: pointer) =
   when defined(windows):
     return # TODO: Implement this on Windows
 
-  nix.free(buffer)
+  libc.free(buffer)

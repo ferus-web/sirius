@@ -5,8 +5,9 @@ import components/js/runtime/vm/atom
 import components/unicode/utf16view
 import components/js/runtime/[atom_helpers, types, bridge, construction]
 import components/js/runtime/abstract/[coercion]
-import pkg/[gmp/gmp, shakar]
+import pkg/shakar
 import components/js/stdlib/types/[std_bigint, std_string_type]
+import components/impure/gmp/prelude
 
 proc equateNumbers*(runtime: Runtime, x, y: JSValue): bool =
   runtime.ToNumber(x) == runtime.ToNumber(y)

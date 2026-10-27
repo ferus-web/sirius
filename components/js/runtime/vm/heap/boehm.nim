@@ -1,9 +1,6 @@
 ## Taken from the Nim compiler source code
 import std/[strutils]
 
-{.passC: gorge("pkg-config --cflags bdw-gc").strip().}
-{.passL: gorge("pkg-config --libs bdw-gc").strip().}
-
 {.pragma: boehmGC, header: "<gc.h>".}
 
 proc boehmGCinit*() {.importc: "GC_init", boehmGC.}

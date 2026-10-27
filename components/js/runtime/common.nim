@@ -4,6 +4,7 @@
 import std/[deques, strutils, sugar, tables]
 import
   components/js/runtime/[atom_helpers, atom_obj_variant, types, construction],
+  components/js/runtime/compiler/base,
   components/js/runtime/niche/lowering,
   components/js/runtime/vm/prelude,
   components/js/runtime/vm/ir/generator,
@@ -82,7 +83,8 @@ proc run*(runtime: Runtime) {.gcsafe.} =
   runtime.allocStatsStart = getAllocStats()
 
   runtime.vm.useJit = runtime.opts.codegen.jitCompiler
-  runtime.vm.midtier.dumpIrForFuncs = runtime.opts.jit.madhyasthalDumpIRFor
+  when hasJITSupport:
+    runtime.vm.midtier.dumpIrForFuncs = runtime.opts.jit.madhyasthalDumpIRFor
 
   runtime.generateInternalIR()
 

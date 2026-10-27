@@ -6,8 +6,9 @@ import
 import components/js/runtime/abstract/[to_number, to_string]
 import components/js/stdlib/builtins/parse_int
 import components/js/stdlib/errors
-import pkg/[gmp, shakar]
+import pkg/shakar
 import components/js/runtime/vm/atom
+import components/impure/gmp/prelude
 
 type JSNumber* = object
   value*: Hidden[JSValue]

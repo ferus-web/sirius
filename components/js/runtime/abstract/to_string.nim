@@ -4,7 +4,7 @@ import pkg/shakar
 import components/js/runtime/[types, bridge]
 import components/js/stdlib/types/std_string_type
 import components/js/runtime/abstract/to_primitive
-import pkg/gmp
+import components/impure/gmp/prelude
 
 proc ToString*(runtime: Runtime, value: JSValue): string {.gcsafe.} =
   ## 7.1.17 ToString ( argument )

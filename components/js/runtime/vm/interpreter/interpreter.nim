@@ -64,7 +64,8 @@ type
     when hasJITSupport:
       baseline*: BaselineJIT
       midtier*: MidtierJIT
-      useJit*: bool = true
+
+    useJit*: bool = hasJITSupport
 
     trapped*: bool = false
     runningCompiled*: bool = false
@@ -1231,56 +1232,57 @@ proc run*(interpreter: var Interpreter) {.gcsafe.} =
       interpreter.currIndex = clause.rollback.opIndex
       continue
 
-    let shouldJudge = hasJITSupport and interpreter.useJit and not interpreter.trapped
+    when hasJITSupport:
+      let shouldJudge = interpreter.useJit and not interpreter.trapped
 
-    # If this clause is considered hot, consider compiling it.
-    if interpreter.currIndex == 0 and shouldJudge:
-      let (gettingCompiled, tierOpt) = interpreter.shouldCompile(clause)
+      # If this clause is considered hot, consider compiling it.
+      if interpreter.currIndex == 0 and shouldJudge:
+        let (gettingCompiled, tierOpt) = interpreter.shouldCompile(clause)
 
-      # The baseline JIT does not support mid-execution patching.
-      # The midtier JIT does.
-      if gettingCompiled:
-        let tier = &tierOpt
+        # The baseline JIT does not support mid-execution patching.
+        # The midtier JIT does.
+        if gettingCompiled:
+          let tier = &tierOpt
 
-        jitd "fetch",
-          "has jit support, compiling clause " & clause.name & " with JIT tier `" & $tier &
-            '`'
+          jitd "fetch",
+            "has jit support, compiling clause " & clause.name & " with JIT tier `" &
+              $tier & '`'
 
-        let compiled =
-          case tier
-          of Tier.Baseline:
-            interpreter.baseline.compile(clause)
-          of Tier.Midtier:
-            interpreter.midtier.compile(clause)
+          let compiled =
+            case tier
+            of Tier.Baseline:
+              interpreter.baseline.compile(clause)
+            of Tier.Midtier:
+              interpreter.midtier.compile(clause)
 
-        if *compiled:
-          clause.compiled = true
-          clause.profIterationsSpent += uint64(clause.operations.len - 2)
-          interpreter.clauses[interpreter.currClause] = clause
+          if *compiled:
+            clause.compiled = true
+            clause.profIterationsSpent += uint64(clause.operations.len - 2)
+            interpreter.clauses[interpreter.currClause] = clause
 
-          vmd "execute", "entering JIT'd segment"
-          interpreter.runningCompiled = true
-          (&compiled)()
-          interpreter.runningCompiled = false
+            vmd "execute", "entering JIT'd segment"
+            interpreter.runningCompiled = true
+            (&compiled)()
+            interpreter.runningCompiled = false
 
-          interpreter.currIndex = clause.rollback.opIndex
-          interpreter.currClause = clause.rollback.clause
+            interpreter.currIndex = clause.rollback.opIndex
+            interpreter.currClause = clause.rollback.clause
 
-          # We just append all the ops - 2 (1 sub because the len is 1 bigger than the real size, 1 sub because we've already inc'd this value once)
-          # interpreter.profTotalFrames += uint64(clause.operations.len - 2)
+            # We just append all the ops - 2 (1 sub because the len is 1 bigger than the real size, 1 sub because we've already inc'd this value once)
+            # interpreter.profTotalFrames += uint64(clause.operations.len - 2)
 
-          vmd "execute",
-            "exec'd JIT segment successfully, setting pc to end of clause/" &
-              $interpreter.currIndex
+            vmd "execute",
+              "exec'd JIT segment successfully, setting pc to end of clause/" &
+                $interpreter.currIndex
 
-          if interpreter.trapped:
-            break
+            if interpreter.trapped:
+              break
 
-          continue
-        else:
-          jitd "execute",
-            "cannot compile segment: " & clause.name & ", falling back to VM"
-          clause.cachedJudgement = some(CompilationJudgement.Ineligible)
+            continue
+          else:
+            jitd "execute",
+              "cannot compile segment: " & clause.name & ", falling back to VM"
+            clause.cachedJudgement = some(CompilationJudgement.Ineligible)
 
     var operation = &op
     let index = interpreter.currIndex
@@ -1303,7 +1305,7 @@ proc run*(interpreter: var Interpreter) {.gcsafe.} =
     interpreter.clauses[clauseIndex] = move(clause)
     vmd "execute", "saved op state"
 
-when defined(amd64):
+when hasJITSupport:
   proc initJITForPlatform(
       vm: pointer, heap: HeapManager, callbacks: VMCallbacks, tier: Tier
   ): AMD64Codegen =

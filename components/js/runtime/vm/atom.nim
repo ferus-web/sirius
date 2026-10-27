@@ -2,8 +2,9 @@
 ## to the calling Nim code itself.
 
 import std/[tables, hashes, options]
-import pkg/[shakar, gmp]
+import pkg/[shakar]
 import components/js/runtime/vm/heap/manager
+import components/impure/gmp/prelude
 
 type
   MAtomKind* {.size: sizeof(uint8).} = enum
