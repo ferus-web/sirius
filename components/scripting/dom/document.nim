@@ -16,10 +16,15 @@ logScope:
 
 type Document* = object of node.Node
 
-proc bindJSElement(rt: Runtime, elem: dom.Element): JSValue =
+proc bindJSElement*(rt: Runtime, elem: dom.Element): JSValue =
+  ## Pass a native DOM element to JavaScript.
+  ##
+  ## **Note**: This routine handles the memory ownership part itself.
+
   GC_ref(elem)
     # HACK: Basically, we do not want the Nim runtime to deallocate this node while we're still working with it, otherwise that causes absolutely scrumptious and delectable heisenbugs :3
     # NOTE: Maybe we should allocate the DOM with the current realm's GC, honestly. Leaving it up to Nim's runtime refcounting is already causing some problems.
+    # NOTE: 2. This leaks as far as I'm aware, too.
 
   if elem of tags.HTMLInputElement:
     toJSHTMLInputElement(rt, tags.HTMLInputElement(elem))

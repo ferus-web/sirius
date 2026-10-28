@@ -13,6 +13,20 @@ func html*(doc: dom.Document): Option[dom.Element] =
     if child of dom.Element and Element(child).tagType() == TAG_HTML:
       return some(Element(child))
 
+func body*(doc: dom.Document): Option[dom.Element] =
+  ## https://html.spec.whatwg.org/#the-body-element-2
+  ## The body element of a document is the first of the html element's children that is either a body element or a frameset element, or null if there is no such element.
+  ##
+  ## **Note**: This does not perform any caching.
+  let htmlElement = doc.html
+
+  if !htmlElement:
+    return none(dom.Element)
+
+  for child in (&htmlElement).childList:
+    if child of dom.Element and Element(child).tagType() in {TAG_BODY, TAG_FRAMESET}:
+      return some(Element(child))
+
 func getAttr*(
     element: dom.Element, factory: dom.AtomFactory, attribKey: string
 ): Option[string] {.inline.} =

@@ -3,7 +3,10 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import
-  components/js/runtime/prelude, components/dom/dom, components/scripting/dom/[document]
+  components/js/runtime/prelude,
+  components/dom/dom,
+  components/scripting/dom/[document],
+  components/html/dom_utils
 import pkg/[chronicles, shakar]
 
 logScope:
@@ -56,8 +59,17 @@ proc dirSetter(rt: Runtime, this: JSValue, value: JSValue) =
   warn "IMPLEMENTME: Document.dir setter"
 
 proc bodyGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: Document.body getter"
-  undefined(rt)
+  ## https://html.spec.whatwg.org/#dom-document-body
+
+  # The body attribute, on getting, must return the body element of the document (either a body element, a frameset element, or null).
+  let
+    doc = &this.getPrivateObject(dom.Document)
+    bodyElement = doc.body
+
+  if *bodyElement:
+    bindJSElement(rt, &bodyElement)
+  else:
+    null(rt)
 
 proc bodySetter(rt: Runtime, this: JSValue, value: JSValue) =
   warn "IMPLEMENTME: Document.body setter"
