@@ -51,7 +51,7 @@ proc setHiddenField*(atom: JSValue, name: string, value: sink JSValue) =
   atom.objHiddenFields[name] = cast[uint32](atom.objValues.len) - 1'u32
 
 proc getHiddenField*(atom: JSValue, name: string): Option[JSValue] =
-  if name notin atom.objHiddenFields:
+  if atom.kind != Object or name notin atom.objHiddenFields:
     return none(JSValue)
 
   some(atom.objValues[atom.objHiddenFields[name]])
