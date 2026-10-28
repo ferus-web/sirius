@@ -293,6 +293,52 @@ proc expand*(
           internal = true,
           ownerStmt = some(stmt),
         ) # load undefined atom
+    of TernaryOp:
+      case stmt.ternaryCond.kind
+      of AtomHolder:
+        runtime.generateBytecode(
+          fn,
+          decl("cond_term", atomHolder(stmt.ternaryCond.atom)),
+          ownerStmt = some(stmt),
+          internal = true,
+        )
+      of Call:
+        runtime.generateBytecode(
+          fn, stmt.ternaryCond, ownerStmt = some(stmt), internal = true
+        )
+        runtime.markInternal(stmt, "cond_term")
+        runtime.ir.readRegister(runtime.realm.addrIdx - 1, Register.ReturnValue)
+      of IdentHolder:
+        discard
+      of FieldAccessHolder:
+        runtime.generateBytecode(
+          fn,
+          stmt.ternaryCond,
+          ownerStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("cond_term"),
+        )
+      of BinaryOp:
+        stmt.ternaryCond.binStoreIn = some("cond_term")
+        runtime.markInternal(stmt, "cond_term")
+        runtime.generateBytecode(
+          fn,
+          stmt.ternaryCond,
+          parentStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("cond_term"),
+        )
+      of TernaryOp:
+        runtime.markInternal(stmt, "cond_term")
+        runtime.generateBytecode(
+          fn,
+          stmt.ternaryCond,
+          parentStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("cond_term"),
+        )
+      else:
+        unreachable
     else:
       discard
 
@@ -1051,45 +1097,30 @@ proc genAccessArrayIndex(
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
 
-proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
-  # # debug "emitter: generate IR for ternary op"
-  if !stmt.ternaryStoreIn:
+proc genTernaryOp(
+    runtime: Runtime,
+    fn: Function,
+    stmt: Statement,
+    internal: bool = false,
+    parentStmt: Option[Statement] = none(Statement),
+    exprStoreIn: Option[string] = none(string),
+) =
+  let targetStore = if *stmt.ternaryStoreIn: stmt.ternaryStoreIn else: stmt.storeIn
+
+  if not (*targetStore or *exprStoreIn):
     return
 
-  let
-    storeIn = &stmt.ternaryStoreIn
-    addrOfCond =
-      if stmt.ternaryCond.kind == AtomHolder:
-        runtime.loadIRAtom(stmt.ternaryCond.atom)
-      elif stmt.ternaryCond.kind == IdentHolder:
-        runtime.index(stmt.ternaryCond.ident, defaultParams(fn))
-      else:
-        unreachable
-        0'u
+  runtime.expand(fn, stmt, internal)
 
-  inc runtime.realm.addrIdx
-
-  let addrOfTrueExpr =
-    if stmt.trueTernary.kind == AtomHolder:
-      runtime.loadIRAtom(stmt.trueTernary.atom)
-    elif stmt.trueTernary.kind == IdentHolder:
-      runtime.index(stmt.falseTernary.ident, defaultParams(fn))
+  let addrOfCond =
+    case stmt.ternaryCond.kind
+    of AtomHolder, Call, FieldAccessHolder, BinaryOp, TernaryOp:
+      runtime.index("cond_term", internalIndex(stmt))
+    of IdentHolder:
+      runtime.index(stmt.ternaryCond.ident, defaultParams(fn))
     else:
       unreachable
       0'u
-
-  inc runtime.realm.addrIdx
-
-  let addrOfFalseExpr =
-    if stmt.falseTernary.kind == AtomHolder:
-      runtime.loadIRAtom(stmt.falseTernary.atom)
-    elif stmt.falseTernary.kind == IdentHolder:
-      runtime.index(stmt.falseTernary.ident, defaultParams(fn))
-    else:
-      unreachable
-      0'u
-
-  inc runtime.realm.addrIdx
 
   proc getCurrOpNum(): uint =
     for module in runtime.ir.modules:
@@ -1099,21 +1130,94 @@ proc genTernaryOp(runtime: Runtime, fn: Function, stmt: Statement) =
     unreachable
     0'u
 
-  runtime.markLocal(fn, storeIn)
-  let finalAddr = runtime.realm.addrIdx - 1
+  let finalAddr =
+    if *targetStore:
+      if internal and *parentStmt:
+        runtime.index(&targetStore, internalIndex(&parentStmt))
+      else:
+        let existing =
+          runtime.index(&targetStore, defaultParams(fn), willHandleResolveFail = true)
+        if existing ==
+            runtime.index("undefined", defaultParams(fn), willHandleResolveFail = true):
+          runtime.ir.loadNull(runtime.realm.addrIdx)
+          runtime.markLocal(fn, &targetStore)
+          runtime.realm.addrIdx - 1
+        else:
+          existing
+    else:
+      assert *parentStmt
+      runtime.index(&exprStoreIn, internalIndex(&parentStmt))
 
-  runtime.ir.passArgument(addrOfCond)
-  runtime.ir.passArgument(runtime.index("true", defaultParams(fn)))
+  proc emitBranch(branch: Statement, temporName: string) =
+    case branch.kind
+    of AtomHolder:
+      let idx = runtime.loadIRAtom(branch.atom)
+      runtime.ir.copyAtom(idx, finalAddr)
+    of IdentHolder:
+      let idx = runtime.index(branch.ident, defaultParams(fn))
+      runtime.ir.copyAtom(idx, finalAddr)
+    of Call:
+      runtime.generateBytecode(fn, branch, ownerStmt = some(stmt), internal = true)
+      runtime.ir.readRegister(finalAddr, Register.ReturnValue)
+      runtime.ir.zeroRetval()
+    of FieldAccessHolder:
+      runtime.generateBytecode(
+        fn,
+        branch,
+        ownerStmt = some(stmt),
+        internal = true,
+        exprStoreIn = some(temporName),
+      )
+      let idx = runtime.index(temporName, internalIndex(stmt))
+      runtime.ir.copyAtom(idx, finalAddr)
+    of BinaryOp:
+      branch.binStoreIn = some(temporName)
+      runtime.ir.loadNull(runtime.realm.addrIdx)
+      runtime.markInternal(stmt, temporName)
+      runtime.generateBytecode(
+        fn,
+        branch,
+        parentStmt = some(stmt),
+        internal = true,
+        exprStoreIn = some(temporName),
+      )
+      let idx = runtime.index(temporName, internalIndex(stmt))
+      runtime.ir.copyAtom(idx, finalAddr)
+    of TernaryOp:
+      runtime.ir.loadNull(runtime.realm.addrIdx)
+      runtime.markInternal(stmt, temporName)
+      runtime.generateBytecode(
+        fn,
+        branch,
+        parentStmt = some(stmt),
+        internal = true,
+        exprStoreIn = some(temporName),
+      )
+      let idx = runtime.index(temporName, internalIndex(stmt))
+      runtime.ir.copyAtom(idx, finalAddr)
+    else:
+      unreachable
+
+  runtime.ir.passMultipleArguments(
+    @[addrOfCond, runtime.index("true", defaultParams(fn))]
+  )
   runtime.ir.call("BALI_EQUATE_ATOMS")
-  # If addrOfCond == true:
-  runtime.ir.jump(getCurrOpNum() + 2'u)
-  # If addrOfCond == false (or != true, which means false anyways):
-  runtime.ir.jump(getCurrOpNum() + 3'u)
 
-  runtime.ir.copyAtom(addrOfTrueExpr, finalAddr)
-  runtime.ir.jump(getCurrOpNum() + 2'u)
+  let
+    trueJump = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
+    falseJump = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
 
-  runtime.ir.copyAtom(addrOfFalseExpr, finalAddr)
+  let trueBranchStart = getCurrOpNum()
+  emitBranch(stmt.trueTernary, "true_term")
+  let skipFalseJump = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
+
+  let falseBranchStart = getCurrOpNum()
+  emitBranch(stmt.falseTernary, "false_term")
+  let endOfTernary = getCurrOpNum()
+
+  runtime.ir.overrideArgs(trueJump, @[stackInteger(trueBranchStart)])
+  runtime.ir.overrideArgs(falseJump, @[stackInteger(falseBranchStart)])
+  runtime.ir.overrideArgs(skipFalseJump, @[stackInteger(endOfTernary)])
 
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)

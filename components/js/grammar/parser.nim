@@ -171,7 +171,7 @@ proc parsePrimary(parser: Parser): Option[Statement] =
       let closeTok = parser.tokenizer.nextExceptWhitespace()
       if !closeTok or (&closeTok).kind != TokenKind.RParen:
         parser.error Other, "expected closing parenthesis"
-        return none(Statement)
+
       return inner
     else:
       parser.tokenizer.pos = savedPos
@@ -532,17 +532,48 @@ proc expectEqualsSign(
       "expected semicolon or equal sign after identifier, got " & $nextTok.kind
 
 proc parseTernaryOp(
+  parser: Parser,
+  ident: Option[string] = none(string),
+  atom: Option[MAtom] = none(MAtom),
+  condStmt: Option[Statement] = none(Statement),
+): Option[Statement]
+
+proc parseTernaryBranch(parser: Parser): Option[Statement] =
+  let res = parser.parseExpression(ignoreTerms = true)
+  if !res:
+    return none(Statement)
+
+  var node = &res
+  if not parser.tokenizer.eof:
+    let
+      savedPos = parser.tokenizer.pos
+      nextTok = parser.tokenizer.nextExceptWhitespace()
+
+    if *nextTok and (&nextTok).kind == TokenKind.Question:
+      let nested = parser.parseTernaryOp(condStmt = some(node))
+      if !nested:
+        return none(Statement)
+      node = &nested
+    else:
+      parser.tokenizer.pos = savedPos
+
+  some(node)
+
+proc parseTernaryOp(
     parser: Parser,
     ident: Option[string] = none(string),
     atom: Option[MAtom] = none(MAtom),
+    condStmt: Option[Statement] = none(Statement),
 ): Option[Statement] =
   assert(
-    *ident or *atom,
-    "BUG: Expected either initial `ident` or `atom` when parsing ternary operation, got neither?",
+    *ident or *atom or *condStmt,
+    "BUG: Expected initial `ident`, `atom`, or `condStmt` when parsing ternary operation, got none?",
   )
   var tern = Statement(kind: TernaryOp)
   tern.ternaryCond =
-    if *ident:
+    if *condStmt:
+      &condStmt
+    elif *ident:
       identHolder(&ident)
     elif *atom:
       atomHolder(&atom)
@@ -550,41 +581,19 @@ proc parseTernaryOp(
       unreachable
       atomHolder(stackNull())
 
-  # TODO: add support for expressions like x ? (a + b) : (c + d)
-  let trueExpr = parser.tokenizer.nextExceptWhitespace()
+  let trueBranch = parser.parseTernaryBranch()
+  if !trueBranch:
+    parser.error UnexpectedToken, "expected valid expression in ternary true branch"
+  tern.trueTernary = &trueBranch
 
-  if !trueExpr:
-    parser.error UnexpectedToken, "expected expression, got EOF instead"
-
-  let trueKind = (&trueExpr).kind
-  case trueKind
-  of TokenKind.Number, TokenKind.String:
-    tern.trueTernary = &parser.parseAtom(&trueExpr)
-  of TokenKind.Identifier:
-    tern.trueTernary = identHolder((&trueExpr).ident)
-  else:
-    parser.error UnexpectedToken,
-      "expected value or identifier, got " & $trueKind & " instead"
-
-  # expect `:` to separate the two ternaries
   let expectColon = parser.tokenizer.nextExceptWhitespace()
   if !expectColon or (&expectColon).kind != TokenKind.Colon:
     parser.error Other, "missing `:` in ternary expression"
 
-  let falseExpr = parser.tokenizer.nextExceptWhitespace()
-
-  if !falseExpr:
-    parser.error UnexpectedToken, "expected expression, got EOF instead"
-
-  let falseKind = (&falseExpr).kind
-  case falseKind
-  of TokenKind.Number, TokenKind.String:
-    tern.falseTernary = &parser.parseAtom(&falseExpr)
-  of TokenKind.Identifier:
-    tern.falseTernary = identHolder((&falseExpr).ident)
-  else:
-    parser.error UnexpectedToken,
-      "expected value or identifier, got " & $falseKind & " instead"
+  let falseBranch = parser.parseTernaryBranch()
+  if !falseBranch:
+    parser.error UnexpectedToken, "expected valid expression in ternary false branch"
+  tern.falseTernary = &falseBranch
 
   some(tern)
 
