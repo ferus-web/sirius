@@ -44,7 +44,7 @@ func tryParseInt*(
   if value[0] == '-':
     sign = -1'i64
     inc pos
-  elif value[1] == '+':
+  elif value[0] == '+':
     if not allowPositiveSign:
       return none(int64)
 
