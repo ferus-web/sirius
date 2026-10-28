@@ -222,11 +222,12 @@ proc defineConstructor*(runtime: Runtime, name: string, fn: NativeFunction) {.in
 
 template ret*(atom: JSValue) =
   ## Return an value back to JavaScript code.
+  let retval = atom
   runtime.vm.registers.retVal =
-    if atom == nil:
+    if retval == nil:
       some(undefined(runtime))
     else:
-      some(atom)
+      some(retval)
   return
 
 template dangerRet*(atom: sink MAtom) =
