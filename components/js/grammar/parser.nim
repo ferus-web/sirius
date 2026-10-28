@@ -93,158 +93,155 @@ func tokenToArithBinOp(token: TokenKind): BinaryOperation {.raises: [ValueError]
   else:
     raise newException(ValueError, "Invalid token for arithmetic operation: " & $token)
 
-proc parseExpression(
-    parser: Parser, storeIn: Option[string] = none(string), ignoreTerms: bool = false
-): Option[Statement] =
-  var term = Statement(kind: BinaryOp, binStoreIn: storeIn)
+func getOperatorPrecedence(kind: TokenKind): uint8 {.inline.} =
+  case kind
+  of TokenKind.Or:
+    1'u8
+  of TokenKind.And:
+    2'u8
+  of TokenKind.Equal, TokenKind.NotEqual, TokenKind.TrueEqual:
+    3'u8
+  of TokenKind.LessThan, TokenKind.LessEqual, TokenKind.GreaterThan,
+      TokenKind.GreaterEqual:
+    4'u8
+  of TokenKind.Add, TokenKind.Sub:
+    5'u8
+  of TokenKind.Mul, TokenKind.Div:
+    6'u8
+  else:
+    0'u8
 
-  template parseRHSExpression(otherRight: Statement) =
-    var copiedTok = parser.tokenizer
-    if not parser.tokenizer.eof() and
-        (let andSymbol = parser.tokenizer.nextExceptWhitespace(); *andSymbol):
-      case (&andSymbol).kind
-      of TokenKind.And, TokenKind.Or:
-        let expr = parser.parseExpression()
+func tokenToBinOp(kind: TokenKind): BinaryOperation =
+  case kind
+  of TokenKind.Add: BinaryOperation.Add
+  of TokenKind.Sub: BinaryOperation.Sub
+  of TokenKind.Mul: BinaryOperation.Mult
+  of TokenKind.Div: BinaryOperation.Div
+  of TokenKind.Equal: BinaryOperation.Equal
+  of TokenKind.TrueEqual: BinaryOperation.TrueEqual
+  of TokenKind.GreaterThan: BinaryOperation.GreaterThan
+  of TokenKind.GreaterEqual: BinaryOperation.GreaterOrEqual
+  of TokenKind.LessThan: BinaryOperation.LesserThan
+  of TokenKind.LessEqual: BinaryOperation.LesserOrEqual
+  of TokenKind.NotEqual: BinaryOperation.NotEqual
+  else: BinaryOperation.Invalid
 
-        if *expr:
-          term.binLeft = Statement(
-            kind: BinaryOp,
-            binStoreIn: storeIn,
-            binLeft: term.binLeft,
-            binRight: otherRight,
-          )
-          term.binRight = &expr
-          break
-        else:
-          parser.error Other, "expected expression"
-      else:
-        parser.tokenizer = ensureMove(copiedTok)
-
-  while not parser.tokenizer.eof and (term.binLeft == nil or term.binRight == nil):
+proc parsePrimary(parser: Parser): Option[Statement] =
+  while not parser.tokenizer.eof:
+    let savedPos = parser.tokenizer.pos
     let next = parser.tokenizer.next()
 
     case next.kind
+    of TokenKind.Whitespace, TokenKind.Comment:
+      if next.kind == TokenKind.Whitespace and next.isNewline():
+        parser.tokenizer.pos = savedPos
+        return none(Statement)
     of TokenKind.Number:
-      if term.binLeft == nil:
-        term.binLeft = &parser.parseAtom(next)
-      else:
-        term.binRight = &parser.parseAtom(next)
+      return parser.parseAtom(next)
     of TokenKind.String:
       if (let err = next.getError(); *err):
         parser.error Other, &err
-
-      if term.binLeft == nil:
-        term.binLeft = &parser.parseAtom(next)
-      else:
-        term.binRight = &parser.parseAtom(next)
+      return parser.parseAtom(next)
+    of TokenKind.True:
+      return some(atomHolder(stackBoolean(true)))
+    of TokenKind.False:
+      return some(atomHolder(stackBoolean(false)))
     of TokenKind.Identifier:
-      var bin =
+      var node =
         if next.ident.contains('.'):
           fieldHolder(createFieldAccess(next.ident.split('.')))
         else:
           identHolder(next.ident)
 
-      if (
-        not parser.tokenizer.eof and (
-          let nextTok = parser.tokenizer.peekExceptWhitespace()
-          *nextTok and (&nextTok).kind == TokenKind.LParen
-        )
-      ):
-        # Is this an actual identifier, or a function call?
-        discard parser.tokenizer.nextExceptWhitespace()
-        bin = &parser.parseFunctionCall(next.ident)
+      if not parser.tokenizer.eof:
+        let nextTok = parser.tokenizer.peekExceptWhitespace()
+        if *nextTok and (&nextTok).kind == TokenKind.LParen:
+          discard parser.tokenizer.nextExceptWhitespace()
+          let call = parser.parseFunctionCall(next.ident)
+          if *call:
+            node = &call
+          else:
+            return none(Statement)
 
-      if term.binLeft == nil:
-        term.binLeft = move(bin)
-      else:
-        term.binRight = move(bin)
-    of TokenKind.Add:
-      term.op = BinaryOperation.Add
-    of TokenKind.Sub:
-      term.op = BinaryOperation.Sub
-    of TokenKind.Mul:
-      term.op = BinaryOperation.Mult
-    of TokenKind.Div:
-      term.op = BinaryOperation.Div
-    of TokenKind.Equal:
-      term.op = BinaryOperation.Equal
-    of TokenKind.TrueEqual:
-      term.op = BinaryOperation.TrueEqual
-    of TokenKind.GreaterThan:
-      term.op = BinaryOperation.GreaterThan
-    of TokenKind.GreaterEqual:
-      term.op = BinaryOperation.GreaterOrEqual
-    of TokenKind.LessThan:
-      term.op = BinaryOperation.LesserThan
-    of TokenKind.LessEqual:
-      term.op = BinaryOperation.LesserOrEqual
-    of TokenKind.NotEqual:
-      term.op = BinaryOperation.NotEqual
-    of TokenKind.Whitespace:
-      if next.isNewline():
-        break
+      return some(node)
     of TokenKind.LParen:
-      if term.op == BinaryOperation.Invalid:
-        return
+      let inner = parser.parseExpression(ignoreTerms = true)
+      if !inner:
+        return none(Statement)
+      let closeTok = parser.tokenizer.nextExceptWhitespace()
+      if !closeTok or (&closeTok).kind != TokenKind.RParen:
+        parser.error Other, "expected closing parenthesis"
+        return none(Statement)
+      return inner
+    else:
+      parser.tokenizer.pos = savedPos
+      return none(Statement)
 
-      let expr = parser.parseExpression()
-      if !expr:
-        return
-        # parser.error Other, "failed to parse expression"
+  return none(Statement)
 
-      term.binRight = &expr
-    of TokenKind.RParen:
-      parser.tokenizer.pos -= 1
+proc parseBinaryExpr(parser: Parser, minPrec: uint8): Option[Statement] =
+  var lhsOpt = parser.parsePrimary()
+  if !lhsOpt:
+    return none(Statement)
+
+  var lhs = &lhsOpt
+
+  while not parser.tokenizer.eof:
+    let savedPos = parser.tokenizer.pos
+    var hitNewline = false
+    var opTokOpt = none(Token)
+
+    while not parser.tokenizer.eof:
+      let t = parser.tokenizer.next()
+      if t.kind == TokenKind.Whitespace:
+        if t.isNewline():
+          hitNewline = true
+          break
+      elif t.kind == TokenKind.Comment:
+        discard
+      else:
+        opTokOpt = some(t)
+        break
+
+    if hitNewline or !opTokOpt:
+      parser.tokenizer.pos = savedPos
       break
-    of TokenKind.True:
-      if term.binLeft == nil:
-        term.binLeft = atomHolder(stackBoolean(true))
-      else:
-        parseRHSExpression(atomHolder(stackBoolean(true)))
-        term.binRight = atomHolder(stackBoolean(true))
-    of TokenKind.False:
-      if term.binLeft == nil:
-        term.binLeft = atomHolder(stackBoolean(false))
-      else:
-        term.binRight = atomHolder(stackBoolean(false))
-    of TokenKind.Comment:
-      discard
-    else:
-      return
 
-  #[ if term.binRight == nil:
-    term.op = BinaryOperation.Equal
-    term.binRight = atomHolder(boolean(true)) # TODO: is this the right thing to do in this case? ]#
+    let opTok = &opTokOpt
+    let prec = getOperatorPrecedence(opTok.kind)
+    if prec < minPrec:
+      parser.tokenizer.pos = savedPos
+      break
 
-  if not parser.tokenizer.eof:
-    # Look ahead for any remaining bits
-    let copied = parser.tokenizer.pos
-    let tok = parser.tokenizer.nextExceptWhitespace()
+    let rhsOpt = parser.parseBinaryExpr(prec + 1)
+    if !rhsOpt:
+      parser.error Other, "expected valid expression after " & $opTok.kind
+      return none(Statement)
 
-    # TODO: Handle parentheses too
-    if *tok and
-        (&tok).kind in {TokenKind.Add, TokenKind.Sub, TokenKind.Div, TokenKind.Mul}:
-      let expr = parser.parseExpression(ignoreTerms = true)
-      if !expr:
-        parser.error Other, "expected valid expression after " & $(&tok).kind
+    lhs = Statement(
+      kind: BinaryOp, op: tokenToBinOp(opTok.kind), binLeft: lhs, binRight: &rhsOpt
+    )
 
-      term.binRight = Statement(
-        kind: BinaryOp,
-        op: tokenToArithBinOp((&tok).kind),
-        binLeft: term.binRight,
-        binRight: &expr,
-      )
-    else:
-      parser.tokenizer.pos = copied
+  return some(lhs)
+
+proc parseExpression(
+    parser: Parser, storeIn: Option[string] = none(string), ignoreTerms: bool = false
+): Option[Statement] =
+  let res = parser.parseBinaryExpr(1'u8)
+  if !res:
+    return none(Statement)
+
+  var node = &res
+  if node.kind == BinaryOp:
+    node.binStoreIn = storeIn
 
   if ignoreTerms:
-    return some term
+    return some(node)
 
-  if term.binLeft != nil and term.binRight != nil:
-    return some term
-  else:
-    return
-    #parser.error Other, "expected left term and right term to complete expression"
+  if node.kind == BinaryOp and node.binLeft != nil and node.binRight != nil:
+    return some(node)
+
+  return none(Statement)
 
 proc parseConstructor(parser: Parser): Option[Statement] =
   let next = parser.tokenizer.nextExceptWhitespace()

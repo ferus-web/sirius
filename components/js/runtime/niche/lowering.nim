@@ -126,9 +126,14 @@ proc expand*(
           exprStoreIn = some("left_term"),
         )
       of StatementKind.BinaryOp:
+        stmt.binLeft.binStoreIn = some("left_term")
         runtime.markInternal(stmt, "left_term")
         runtime.generateBytecode(
-          fn, stmt.binLeft, parentStmt = some(stmt), internal = true
+          fn,
+          stmt.binLeft,
+          parentStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("left_term"),
         )
       else:
         unreachable
@@ -158,9 +163,14 @@ proc expand*(
           exprStoreIn = some("right_term"),
         )
       of StatementKind.BinaryOp:
+        stmt.binRight.binStoreIn = some("right_term")
         runtime.markInternal(stmt, "right_term")
         runtime.generateBytecode(
-          fn, stmt.binRight, parentStmt = some(stmt), internal = true
+          fn,
+          stmt.binRight,
+          parentStmt = some(stmt),
+          internal = true,
+          exprStoreIn = some("right_term"),
         )
       else:
         unreachable
@@ -588,7 +598,6 @@ proc genBinaryOp(
     parentStmt: Option[Statement] = none(Statement),
     exprStoreIn: Option[string] = none(string),
 ) =
-  # info "emitter: emitting IR for binary operation"
   runtime.expand(fn, stmt, internal)
 
   let
@@ -598,7 +607,8 @@ proc genBinaryOp(
   var
     leftIdx =
       if leftTerm.kind in {
-        StatementKind.AtomHolder, StatementKind.Call, StatementKind.FieldAccessHolder
+        StatementKind.AtomHolder, StatementKind.Call, StatementKind.FieldAccessHolder,
+        StatementKind.BinaryOp,
       }:
         runtime.index("left_term", internalIndex(stmt))
       elif leftTerm.kind == IdentHolder:
@@ -608,7 +618,8 @@ proc genBinaryOp(
 
     rightIdx =
       if rightTerm.kind in {
-        StatementKind.AtomHolder, StatementKind.Call, StatementKind.FieldAccessHolder
+        StatementKind.AtomHolder, StatementKind.Call, StatementKind.FieldAccessHolder,
+        StatementKind.BinaryOp,
       }:
         runtime.index("right_term", internalIndex(stmt))
       elif rightTerm.kind == IdentHolder:
@@ -616,15 +627,29 @@ proc genBinaryOp(
       else:
         0
 
-  if not internal and *stmt.binStoreIn and leftTerm.kind == IdentHolder and
-      leftTerm.ident != &stmt.binStoreIn:
-    # In a case like
-    # <z> = <x> + <y>
-    # We can't just go around mutating <x>, as that'd break semantic correctness.
-    # As such, we need to copy <x> to <z> and rewrite the LHS address to <z>'s address
-    runtime.markLocal(fn, &stmt.binStoreIn)
-    runtime.ir.copyAtom(leftIdx, runtime.realm.addrIdx - 1)
-    leftIdx = runtime.realm.addrIdx - 1
+  if leftTerm.kind == IdentHolder:
+    if not internal and *stmt.binStoreIn and leftTerm.ident != &stmt.binStoreIn:
+      runtime.markLocal(fn, &stmt.binStoreIn)
+      runtime.ir.copyAtom(leftIdx, runtime.realm.addrIdx - 1)
+      leftIdx = runtime.realm.addrIdx - 1
+    elif internal or not (*stmt.binStoreIn):
+      runtime.markInternal(stmt, "left_term")
+      let tempLeftIdx = runtime.realm.addrIdx - 1
+      runtime.ir.copyAtom(leftIdx, tempLeftIdx)
+      leftIdx = tempLeftIdx
+
+  let boolTargetIdx =
+    if leftTerm.kind in {StatementKind.AtomHolder, StatementKind.BinaryOp}:
+      leftIdx
+    elif *stmt.binStoreIn:
+      if internal and *parentStmt:
+        runtime.index(&stmt.binStoreIn, internalIndex(&parentStmt))
+      else:
+        runtime.index(&stmt.binStoreIn, defaultParams(fn))
+    elif *exprStoreIn and *parentStmt:
+      runtime.index(&exprStoreIn, internalIndex(&parentStmt))
+    else:
+      leftIdx
 
   case stmt.op
   of BinaryOperation.Add:
@@ -636,7 +661,6 @@ proc genBinaryOp(
   of BinaryOperation.Div:
     runtime.ir.divide(leftIdx, rightIdx)
   of BinaryOperation.Equal, BinaryOperation.TrueEqual:
-    # runtime.ir.equate(leftIdx, rightIdx)
     runtime.ir.passMultipleArguments(@[leftIdx, rightIdx])
     runtime.ir.call(
       if stmt.op == BinaryOperation.Equal:
@@ -645,78 +669,55 @@ proc genBinaryOp(
         "BALI_EQUATE_ATOMS_STRICT"
     )
     let
-      equalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1 # left == right branch
-      unequalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1 # left != right branch
+      equalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
+      unequalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
 
-    # left == right branch
-    let equalBranch =
-      if leftTerm.kind == AtomHolder:
-        runtime.ir.loadBool(leftIdx, true)
-      else:
-        echo stmt.binStoreIn
-        runtime.ir.loadBool(
-          runtime.index(&stmt.binStoreIn, internalIndex(&parentStmt)), true
-        )
+    let equalBranch = runtime.ir.loadBool(boolTargetIdx, true)
     runtime.ir.overrideArgs(equalJmp, @[stackInteger(equalBranch)])
     runtime.ir.jump(equalBranch + 3)
 
-    # left != right branch
-    let unequalBranch =
-      if leftTerm.kind == AtomHolder:
-        runtime.ir.loadBool(leftIdx, false)
-      else:
-        runtime.ir.loadBool(
-          runtime.index(&stmt.binStoreIn, internalIndex(&parentStmt)), false
-        )
-
+    let unequalBranch = runtime.ir.loadBool(boolTargetIdx, false)
     runtime.ir.overrideArgs(unequalJmp, @[stackInteger(unequalBranch)])
+    leftIdx = boolTargetIdx
   of BinaryOperation.NotEqual:
     runtime.ir.passMultipleArguments(@[leftIdx, rightIdx])
     runtime.ir.call("BALI_EQUATE_ATOMS")
-    # FIXME: really weird bug in mirage's IR generator. wtf?
-    let equalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1 # left == right branch
-    let unequalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
-      # left != right branch
+    let
+      equalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
+      unequalJmp = runtime.ir.addOp(IROperation(opcode: Jump)) - 1
 
-    # left != right branch: true
-    let unequalBranch =
-      if leftTerm.kind == AtomHolder:
-        runtime.ir.loadBool(leftIdx, true)
-      else:
-        runtime.ir.loadBool(runtime.index(&stmt.binStoreIn, defaultParams(fn)), true)
+    let unequalBranch = runtime.ir.loadBool(boolTargetIdx, true)
     runtime.ir.overrideArgs(unequalJmp, @[stackInteger(unequalBranch)])
     runtime.ir.jump(unequalBranch + 3)
 
-    # left == right branch: false
-    let equalBranch =
-      if leftTerm.kind == AtomHolder:
-        runtime.ir.loadBool(leftIdx, false)
-      else:
-        runtime.ir.loadBool(runtime.index(&stmt.binStoreIn, defaultParams(fn)), false)
+    let equalBranch = runtime.ir.loadBool(boolTargetIdx, false)
     runtime.ir.overrideArgs(equalJmp, @[stackInteger(equalBranch)])
+    leftIdx = boolTargetIdx
   of BinaryOperation.GreaterThan:
     runtime.ir.greaterThan(leftIdx, rightIdx)
-  of BinaryOperation.LesserThan:
+  of BinaryOperation.GreaterOrEqual:
     runtime.ir.greaterThanEqual(leftIdx, rightIdx)
+  of BinaryOperation.LesserThan:
+    runtime.ir.lesserThan(leftIdx, rightIdx)
   of BinaryOperation.LesserOrEqual:
     runtime.ir.lesserThanEqual(leftIdx, rightIdx)
   else:
-    discard # warn "emitter: unimplemented binary operation: " & $stmt.op
+    discard
 
   if *stmt.binStoreIn:
     let address =
-      if internal:
+      if internal and *parentStmt:
         runtime.index(&stmt.binStoreIn, internalIndex(&parentStmt))
       else:
         runtime.index(&stmt.binStoreIn, defaultParams(fn))
 
-    # runtime.ir.loadNull(address)
-    runtime.ir.copyAtom(leftIdx, address)
+    if leftIdx != address:
+      runtime.ir.copyAtom(leftIdx, address)
   elif *exprStoreIn:
     assert *parentStmt
-    runtime.ir.copyAtom(
-      leftIdx, runtime.index(&exprStoreIn, internalIndex(&parentStmt))
-    )
+    let address = runtime.index(&exprStoreIn, internalIndex(&parentStmt))
+    if leftIdx != address:
+      runtime.ir.copyAtom(leftIdx, address)
 
   runtime.vm.sourceMap[fn.name][runtime.ir.cachedIndex - 1] =
     (message: stmt.source, line: stmt.line)
