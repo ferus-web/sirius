@@ -27,6 +27,20 @@ func body*(doc: dom.Document): Option[dom.Element] =
     if child of dom.Element and Element(child).tagType() in {TAG_BODY, TAG_FRAMESET}:
       return some(Element(child))
 
+func head*(doc: dom.DOcument): Option[dom.Element] =
+  ## https://html.spec.whatwg.org/#the-head-element-2
+  ## The head element of a document is the first head element that is a child of the html element, if there is one, or null otherwise.
+  ##
+  ## **Note**: This does not perform any caching.
+  let htmlElement = doc.html
+
+  if !htmlElement:
+    return none(dom.Element)
+
+  for child in (&htmlElement).childList:
+    if child of dom.Element and Element(child).tagType() == TAG_HEAD:
+      return some(Element(child))
+
 func getAttr*(
     element: dom.Element, factory: dom.AtomFactory, attribKey: string
 ): Option[string] {.inline.} =

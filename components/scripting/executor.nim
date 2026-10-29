@@ -15,7 +15,7 @@ import
   components/scripting/[url, timeouts],
   components/scripting/html/
     [htmldocument, navigator, performance, window, htmlelement, message_event],
-  components/scripting/html/element/htmlinputelement,
+  components/scripting/html/element/[head, input],
   components/scripting/websocket/[close_event, websocket],
   components/scripting/clipboard/[clipboard]
 import components/aux/pretty
@@ -57,7 +57,8 @@ proc registerWebBindings(
 
   let doc = document.generateGlobal(elem.script.rt, elem.script.document)
 
-  htmlinputelement.generateBindings(elem.script.rt)
+  head.generateBindings(elem.script.rt)
+  input.generateBindings(elem.script.rt)
 
   timeouts.generateBindings(elem.script.rt)
 

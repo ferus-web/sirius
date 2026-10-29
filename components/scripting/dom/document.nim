@@ -7,7 +7,7 @@ import
   components/dom/[dom, tags],
   components/scripting/dom/node,
   components/html/[parser, dom_utils],
-  components/scripting/html/element/[htmlinputelement],
+  components/scripting/html/element/[head, input],
   components/scripting/html/htmlelement
 import pkg/[chronicles, shakar]
 
@@ -28,6 +28,8 @@ proc bindJSElement*(rt: Runtime, elem: dom.Element): JSValue =
 
   if elem of tags.HTMLInputElement:
     toJSHTMLInputElement(rt, tags.HTMLInputElement(elem))
+  elif elem of tags.HTMLHeadElement:
+    toJSHTMLHeadElement(rt, tags.HTMLHeadElement(elem))
   else:
     toHTMLElement(rt, elem)
 

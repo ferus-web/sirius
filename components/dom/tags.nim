@@ -35,3 +35,4 @@ type
     action*: Option[string]
 
   HTMLStyleElement* = ref object of dom.Element
+  HTMLHeadElement* = ref object of dom.Element

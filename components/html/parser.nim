@@ -121,6 +121,8 @@ proc createElement*(
         HTMLFormElement()
       of TAG_STYLE:
         HTMLStyleElement()
+      of TAG_HEAD:
+        HTMLHeadElement()
       else:
         Element()
     else:

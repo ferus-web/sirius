@@ -75,8 +75,17 @@ proc bodySetter(rt: Runtime, this: JSValue, value: JSValue) =
   warn "IMPLEMENTME: Document.body setter"
 
 proc headGetter(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: Document.head getter"
-  undefined(rt)
+  ## https://html.spec.whatwg.org/#dom-document-head
+
+  # The head attribute, on getting, must return the head element of the document (a head element or null).
+  let
+    doc = &this.getPrivateObject(dom.Document)
+    headElement = doc.head
+
+  if *headElement:
+    bindJSElement(rt, &headElement)
+  else:
+    null(rt)
 
 proc imagesGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: Document.images getter"
