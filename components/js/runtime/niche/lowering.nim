@@ -1054,9 +1054,8 @@ proc genWaste(runtime: Runtime, fn: Function, stmt: Statement) =
       fn,
       call(
         callFunction(
-          "console",
-          FieldAccess(identifier: "console", next: FieldAccess(identifier: "log")),
-        ), # FIXME: why do we have to specify console twice? :/
+          FieldAccess(identifier: "console", next: FieldAccess(identifier: "log"))
+        ),
         ensureMove(args),
         expectsReturnVal = false,
       ),

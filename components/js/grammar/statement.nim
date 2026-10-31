@@ -455,14 +455,32 @@ func call*(
     expectsReturnVal: expectsReturnVal,
   )
 
+func call*(
+    fn: FunctionCall,
+    arguments: Option[PositionedArguments],
+    mangle: bool = true,
+    expectsReturnVal: bool = false,
+): Statement =
+  Statement(
+    kind: Call,
+    fn: fn,
+    arguments:
+      if *arguments:
+        &arguments
+      else:
+        default(PositionedArguments),
+    mangle: mangle,
+    expectsReturnVal: expectsReturnVal,
+  )
+
 func callFunction*(name: string): FunctionCall =
   FunctionCall(function: name)
 
 func callFunction*(name: string, ident: string): FunctionCall =
   FunctionCall(function: name, ident: some(ident))
 
-func callFunction*(name: string, field: FieldAccess): FunctionCall =
-  FunctionCall(function: name, field: some field)
+func callFunction*(field: FieldAccess): FunctionCall =
+  FunctionCall(field: some field)
 
 func compoundAssignment*(
     op: BinaryOperation, target: string, compounder: MAtom | Statement
