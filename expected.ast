@@ -1,0 +1,151 @@
+ast: AST(
+  currentScope: 0,
+  scopes: @[
+    Scope(
+      prev: Option[statement.Scope](val: nil, has: false),
+      children: @[
+        Scope(
+          prev: Option[statement.Scope](val: ..., has: false),
+          children: @[],
+          stmts: @[
+            Statement(
+              line: 1,
+              col: 97,
+              source: "",
+              storeIn: Option[system.string](val: "", has: false),
+              kind: Declaration,
+              declIdent: "x",
+              declValue: Statement(
+                line: 1,
+                col: 1,
+                source: "",
+                storeIn: Option[system.string](val: "", has: false),
+                kind: AtomHolder,
+                atom: MAtom(kind: String, str: "this demonstrates a segment of the Web Console API as defined by the WhatWG standard!")
+              )
+            ),
+            Statement(
+              line: 2,
+              col: 16,
+              source: "",
+              storeIn: Option[system.string](val: "", has: false),
+              kind: Call,
+              fn: FunctionCall(
+                field: Option[statement.FieldAccess](
+                  val: FieldAccess(
+                    prev: nil,
+                    next: FieldAccess(prev: ..., next: nil, identifier: "log"),
+                    identifier: "console"
+                  )
+                ),
+                ident: Option[system.string](val: "", has: false),
+                function: "log"
+              ),
+              arguments: @[
+                CallArg(kind: cakIdent, ident: "x")
+              ],
+              mangle: true,
+              expectsReturnVal: false
+            ),
+            Statement(
+              line: 3,
+              col: 17,
+              source: "",
+              storeIn: Option[system.string](val: "", has: false),
+              kind: Call,
+              fn: FunctionCall(
+                field: Option[statement.FieldAccess](
+                  val: FieldAccess(
+                    prev: nil,
+                    next: FieldAccess(prev: ..., next: nil, identifier: "warn"),
+                    identifier: "console"
+                  )
+                ),
+                ident: Option[system.string](val: "", has: false),
+                function: "warn"
+              ),
+              arguments: @[
+                CallArg(kind: cakIdent, ident: "x")
+              ],
+              mangle: true,
+              expectsReturnVal: false
+            ),
+            Statement(
+              line: 4,
+              col: 18,
+              source: "",
+              storeIn: Option[system.string](val: "", has: false),
+              kind: Call,
+              fn: FunctionCall(
+                field: Option[statement.FieldAccess](
+                  val: FieldAccess(
+                    prev: nil,
+                    next: FieldAccess(prev: ..., next: nil, identifier: "debug"),
+                    identifier: "console"
+                  )
+                ),
+                ident: Option[system.string](val: "", has: false),
+                function: "debug"
+              ),
+              arguments: @[
+                CallArg(kind: cakIdent, ident: "x")
+              ],
+              mangle: true,
+              expectsReturnVal: false
+            ),
+            Statement(
+              line: 5,
+              col: 18,
+              source: "",
+              storeIn: Option[system.string](val: "", has: false),
+              kind: Call,
+              fn: FunctionCall(
+                field: Option[statement.FieldAccess](
+                  val: FieldAccess(
+                    prev: nil,
+                    next: FieldAccess(prev: ..., next: nil, identifier: "error"),
+                    identifier: "console"
+                  )
+                ),
+                ident: Option[system.string](val: "", has: false),
+                function: "error"
+              ),
+              arguments: @[
+                CallArg(kind: cakIdent, ident: "x")
+              ],
+              mangle: true,
+              expectsReturnVal: false
+            )
+          ]
+        )
+      ],
+      stmts: @[
+        Statement(
+          line: 8,
+          col: 6,
+          source: "main()",
+          storeIn: Option[system.string](val: "", has: false),
+          kind: Call,
+          fn: FunctionCall(
+            field: Option[statement.FieldAccess](val: nil),
+            ident: Option[system.string](val: "", has: false),
+            function: "main"
+          ),
+          arguments: @[],
+          mangle: true,
+          expectsReturnVal: false
+        )
+      ]
+    )
+  ],
+  errors: @[],
+  doNotEvaluate: true,
+  test262: Test262Opts(
+    description: "",
+    esid: "",
+    features: @[],
+    flags: @[],
+    negative: Test262Negativity(phase: "", type: ""),
+    info: ""
+  )
+)

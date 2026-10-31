@@ -65,18 +65,19 @@ proc parseFunctionCall(parser: Parser, name: string): Option[Statement] =
   if name == "$DONOTEVALUATE":
     parser.ast.doNotEvaluate = true
 
-  if name.contains('.'):
-    let access = createFieldAccess(name.split('.'))
-    var name: string
-    var curr = access
+  some(call(name.callFunction, arguments))
 
-    while curr.next != nil:
-      curr = curr.next
+proc parsePostfixCall(parser: Parser, callTokens: seq[Token]): Option[Statement] =
+  let
+    # Now, construct the FieldAccess
+    accesses = callTokens
+      .filterIt(it.kind == TokenKind.Identifier)
+      .mapIt(it.ident)
+      .createFieldAccess()
 
-    name = curr.identifier
-    some(call(callFunction(name, access), arguments))
-  else:
-    some(call(name.callFunction, arguments))
+    args = parser.parseArguments()
+
+  some(call(callFunction(accesses), args))
 
 proc parseAtom(parser: Parser, token: Token): Option[Statement]
 
@@ -661,6 +662,10 @@ proc parseDeclaration(
     declareFn: Option[Function]
     keyValuePair: Option[Table[Statement, Statement]]
 
+    postfixMode = false
+    postfixTokens = newSeqOfCap[Token](1)
+      # NOTE: Again, I wonder if this should be preallocated properly or not.
+
   while not parser.tokenizer.eof and !vIdent and !atom and !toCall:
     let tok = parser.tokenizer.next()
 
@@ -672,12 +677,16 @@ proc parseDeclaration(
       atom = some(stackStr tok.str)
       break
     of TokenKind.Identifier:
+      postfixTokens &= tok
       if not parser.tokenizer.eof():
         let next = parser.tokenizer.nextExceptWhitespace()
         case (&next).kind
         of TokenKind.LParen:
           # this is a function call!
-          toCall = parser.parseFunctionCall(tok.ident)
+          if postfixMode:
+            toCall = parser.parsePostfixCall(move(postfixTokens))
+          else:
+            toCall = parser.parseFunctionCall(tok.ident)
           break
         of TokenKind.LBracket:
           # array access, probably
@@ -686,12 +695,10 @@ proc parseDeclaration(
         of TokenKind.Question:
           ternary = parser.parseTernaryOp(ident = some(tok.ident))
           break
+        of TokenKind.Dot:
+          postfixTokens &= &next
+          postfixMode = true
         else:
-          if tok.ident.contains('.'):
-            vFieldAccess = some(createFieldAccess(tok.ident.split('.')))
-          else:
-            vIdent = some(tok.ident)
-
           break
     of TokenKind.Number:
       if *tok.intVal:
@@ -1614,7 +1621,9 @@ proc parseStatement(parser: Parser): Option[Statement] =
 
     parser.ast.scopes[parser.ast.currentScope] = ensureMove(scope)
   of TokenKind.Identifier:
-    if not parser.tokenizer.eof():
+    var postfixTokens = @[token] # NOTE: Should we preallocate this?
+
+    while not parser.tokenizer.eof:
       let next = parser.tokenizer.nextExceptWhitespace()
 
       if !next:
@@ -1631,7 +1640,11 @@ proc parseStatement(parser: Parser): Option[Statement] =
 
       case (&next).kind
       of TokenKind.LParen:
-        return parser.parseFunctionCall(token.ident) #some call(token.ident, arguments)
+        if postfixTokens.len > 1:
+          return parser.parsePostfixCall(move(postfixTokens))
+        else:
+          return
+            parser.parseFunctionCall(token.ident) #some call(token.ident, arguments)
       of TokenKind.EqualSign:
         return parser.parseReassignment(token.ident)
       of TokenKind.Increment:
@@ -1642,12 +1655,14 @@ proc parseStatement(parser: Parser): Option[Statement] =
         return parser.parseCompoundAssignment(token.ident, &next)
       of TokenKind.LBracket:
         return parser.parseIndexes(token.ident)
+      of TokenKind.Dot, TokenKind.Identifier:
+        postfixTokens &= &next
       else:
         parser.error UnexpectedToken,
           "expected left parenthesis, increment, decrement or equal sign, got " &
             $(&next).kind
-    else:
-      return waste(token.ident).some()
+
+    return waste(token.ident).some()
 
     # parser.tokenizer.pos = prevPos
     # parser.tokenizer.location = prevLoc

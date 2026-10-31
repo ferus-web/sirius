@@ -255,7 +255,7 @@ func consumeIdentifier*(tokenizer: var Tokenizer): Token =
     let c = &tokenizer.charAt()
 
     case c
-    of {'a' .. 'z'}, {'A' .. 'Z'}, '_', '.', '$', {'0' .. '9'}:
+    of {'a' .. 'z'}, {'A' .. 'Z'}, '_', '$', {'0' .. '9'}:
       ident &= c
       tokenizer.advance()
     of '\\':
