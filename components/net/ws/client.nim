@@ -1,7 +1,5 @@
 ## WebSocket client implementation
 ## 
-## For the original license, check components/net/ws/WHISKY-LICENSE.md
-## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[options, strutils, strformat, streams]
