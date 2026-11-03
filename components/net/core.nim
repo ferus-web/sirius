@@ -2,7 +2,7 @@
 ##
 ## Largely derived from relay: https://github.com/planetis-m/relay
 
-import std/[deques, locks, options, streams, tables]
+import std/[deques, locks, options, streams, strformat, tables]
 import
   components/impure/libcurl,
   components/net/[http_headers, curl_wrapper, mime],
@@ -66,6 +66,8 @@ type
     writerKind*: BodyWriterKind
 
   RequestResult* = tuple[response: Response, error: TransportError]
+    # NOTE: Could this be turned into a `Result[Response, TransportError]`?
+    # That'd be really clean.
   RequestResults* = seq[RequestResult]
 
   RequestBatch* = object
@@ -197,9 +199,11 @@ proc storeCompletionLocked(client: NetworkClient, item: sink RequestResult) =
   signal(client.resultCond)
 
 proc configureEasy(client: NetworkClient, request: RequestWrap, easy: var Easy) =
-  easy.reset()
+  &easy.reset()
+
   var finalUrl = newRawUrl()
-  finalUrl.set(CURLUPart.Scheme, request.url.scheme)
+  &finalUrl.set(CURLUPart.Scheme, request.url.scheme)
+
   let
     user = request.url.username
     password = request.url.password
@@ -208,48 +212,51 @@ proc configureEasy(client: NetworkClient, request: RequestWrap, easy: var Easy) 
     path = request.url.pathname
     query = request.url.query
 
-  finalUrl.set(CURLUPart.User, user)
-  finalUrl.set(CURLUPart.Password, password)
+  if user.len > 0:
+    &finalUrl.set(CURLUPart.User, user)
+  if password.len > 0:
+    &finalUrl.set(CURLUPart.Password, password)
 
   if *host:
-    finalUrl.set(CURLUPart.Host, &host)
+    &finalUrl.set(CURLUPart.Host, &host)
   if *port:
-    finalUrl.set(CURLUPart.Port, $(&port))
+    &finalUrl.set(CURLUPart.Port, $(&port))
 
-  finalUrl.set(CURLUPart.Path, path)
+  &finalUrl.set(CURLUPart.Path, path)
 
   if *query:
-    finalUrl.set(CURLUPart.Query, &query)
+    &finalUrl.set(CURLUPart.Query, &query)
 
   request.curlUrl = ensureMove(finalUrl)
-  easy.setUrl(request.curlUrl)
-  easy.setHttpVersion2Tls()
+  &easy.setUrl(request.curlUrl)
+  &easy.setHttpVersion2Tls()
 
-  easy.setMethod($request.verb)
-  easy.setNoBody(request.verb == HttpVerb.Head)
+  &easy.setMethod($request.verb)
+  &easy.setNoBody(request.verb == HttpVerb.Head)
   if request.body.len > 0:
-    easy.setRequestBody(request.body)
+    &easy.setRequestBody(request.body)
 
   var headerList: Slist
   for header in request.headers:
-    headerList.addHeader(header.name & ": " & header.value)
+    &headerList.addHeader(header.name & ": " & header.value)
   request.curlHeaders = headerList
-  easy.setHeaders(request.curlHeaders)
+  &easy.setHeaders(request.curlHeaders)
 
-  easy.setWriteCallback(bodyWriteCb, cast[pointer](request.responseBody))
-  easy.setHeaderCallback(headerWriteCb, cast[pointer](addr request.responseHeadersRaw))
-  easy.setTimeoutMs(
+  &easy.setWriteCallback(bodyWriteCb, cast[pointer](request.responseBody))
+  &easy.setHeaderCallback(headerWriteCb, cast[pointer](addr request.responseHeadersRaw))
+  &easy.setTimeoutMs(
     if request.timeoutMs > 0: request.timeoutMs else: client.defaultTimeoutMs
   )
-  easy.setConnectTimeoutMs(DefaultConnectTimeoutMs)
-  easy.setSslVerify(true, true)
-  easy.setAcceptEncoding("gzip, deflate")
-  easy.setFollowRedirects(true, client.maxRedirects)
-  easy.setUserAgent(client.userAgent)
+  &easy.setConnectTimeoutMs(DefaultConnectTimeoutMs)
+  &easy.setSslVerify(true, true)
+  &easy.setAcceptEncoding("gzip, deflate")
+  &easy.setFollowRedirects(true, client.maxRedirects)
+  &easy.setUserAgent(client.userAgent)
 
 proc completionFromCurl(
     request: RequestWrap, curlCode: CURLcode, removeError: sink string
 ): RequestResult =
+  # TODO: Rewrite this to stop (ab)using results.
   result.response = newResponse(request)
   if removeError.len > 0:
     result.error = newTransportError(TransportErrorKind.Internal, removeError)
@@ -258,17 +265,34 @@ proc completionFromCurl(
       classifyTransportError(curlCode), $curl_easy_strerror(curlCode), int(curlCode)
     )
   else:
-    try:
-      result.response.code = request.easy.responseCode()
-      let effective = request.easy.effectiveUrl()
-      if effective.len > 0 and (let parsed = tryParseURL(effective); *parsed):
-        result.response.url = some(&parsed)
-      result.response.headers = parseHeaders(request.responseHeadersRaw)
-      result.response.body = move request.responseBody
-      result.error = noTransportError()
-    except CatchableError:
-      result.error =
-        newTransportError(TransportErrorKind.Internal, getCurrentExceptionMsg())
+    let respCode = request.easy.responseCode()
+    if *respCode:
+      result.response.code = &respCode
+    else:
+      result.error = newTransportError(
+        TransportErrorKind.Internal, &"Failed to get response code: {respCode.error()}"
+      )
+      return
+
+    let effective = request.easy.effectiveUrl()
+    if !effective:
+      result.error = newTransportError(
+        TransportErrorKind.Internal, &"Failed to get response URL: {effective.error()}"
+      )
+      return
+
+    let parsed = tryParseURL(&effective)
+    if *parsed:
+      result.response.url = some(&parsed)
+    else:
+      result.error = newTransportError(
+        TransportErrorKind.Internal, &"Failed to parse response URL: {$parsed.error()}"
+      )
+      return
+
+    result.response.headers = parseHeaders(request.responseHeadersRaw)
+    result.response.body = move(request.responseBody)
+    result.error = noTransportError()
 
 proc flushCanceledLocked(client: NetworkClient, message: string) =
   while client.queue.len > 0:
@@ -278,10 +302,7 @@ proc flushCanceledLocked(client: NetworkClient, message: string) =
     )
 
   for req in values(client.inFlight):
-    try:
-      client.multi.removeHandle(req.easy)
-    except CatchableError:
-      discard
+    discard client.multi.removeHandle(req.easy)
 
     if not req.adhoc:
       client.availableEasy.add(move req.easy)
@@ -325,12 +346,10 @@ proc processDoneMessages(client: NetworkClient) =
       release(client.lock)
 
       if request != nil:
-        var removeError = ""
-        try:
-          if not request.adhoc:
-            client.multi.removeHandle(msg)
-        except CatchableError:
-          removeError = getCurrentExceptionMsg()
+        var removeError: string
+        if not request.adhoc:
+          if (let res = client.multi.removeHandle(msg); !res):
+            removeError = res.error()
 
         let completion = completionFromCurl(request, msg.data.result, removeError)
         acquire(client.lock)
@@ -357,27 +376,45 @@ proc dispatchQueuedRequests(client: NetworkClient) =
     release(client.lock)
 
     if not done:
-      var dispatched = true
-      var dispatchError = ""
-      try:
-        if not request.adhoc:
-          configureEasy(client, request, request.easy)
-        else:
-          # If the easy object is ad-hoc, do not over-configure it like we do
-          # for short lived HTTP requests. It might cause unintended behavior.
-          request.easy.setUrl(serialize(request.url))
-          request.easy.setUserAgent(client.userAgent)
-          request.easy.setWriteCallback(
+      var
+        dispatched = true
+        dispatchError: string
+
+      if not request.adhoc:
+        configureEasy(client, request, request.easy)
+      else:
+        # If the easy object is ad-hoc, do not over-configure it like we do
+        # for short lived HTTP requests. It might cause unintended behavior.
+        if (let code = request.easy.setUrl(serialize(request.url)); !code):
+          dispatched = false
+          dispatchError = code.error()
+
+        if dispatched and (
+          let code = request.easy.setUserAgent(client.userAgent)
+          !code
+        ):
+          dispatched = true
+          dispatchError = code.error()
+
+        if dispatched and (
+          let code = request.easy.setWriteCallback(
             bodyWriteCb, cast[pointer](request.responseBody)
           )
-          request.easy.setHeaderCallback(
+          !code
+        ):
+          dispatched = true
+          dispatchError = code.error()
+
+        if dispatched and (
+          let code = request.easy.setHeaderCallback(
             headerWriteCb, cast[pointer](addr request.responseHeadersRaw)
           )
+          !code
+        ):
+          dispatched = true
+          dispatchError = code.error()
 
-        client.multi.addHandle(request.easy)
-      except CatchableError as exc:
-        dispatched = false
-        dispatchError = getCurrentExceptionMsg()
+      &client.multi.addHandle(request.easy)
 
       acquire(client.lock)
       if dispatched:
@@ -458,7 +495,7 @@ proc newNetworkClient*(
   initCond(result.resultCond)
 
   for _ in 0 ..< result.maxInFlight:
-    result.availableEasy.add(initEasy())
+    result.availableEasy &= initEasy()
 
   createThread(result.thread, workerMain, cast[ptr NetworkClientObj](result))
 
@@ -583,11 +620,13 @@ proc wrapRequest(
 
   ensureMove(wrapped)
 
-proc startRequests*(client: NetworkClient, batch: var RequestBatch) =
+proc startRequests*(
+    client: NetworkClient, batch: var RequestBatch
+): Result[void, string] =
   acquire(client.lock)
   if client.closed or client.closeRequested:
     release(client.lock)
-    raise newException(IOError, "client is closed")
+    return err("Client is closed")
 
   for request in batch.requests.mitems:
     client.queue.addLast(wrapRequest(move request))
@@ -596,16 +635,22 @@ proc startRequests*(client: NetworkClient, batch: var RequestBatch) =
   signal(client.wakeCond)
   release(client.lock)
 
-proc startRequest*(client: NetworkClient, request: sink RequestSpec) =
+  ok()
+
+proc startRequest*(
+    client: NetworkClient, request: sink RequestSpec
+): Result[void, string] =
   acquire(client.lock)
   if client.closed or client.closeRequested:
     release(client.lock)
-    raise newException(IOError, "client is closed")
+    return err("Client is closed")
 
   client.queue.addLast(wrapRequest(request))
 
   signal(client.wakeCond)
   release(client.lock)
+
+  ok()
 
 proc startRequestAdhoc*(
     client: NetworkClient, request: sink RequestSpec, handle: libcurl.CURL
@@ -638,24 +683,34 @@ proc pollForResult*(client: NetworkClient, outResult: var RequestResult): bool =
     result = false
   release(client.lock)
 
-proc makeRequests*(client: NetworkClient, batch: var RequestBatch): RequestResults =
+proc makeRequests*(
+    client: NetworkClient, batch: var RequestBatch
+): Result[RequestResults, string] =
   if client.clientIsBusy():
-    raise newException(IOError, "makeRequests requires an idle client")
+    return err("Client is busy")
 
   let expected = batch.requests.len
-  client.startRequests(batch)
-  result = @[]
+  &client.startRequests(batch)
+
+  var reqs = newSeqOfCap[RequestResult](expected)
   for _ in 0 ..< expected:
     var item: RequestResult
     if not client.waitForResult(item):
-      raise newException(IOError, "client stopped before all responses arrived")
-    result.add(item)
+      return err("Client stopped before all responses arrived")
 
-proc makeRequest*(client: NetworkClient, request: sink RequestSpec): RequestResult =
+    reqs &= ensureMove(item)
+
+  ok(ensureMove(reqs))
+
+proc makeRequest*(
+    client: NetworkClient, request: sink RequestSpec
+): Result[RequestResult, string] =
   if client.clientIsBusy():
-    raise newException(IOError, "makeRequest requires an idle client")
+    return err("makeRequest requires an idle client")
 
-  client.startRequest(request)
+  if (let res = client.startRequest(request); !res):
+    return err(res.error())
+
   var res: RequestResult
   if not client.waitForResult(res):
     raise newException(IOError, "client stopped before response arrived")
@@ -663,7 +718,7 @@ proc makeRequest*(client: NetworkClient, request: sink RequestSpec): RequestResu
   if res.response.body.kind == BodyWriterKind.AsyncStream:
     res.response.body.stream.setPosition(0)
 
-  ensureMove(res)
+  ok(ensureMove(res))
 
 proc makeVerbRequest(
     client: NetworkClient,
@@ -674,7 +729,7 @@ proc makeVerbRequest(
     requestId = 0'i64,
     timeoutMs = 0,
     writerKind: BodyWriterKind = BodyWriterKind.SyncString,
-): RequestResult {.inline.} =
+): Result[RequestResult, string] {.inline.} =
   client.makeRequest(
     RequestSpec(
       verb: verb,
@@ -691,8 +746,7 @@ proc fireVerbRequest*(client: NetworkClient, spec: RequestSpec): bool =
   if client.clientIsBusy():
     return false
 
-  client.startRequest(spec)
-  true
+  *client.startRequest(spec)
 
 proc get*(
     client: NetworkClient,
@@ -700,7 +754,7 @@ proc get*(
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
-): RequestResult =
+): Result[RequestResult, string] =
   client.makeVerbRequest(HttpVerb.Get, url, headers, "", requestId, timeoutMs)
 
 proc getStream*(
@@ -709,7 +763,7 @@ proc getStream*(
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
-): RequestResult =
+): Result[RequestResult, string] =
   debug "Streamed GET request", url = url, id = requestId, timeoutMs = timeoutMs
   client.makeVerbRequest(
     HttpVerb.Get,
@@ -728,7 +782,7 @@ proc post*(
     body: sink string = "",
     requestId = 0'i64,
     timeoutMs = 0,
-): RequestResult =
+): Result[RequestResult, string] =
   client.makeVerbRequest(HttpVerb.Post, url, headers, body, requestId, timeoutMs)
 
 proc put*(
@@ -738,7 +792,7 @@ proc put*(
     body: sink string = "",
     requestId = 0'i64,
     timeoutMs = 0,
-): RequestResult =
+): Result[RequestResult, string] =
   client.makeVerbRequest(HttpVerb.Put, url, headers, body, requestId, timeoutMs)
 
 proc patch*(
@@ -748,7 +802,7 @@ proc patch*(
     body: sink string = "",
     requestId = 0'i64,
     timeoutMs = 0,
-): RequestResult =
+): Result[RequestResult, string] =
   client.makeVerbRequest(HttpVerb.Patch, url, headers, body, requestId, timeoutMs)
 
 proc delete*(
@@ -757,7 +811,7 @@ proc delete*(
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
-): RequestResult =
+): Result[RequestResult, string] =
   client.makeVerbRequest(HttpVerb.Delete, url, headers, "", requestId, timeoutMs)
 
 proc head*(
@@ -766,13 +820,13 @@ proc head*(
     headers: sink HttpHeaders = emptyHttpHeaders(),
     requestId = 0'i64,
     timeoutMs = 0,
-): RequestResult =
+): Result[RequestResult, string] =
   client.makeVerbRequest(HttpVerb.Head, url, headers, "", requestId, timeoutMs)
 
-proc len*(batch: RequestBatch): int {.inline.} =
+func len*(batch: RequestBatch): int {.inline.} =
   batch.requests.len
 
-proc `[]`*(batch: RequestBatch, i: int): lent RequestSpec =
+func `[]`*(batch: RequestBatch, i: int): lent RequestSpec =
   batch.requests[i]
 
 proc addRequest*(

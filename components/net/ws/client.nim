@@ -131,9 +131,9 @@ proc send*(client: WebSocketClient, text: string): Result[void, string] =
 proc newWebSocket*(loader: ResourceLoader, url: URL): WebSocketClient =
   ## Opens a new WebSocket connection.
 
-  let
-    handle = loader.createAdhocInstance()
-    client = WebSocketClient(state: WSClientState.Connecting, handle: handle, url: url)
+  let client = WebSocketClient(
+    state: WSClientState.Connecting, handle: loader.createAdhocInstance(), url: url
+  )
 
   discard client.handle.raw.curl_easy_setopt(CURLOPT_CONNECT_ONLY, 2)
 

@@ -5,7 +5,7 @@
 ## It just spins every frame to check if any request is complete, and calls the finalizer callback for it if it is.
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[locks, streams, tables]
+import std/[options, locks, streams, tables]
 import pkg/[chronicles, shakar, url]
 import
   components/net/[curl_wrapper, core],
