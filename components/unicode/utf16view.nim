@@ -1,12 +1,12 @@
 ## Ferrite's `UTF16View`, with most of the useless, unsafe and ridiculously bad bits stripped away.
 ##
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, unicode]
+import std/[options, strformat, unicode]
 import
   components/impure/simdutf,
   components/js/runtime/types,
   components/js/runtime/vm/heap/manager
-import pkg/[results]
+import pkg/[results, shakar]
 
 const
   HighSurrogateMin*: uint16 = 0xD800
@@ -106,37 +106,43 @@ func codeUnitAt*(
 
   cast[ptr UncheckedArray[uint16]](view.data)[index]
 
-func decodeSurrogatePair*(high, low: uint16): uint32 {.inline, raises: [ValueError].} =
+func decodeSurrogatePair*(
+    high, low: uint16
+): Result[uint32, string] {.inline, raises: [].} =
   ## Decode a surrogate pair.
   ## `high` must be a high surrogate, and `low` must be a low surrogate.
   ## Otherwise, a `ValueError` will be raised if either of the conditions are not met.
   if not high.isHighSurrogate:
-    raise newException(ValueError, $high & " is not a high surrogate")
+    return err(&"{high:X} is not a high surrogate")
 
   if not low.isLowSurrogate:
-    raise newException(ValueError, $low & " is not a low surrogate")
+    return err(&"{low:X} is not a low surrogate")
 
-  ((high - HighSurrogateMin).uint32 shl 10'u32) + (low - LowSurrogateMin).uint32 +
-    FirstSupplementaryPlaneCodePoint
+  ok(
+    ((high - HighSurrogateMin).uint32 shl 10'u32) + (low - LowSurrogateMin).uint32 +
+      FirstSupplementaryPlaneCodePoint
+  )
 
-func codePointAt*(view: UTF16View, index: SomeUnsignedInt): uint32 =
+func codePointAt*(view: UTF16View, index: SomeUnsignedInt): Result[uint32, string] =
   ## Get the code point at `index` in this view.
   if view.data == nil:
     raise newException(Defect, "UTF16View has no buffer attached")
 
   if index > view.size:
-    raise newException(IndexDefect, "Index " & $index & " is out of range")
+    return err(&"Index {index} is out of range")
 
   let codePoint = view.codeUnitAt(index)
   if not isHighSurrogate(codePoint) and not isLowSurrogate(codePoint):
-    return uint32(cast[uint16](codePoint))
+    return ok(cast[uint32](codePoint))
 
   if isLowSurrogate(codePoint) or (index + 1 == view.size):
-    return uint32(cast[uint16](codePoint))
+    return ok(cast[uint32](codePoint))
 
   let second = view.codeUnitAt(index + 1)
   if not isLowSurrogate(second):
-    return uint32(cast[uint16](codePoint))
+    return ok(cast[uint32](codePoint))
+
+  unreachable
 
 func `==`*(a, b: UTF16View): bool {.inline, raises: [].} =
   ## Compare two views together

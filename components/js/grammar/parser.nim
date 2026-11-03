@@ -81,7 +81,7 @@ proc parsePostfixCall(parser: Parser, callTokens: seq[Token]): Option[Statement]
 
 proc parseAtom(parser: Parser, token: Token): Option[Statement]
 
-func tokenToArithBinOp(token: TokenKind): BinaryOperation {.raises: [ValueError].} =
+func tokenToArithBinOp(token: TokenKind): BinaryOperation =
   case token
   of TokenKind.Add:
     BinaryOperation.Add
@@ -92,7 +92,8 @@ func tokenToArithBinOp(token: TokenKind): BinaryOperation {.raises: [ValueError]
   of TokenKind.Mul:
     BinaryOperation.Mult
   else:
-    raise newException(ValueError, "Invalid token for arithmetic operation: " & $token)
+    unreachable
+    default(BinaryOperation)
 
 func getOperatorPrecedence(kind: TokenKind): uint8 {.inline.} =
   case kind

@@ -238,7 +238,7 @@ proc generateStdIr*(runtime: Runtime) =
         ret undefined(runtime)
 
       # 6. Let cp be CodePointAt(S, position).
-      let codepoint = str.codePointAt(position.uint())
+      let codepoint = &str.codePointAt(position.uint())
 
       # Return 𝔽(cp.[[CodePoint]]).
       ret codepoint
