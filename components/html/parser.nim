@@ -284,50 +284,60 @@ func isValidChild(node: Node): bool =
 
 # WARNING the ordering of the arguments in the standard is whack so this
 # doesn't match that
-func preInsertionValidity*(parent, node, before: Node): bool =
+func preInsertionValidity*(parent, node, before: Node): Result[void, string] =
   if not parent.isValidParent:
-    return false
+    return err("Parent is invalid")
   if node.isHostIncludingInclusiveAncestor(parent):
-    return false
+    return
+      err("Parent and node are already in a relationship") # TODO: Make this clearer
   if before != nil and before.parentNode != parent:
-    return false
+    return err("Before-node must be parented to parent")
   if not node.isValidChild:
-    return false
+    return err("Node is invalid")
   if node of Text and parent of Document:
-    return false
+    return err("Text node cannot be inserted into Document node")
   if node of DocumentType and not (parent of Document):
-    return false
+    return err("DOCTYPE node cannot be inserted into non-Document node")
   if parent of Document:
     if node of DocumentFragment:
       let elems = node.countElementChildren()
       if elems > 1 or node.hasTextChild():
-        return false
+        return err(
+          "DocumentFragment node with more than one child or Text node children cannot be inserted into Document node"
+        )
       elif elems == 1 and (
         parent.hasElementChild() or
         before != nil and (
           before of DocumentType or before.hasNextDocumentTypeSibling()
         )
       ):
-        return false
+        return err(
+          "DocumentFragment node cannot be inserted into Document node with an Element node as a child (or with the before-node having a DOCTYPE sibling)"
+        )
     elif node of Element:
       if parent.hasElementChild():
-        return false
+        return err(
+          "Element node cannot be inserted into parent with another Element node as a child"
+        )
       elif before != nil and
           (before of DocumentType or before.hasNextDocumentTypeSibling()):
-        return false
+        return err("Before-node is a DOCTYPE, or it has a DOCTYPE sibling")
     elif node of DocumentType:
       if parent.hasDocumentTypeChild() or
           before != nil and before.hasPreviousElementSibling() or
           before == nil and parent.hasElementChild():
-        return false
-  return true # no exception reached
+        return err(
+          "DOCTYPE node cannot be inserted into a parent-node with a pre-existing DOCTYPE child (or the before-node has a previous sibling that is an Element, or the before-node has an Element node as a child)"
+        )
+
+  ok() # no exception reached
 
 proc insertBefore*(
     parent, child: Node, before: Option[Node]
 ): Result[dom.Node, DOMExceptionCode] {.discardable.} =
   let
     before = before.get(nil)
-    validity = parent.preInsertionValidity(child, before)
+    validity = *parent.preInsertionValidity(child, before)
 
   if validity:
     # assert child.parentNode == nil

@@ -331,7 +331,11 @@ proc generateBindings*(runtime: Runtime) =
     Document,
     "createElement",
     proc(this: JSValue) =
-      let localName = &runtime.argument(1, required = true)
+      let localName = &runtime.argument(
+        1,
+        required = true,
+        message = "Document.createElement() expects atleast 1 argument, got {nargs}",
+      )
       let options = &runtime.argument(2, required = false)
       ret createElement(
         rt = runtime, this = this, localName = localName, options = options

@@ -194,12 +194,15 @@ proc preInsert*(
   # To pre-insert a node node into a node parent before null or node child: 
 
   # 1. Ensure pre-insert validity given node, parent, child, and « ».
-  if not preInsertionValidity(parent = parent, node = node, before = child):
+  if (
+    let errorMessage =
+      preInsertionValidity(parent = parent, node = node, before = child)
+    !errorMessage
+  ):
     # TODO: Make `preInsertionValidity()` return a Result[void, DOMExceptionCode] instead of making up a code.
     return err(
       MutationError(
-        code: DOMExceptionCode.HierarchyRequest,
-        message: "Cannot pre-insert: parent node failed validity test",
+        code: DOMExceptionCode.HierarchyRequest, message: errorMessage.error()
       )
     )
 
