@@ -315,7 +315,7 @@ func preInsertionValidity*(parent, node, before: Node): Result[void, string] =
           "DocumentFragment node cannot be inserted into Document node with an Element node as a child (or with the before-node having a DOCTYPE sibling)"
         )
     elif node of Element:
-      if parent.hasElementChild():
+      if parent of Document and parent.hasElementChild():
         return err(
           "Element node cannot be inserted into parent with another Element node as a child"
         )
