@@ -471,17 +471,32 @@ proc genCall(
     runtime.ir.passMultipleArguments(ensureMove(argumentRegs))
 
   if *stmt.fn.field:
-    let identName = (&stmt.fn.field).identifier
+    let
+      topNode = &stmt.fn.field
+      identName = topNode.identifier
 
-    # TODO: recursive field solving
-    let thisBinding = runtime.index(identName, defaultParams(fn))
+      lastNode = tail(topNode)
+      secondLastNode = back(lastNode)
+
+      startObj = runtime.index(identName, defaultParams(fn))
+      thisBinding =
+        if &secondLastNode == topNOde:
+          startObj
+        else:
+          # HACK: Maybe we could create an isolated copy that just is disjoint from the succeeding nodes?
+          (&secondLastNode).next = nil
+          let res = runtime.resolveFieldAccess(fn, stmt, startObj, topNode)
+          (&secondLastNode).next = lastNode
+          res
+
+      lastField = tail(&stmt.fn.field)
 
     # firstly, try to get the bytecode callable / native callable
-    let fn = runtime.resolveFieldAccess(fn, stmt, thisBinding, &stmt.fn.field)
+    let fn = runtime.resolveFieldAccess(fn, stmt, thisBinding, &secondLastNode)
 
     fillArguments()
 
-    # set the this-binding (??? NOTE: written while sleep deprived, please review this again later)
+    # set the this-binding
     runtime.ir.setThisBinding(thisBinding)
 
     # then, invoke it.

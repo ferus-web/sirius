@@ -520,6 +520,20 @@ func functionHolder*(fn: Function): Statement =
 
 {.pop.}
 
+func back*(access: FieldAccess): Option[FieldAccess] {.raises: [].} =
+  if access.prev == nil:
+    return none(FieldAccess)
+
+  some(access.prev)
+
+func tail*(access: FieldAccess): FieldAccess =
+  var curr = access
+
+  while curr.next != nil:
+    curr = curr.next
+
+  curr
+
 func normalizeIRName*(call: FunctionCall): string =
   return normalizeIRName(call.function)
 
