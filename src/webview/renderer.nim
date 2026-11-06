@@ -505,7 +505,43 @@ proc loadImageStream(view: WebRenderer, title: string, stream: StringStream) =
 
   view.loadHTMLStream(newStringStream(viewerTemplate))
 
+proc loadSiriusURL(view: WebRenderer, path: string) =
+  var pageStream: Stream
+  if path == "new":
+    pageStream = &view.assetProvider.openAssetStream("resources/new-tab.html")
+  else:
+    pageStream =
+      &view.assetProvider.openAssetStream("resources/invalid-internal-page.html")
+
+  loadHTMLStream(
+    view,
+    newStringStream(
+      pageStream.readAll().multiReplace(
+        {
+          "{agent.name}": branding.AgentName,
+          "{agent.version}": branding.AgentVersion,
+          "{view.destination}": &"sirius:{path}",
+        }
+      )
+    ),
+  )
+  pageStream.close()
+  return
+
 proc loadFile(view: WebRenderer, path: string) =
+  if not fileExists(path):
+    loadHTMLStream(
+      view,
+      newStringStream(
+        (&view.assetProvider.openAssetStream("resources/file-not-found.html"))
+          .readAll()
+          .multiReplace(
+            {"{agent.name}": branding.AgentName, "{view.destination}": path}
+          )
+      ),
+    ) # it'd be so ironic if this file didn't exist in of itself
+    return
+
   let extension = path.splitFile().ext.strip(chars = {'.'})
 
   if extension == "html":
@@ -616,29 +652,6 @@ proc loadUrl(view: WebRenderer, url: URL) =
           message = err.message
         view.showTransportErrorPage(url, err),
   )
-
-proc loadSiriusURL(view: WebRenderer, path: string) =
-  var pageStream: Stream
-  if path == "new":
-    pageStream = &view.assetProvider.openAssetStream("resources/new-tab.html")
-  else:
-    pageStream =
-      &view.assetProvider.openAssetStream("resources/invalid-internal-page.html")
-
-  loadHTMLStream(
-    view,
-    newStringStream(
-      pageStream.readAll().multiReplace(
-        {
-          "{agent.name}": branding.AgentName,
-          "{agent.version}": branding.AgentVersion,
-          "{view.destination}": &"sirius:{path}",
-        }
-      )
-    ),
-  )
-  pageStream.close()
-  return
 
 proc loadNotSpecialURL(view: WebRenderer, target: URL) =
   # It'd be so much nicer if these were called special URLs, but sadly I didn't write this spec. :(
