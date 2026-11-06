@@ -618,21 +618,27 @@ proc loadUrl(view: WebRenderer, url: URL) =
   )
 
 proc loadSiriusURL(view: WebRenderer, path: string) =
+  var pageStream: Stream
   if path == "new":
-    let newTabPage = &view.assetProvider.openAssetStream("resources/new-tab.html")
+    pageStream = &view.assetProvider.openAssetStream("resources/new-tab.html")
+  else:
+    pageStream =
+      &view.assetProvider.openAssetStream("resources/invalid-internal-page.html")
 
-    loadHTMLStream(
-      view,
-      newStringStream(
-        newTabPage.readAll().multiReplace(
-          {"{agent.name}": branding.AgentName, "{agent.version}": branding.AgentVersion}
-        )
-      ),
-    )
-    newTabPage.close()
-    return
-
-  assert(off, &"Unknown page sirius:{path}") # TODO: make this a page or something
+  loadHTMLStream(
+    view,
+    newStringStream(
+      pageStream.readAll().multiReplace(
+        {
+          "{agent.name}": branding.AgentName,
+          "{agent.version}": branding.AgentVersion,
+          "{view.destination}": &"sirius:{path}",
+        }
+      )
+    ),
+  )
+  pageStream.close()
+  return
 
 proc loadNotSpecialURL(view: WebRenderer, target: URL) =
   # It'd be so much nicer if these were called special URLs, but sadly I didn't write this spec. :(

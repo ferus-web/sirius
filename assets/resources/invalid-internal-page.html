@@ -1,0 +1,29 @@
+<!--
+	This is the page shown when an invalid internal page is attempted to be accessed.
+  Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+-->
+
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <title>Problem loading page</title>
+    <style>
+body {
+  background-color: rgb(30, 32, 38);
+}
+
+h1, p, footer {
+  text-align: center;
+  color: white;
+}
+
+footer { font-size: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>Invalid internal URL</h1>
+    <p>{agent.name} can't find the resource at {view.destination}</p>
+
+    <footer>{agent.name} ({agent.version})</footer>
+  </body>
+</html>
