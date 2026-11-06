@@ -2,7 +2,7 @@ import
   pkg/[chronicles, vmath],
   pkg/figdraw/[commons, fignodes, figrender],
   pkg/figdraw/common/fonttypes
-import components/gfx/[painter, types]
+import components/gfx/types
 
 logScope:
   topics = "gfx/init"

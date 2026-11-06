@@ -3,13 +3,8 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[deques, monotimes, times]
 import
-  components/js/runtime/vm/atom,
-  components/js/runtime/atom_helpers,
-  components/js/runtime/[arguments, bridge, construction, types],
-  components/js/runtime/abstract/[coercible, to_number, to_string],
-  components/dom/dom,
-  components/html/dom_utils,
-  components/scripting/dom/[element]
+  components/js/runtime/[arguments, bridge, types],
+  components/js/runtime/abstract/[to_number]
 import pkg/shakar
 
 proc generateBindings*(runtime: Runtime) =

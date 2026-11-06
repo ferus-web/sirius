@@ -1,12 +1,9 @@
 ## GTK4 browser shell implementation
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, posix, strformat, strutils, unicode]
+import std/[options, posix, strformat, unicode]
 import pkg/[shakar, results, chronicles, vmath, url]
-import
-  components/synapse/[decoder, master, types, transport/socketpairs],
-  components/synapse/descriptors/[master],
-  components/impure/gtk
+import components/synapse/types, components/impure/gtk
 import components/css/types
 import ../webview/[core, types], ../argparser
 
@@ -528,7 +525,7 @@ proc showAlertMessage(state: BrowserState, tab: TabID, message: Option[string]) 
 
       ensureMove(nam)
 
-    dialog = adw_alert_dialog_new(&"{name} says:", cstring(text))
+    dialog = adw_alert_dialog_new(cstring(&"{name} says:"), cstring(text))
 
   adw_alert_dialog_add_response(dialog, "ok", "OK")
 

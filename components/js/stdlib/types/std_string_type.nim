@@ -5,7 +5,6 @@ import
   components/js/runtime/vm/atom,
   components/js/runtime/atom_helpers,
   components/js/runtime/[construction, types],
-  components/js/runtime/vm/heap/manager,
   components/impure/simdutf
 import components/unicode/utf16view
 import pkg/shakar

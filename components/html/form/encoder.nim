@@ -47,8 +47,6 @@ const FormURLPercentEncode*: array[32, uint8] = [
   0x01 or 0x02 or 0x04 or 0x08 or 0x10 or 0x20 or 0x40 or 0x80,
 ]
 
-import components/aux/pretty
-
 func disabled*(element: dom.Element): bool =
   ## https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#enabling-and-disabling-form-controls:-the-disabled-attribute
 

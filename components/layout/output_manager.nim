@@ -2,8 +2,6 @@
 ## on the screen. It requires OS integration eventually.
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/options
-import pkg/shakar
 import components/style/types
 
 type OutputManager* = ref object

@@ -1,6 +1,4 @@
 ## Taken from the Nim compiler source code
-import std/[strutils]
-
 when defined(windows):
   {.passL: "-lgc".}
 

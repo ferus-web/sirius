@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[importutils, options]
-import pkg/flatty, pkg/flatty/[binny, objvar]
+import pkg/flatty, pkg/flatty/[binny]
 import components/synapse/types
 
 func initDecoder*(capacity: Natural = 4096): Decoder =

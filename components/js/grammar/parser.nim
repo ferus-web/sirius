@@ -81,20 +81,6 @@ proc parsePostfixCall(parser: Parser, callTokens: seq[Token]): Option[Statement]
 
 proc parseAtom(parser: Parser, token: Token): Option[Statement]
 
-func tokenToArithBinOp(token: TokenKind): BinaryOperation =
-  case token
-  of TokenKind.Add:
-    BinaryOperation.Add
-  of TokenKind.Sub:
-    BinaryOperation.Sub
-  of TokenKind.Div:
-    BinaryOperation.Div
-  of TokenKind.Mul:
-    BinaryOperation.Mult
-  else:
-    unreachable
-    default(BinaryOperation)
-
 func getOperatorPrecedence(kind: TokenKind): uint8 {.inline.} =
   case kind
   of TokenKind.Or:

@@ -3,7 +3,7 @@
 ## I plan on writing a serialized KV store for this eventually (or maybe just using RocksDB).
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[algorithm, os, tables, times, sequtils]
+import std/[algorithm, os, tables, times]
 import pkg/[chronicles, jsony, shakar, url]
 import components/net/cookie
 

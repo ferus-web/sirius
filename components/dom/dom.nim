@@ -135,7 +135,9 @@ func addEventListener*(target: EventTarget, event: string, listener: EventListen
   # Otherwise, append a new EventListener instead
   target.listeners[event] &= listener
 
-proc dispatchEvent*[T](target: EventTarget, event: string, eventObj: T): bool =
+proc dispatchEvent*[T](
+    target: EventTarget, event: string, eventObj: T
+): bool {.tags: [RootEffect, EventDispatchEffect].} =
   if not target.listeners.contains(event):
     # JS-land doesn't care about this event for this node.
     return

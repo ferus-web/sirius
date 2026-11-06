@@ -4,7 +4,6 @@
 
 when defined(posix):
   import std/posix
-  import components/impure/nix
 
 import components/impure/libc
 

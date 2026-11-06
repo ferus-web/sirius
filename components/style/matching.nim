@@ -126,7 +126,6 @@ proc applySheetRules(
             computed[lowerKey] = decl.value
             specifsTracker[lowerKey] = ruleSpec
 
-import components/aux/pretty
 proc resolveStyling*(
     root: dom.Node,
     factory: dom.AtomFactory,

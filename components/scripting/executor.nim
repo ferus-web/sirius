@@ -18,7 +18,6 @@ import
   components/scripting/html/element/[head, input],
   components/scripting/websocket/[close_event, websocket],
   components/scripting/clipboard/[clipboard]
-import components/aux/pretty
 
 when defined(unix):
   import components/impure/nix

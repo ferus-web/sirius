@@ -1,7 +1,7 @@
 ## Utility routines mostly related to DOM traversal
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[hashes, options, strutils]
+import std/[hashes, options]
 import components/dom/dom, components/aux/parse_nums
 import pkg/shakar
 

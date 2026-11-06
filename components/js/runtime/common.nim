@@ -1,7 +1,7 @@
 ## Common routines for the Runtime type.
 ##
-## Copyright (C) 2025 Trayambak Rai
-import std/[deques, strutils, sugar, tables]
+## Copyright (C) 2025-2026 Trayambak Rai
+import std/[strutils, sugar, tables]
 import
   components/js/runtime/[atom_helpers, atom_obj_variant, types, construction],
   components/js/runtime/compiler/base,

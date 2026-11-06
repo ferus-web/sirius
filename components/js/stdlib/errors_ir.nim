@@ -4,7 +4,7 @@
 import std/[options]
 import components/js/runtime/vm/prelude
 import components/js/stdlib/errors_common, components/js/stdlib/types/std_string_type
-import components/js/runtime/[atom_helpers, arguments, types, bridge, wrapping]
+import components/js/runtime/[atom_helpers, arguments, types, bridge]
 import components/js/runtime/abstract/to_string
 import pkg/shakar
 

@@ -5,14 +5,14 @@ import std/[hashes, deques, importutils, monotimes, tables, times, options]
 import
   pkg/[pixie, shakar, vmath],
   pkg/figdraw/[commons, fignodes, figrender],
-  pkg/figdraw/common/[typefaces, fonttypes],
+  pkg/figdraw/common/fonttypes,
   pkg/figdraw/utils/drawutils,
   pkg/figdraw/vulkan/vulkan_context
 import
   components/css/types,
   components/gfx/types,
   components/layout/[output_manager, types],
-  components/dom/[dom, tags],
+  components/dom/tags,
   components/os/fonts,
   components/html/form/types
 

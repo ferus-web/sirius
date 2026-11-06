@@ -8,8 +8,7 @@ import pkg/[shakar]
 import
   components/js/runtime/compiler/madhyasthal/ir,
   components/js/runtime/vm/[atom, shared],
-  components/js/runtime/vm/interpreter/[types, operation],
-  components/aux/pretty
+  components/js/runtime/vm/interpreter/[types, operation]
 
 type OpStream* = object
   ops*: seq[operation.Operation]

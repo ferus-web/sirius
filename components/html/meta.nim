@@ -2,7 +2,6 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[strutils, strformat, options]
-import components/dom/dom
 import pkg/[results, shakar, url]
 
 type

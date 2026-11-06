@@ -5,7 +5,6 @@ import std/[hashes, options, sequtils, strformat, strutils, tables]
 import
   components/css/[level1, text, text_decoration, ui, types],
   components/dom/[dom, tags],
-  components/html/dom_utils,
   components/style/types,
   components/layout/types,
   components/os/fonts
@@ -294,12 +293,13 @@ proc handleNamedColor(value: string): Option[ColorRGBA] =
   none(ColorRGBA)
 
 proc parseHexColor(value: string): Option[ColorRGBA] =
+  # TODO: Make this exceptionless.
   case value.len
   of 3:
     try:
       return some(rgba(parseHtmlHexTiny('#' & value)))
         # FIXME: Just write a routine for this here. This allocation sucks.
-    except chroma.InvalidColor as exc:
+    except chroma.InvalidColor:
       return none(ColorRGBA)
   of 6:
     try:

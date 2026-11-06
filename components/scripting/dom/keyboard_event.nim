@@ -4,7 +4,7 @@
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import components/js/runtime/prelude, components/scripting/dom/event
-import pkg/[shakar, vmath]
+import pkg/[shakar]
 
 type
   KeyLocation* {.pure, size: sizeof(uint8).} = enum

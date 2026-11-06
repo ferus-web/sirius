@@ -2,7 +2,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[importutils]
-import pkg/[flatty, shakar], pkg/flatty/[binny, objvar]
+import pkg/[flatty, shakar], pkg/flatty/binny
 import components/synapse/types
 
 func toFlatty*[T: SomeOrdinal](s: var string, x: set[T]) =

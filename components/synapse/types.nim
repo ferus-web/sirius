@@ -1,7 +1,6 @@
 ## Core wire types for IPC
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/options
 import components/os/event_loop
 import pkg/url
 

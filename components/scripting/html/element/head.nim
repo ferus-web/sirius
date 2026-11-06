@@ -4,7 +4,7 @@
 
 import components/js/runtime/prelude
 import components/scripting/dom/element
-import components/dom/[dom, tags]
+import components/dom/tags
 import pkg/[chronicles, shakar]
 
 logScope:

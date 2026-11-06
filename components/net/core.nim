@@ -713,7 +713,7 @@ proc makeRequest*(
 
   var res: RequestResult
   if not client.waitForResult(res):
-    raise newException(IOError, "client stopped before response arrived")
+    return err("client stopped before response arrived")
 
   if res.response.body.kind == BodyWriterKind.AsyncStream:
     res.response.body.stream.setPosition(0)

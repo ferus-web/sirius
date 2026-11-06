@@ -10,7 +10,6 @@ import pkg/shakar
 import
   components/js/runtime/
     [normalize, types, atom_helpers, arguments, bridge, describe, construction]
-import components/js/runtime/vm/heap/boehm
 import components/js/runtime/abstract/[to_string, equating]
 import components/js/stdlib/prelude
 
@@ -488,8 +487,6 @@ proc genCall(
           let res = runtime.resolveFieldAccess(fn, stmt, startObj, topNode)
           (&secondLastNode).next = lastNode
           res
-
-      lastField = tail(&stmt.fn.field)
 
     # firstly, try to get the bytecode callable / native callable
     let fn = runtime.resolveFieldAccess(fn, stmt, thisBinding, &secondLastNode)

@@ -3,7 +3,7 @@
 ## Copyright (C) 2025-2026 Trayambak Rai (xtrayambak@disroot.org)
 
 import std/[hashes, posix, tables, options, streams]
-import components/js/runtime/compiler/base, components/js/runtime/vm/heap/boehm
+import components/js/runtime/compiler/base
 import pkg/[shakar]
 import
   components/js/runtime/vm/[atom, shared],

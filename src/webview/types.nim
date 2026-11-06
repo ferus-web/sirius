@@ -1,19 +1,16 @@
 ## Types for WebView
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[deques, options, streams, tables]
+import std/[options, tables]
 import pkg/[chronicles, pixie, url, vmath]
 import
   components/gfx/types,
   components/dom/[dom, tags],
-  components/html/parser,
   components/style/types,
   components/layout/[output_manager, types],
   components/os/[assets, event_loop, fonts],
-  components/net/core,
   components/net/ws/types,
   components/js/runtime/prelude as js,
-  components/js/stdlib/prelude,
   components/synapse/types,
   components/css/types,
   components/scripting/websocket/websocket,

@@ -1,7 +1,7 @@
 ## Font loader implementation, plugs FontProvider into FigDraw (pixie)
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, tables]
+import std/options
 import components/os/fonts as osfonts, components/css/types
 import pkg/[chronicles, vmath]
 import pkg/figdraw/common/[fonttypes, fontutils, typefaces]

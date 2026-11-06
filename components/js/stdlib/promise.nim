@@ -5,8 +5,7 @@ import std/[deques, options]
 import
   components/js/runtime/[arguments, atom_helpers, bridge, construction, types, wrapping],
   components/js/runtime/abstract/[callables, equating],
-  components/js/stdlib/[errors_common, errors],
-  components/js/stdlib/types/std_string_type,
+  components/js/stdlib/[errors],
   components/js/runtime/vm/atom,
   components/js/runtime/vm/heap/manager
 import pkg/shakar

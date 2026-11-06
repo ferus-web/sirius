@@ -2,10 +2,8 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import
-  std/[
-    algorithm, monotimes, options, streams, strformat, strutils, sequtils, tables,
-    unicode, os, times,
-  ]
+  std/
+    [algorithm, monotimes, options, streams, strformat, strutils, sequtils, tables, os]
 import ./[branding, cookie_jar, hit_testing, flags, types]
 import
   pkg/[chronicles, chroma, pixie, results, shakar, url, vmath],
@@ -23,7 +21,6 @@ import
   components/net/[cookie, cookie_parser, core, mime],
   components/net/loader/core,
   components/net/ws/[client, types],
-  components/js/grammar/prelude,
   components/js/runtime/
     [arguments, bridge, common, construction, microtasks, wrapping, types],
   components/js/runtime/vm/atom,
@@ -36,8 +33,7 @@ import
   components/scripting/clipboard/clipboard,
   components/scripting/url as jsurl,
   components/synapse/[client, encoder, decoder, types, transport/socketpairs],
-  components/synapse/descriptors/[renderer, master],
-  components/impure/nix
+  components/synapse/descriptors/[renderer, master]
 
 when hasJITSupport:
   import components/js/internal/assembler/amd64

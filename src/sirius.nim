@@ -1,7 +1,6 @@
 ## Sirius is an independent web rendering engine and browser written from scratch in Nim.
 import std/[os, strformat]
 import browser/app, webview/[branding, core, types], argparser
-import pkg/[results, url]
 
 proc showHelp() =
   echo &"""{branding.AgentName} (v{branding.AgentVersion}) is a web rendering engine and browser built from scratch in Nim.

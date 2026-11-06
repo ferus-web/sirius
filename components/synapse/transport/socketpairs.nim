@@ -2,7 +2,12 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, posix, strformat]
-import components/synapse/[decoder, encoder, types], components/impure/nix
+import components/synapse/[decoder, encoder, types]
+
+{.push warning[UnusedImport]: off.}
+import components/impure/nix
+{.pop.}
+
 import pkg/[chronicles, results, shakar]
 
 logScope:

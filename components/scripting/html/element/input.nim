@@ -1,7 +1,6 @@
 ## `HTMLInputElement` JS bindings
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[strutils]
 import components/js/runtime/prelude
 import components/scripting/dom/element
 import components/dom/[dom, tags]

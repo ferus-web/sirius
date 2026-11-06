@@ -1,4 +1,4 @@
-## Implementation of a basic event loop abstraction with certain primitives
+## Implementation of a basic event loop abstraction with host primitives
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[hashes, sets, strformat]
@@ -138,7 +138,7 @@ proc register*(
   else:
     {.error: "Implement EventLoop::register() for your platform!".}
 
-proc wait*(loop: EventLoop): Result[seq[Event], string] {.raises: [KeyError].} =
+proc wait*(loop: EventLoop): Result[seq[Event], string] {.raises: [].} =
   loop.epollBuffer.setLen(1 + loop.triggers.len)
 
   when UsingEpoll:

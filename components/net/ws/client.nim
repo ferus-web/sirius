@@ -2,8 +2,8 @@
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 
-import std/[options, strutils, strformat, streams]
-import pkg/[chronicles, results, shakar, url]
+import std/strformat
+import pkg/[chronicles, results, url]
 import
   components/net/core,
   components/net/ws/types,

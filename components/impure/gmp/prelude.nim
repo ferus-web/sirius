@@ -23,9 +23,6 @@ proc cmp*(a, b: BigInt): int =
 proc `==`*(a, b: BigInt): bool =
   cmp(a, b) == 0
 
-proc `>`*(a, b: BigInt): bool =
-  cmp(a, b) > 0
-
 proc `<`*(a, b: BigInt): bool =
   cmp(a, b) < 0
 

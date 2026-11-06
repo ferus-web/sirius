@@ -3,11 +3,7 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[strutils, options]
-import
-  components/dom/dom,
-  components/js/runtime/prelude,
-  components/js/stdlib/errors,
-  components/scripting/dom/document
+import components/dom/dom, components/js/runtime/prelude, components/js/stdlib/errors
 import pkg/[chronicles, results, shakar, url]
 
 logScope:

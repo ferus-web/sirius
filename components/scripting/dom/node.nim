@@ -5,7 +5,6 @@
 import std/options
 import
   components/js/runtime/prelude,
-  components/js/stdlib/errors,
   components/scripting/dom/[exception, event_target],
   components/dom/[dom, mutation],
   components/html/[dom_utils, parser]

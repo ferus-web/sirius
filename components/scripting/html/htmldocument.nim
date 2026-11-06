@@ -12,8 +12,6 @@ import pkg/[chronicles, shakar]
 logScope:
   topics = "html/document"
 
-const InternalField = "internal"
-
 proc locationGetter(rt: Runtime, this: JSValue): JSValue =
   warn "IMPLEMENTME: Document.location getter"
   undefined(rt)

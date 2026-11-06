@@ -11,7 +11,7 @@ import pkg/[chronicles, results, shakar, vmath, url]
 
 proc spawnZygote*[T: object](
     master: Master, zygoteRoutine: ZygoteRoutine[T], params: T
-) {.raises: [IPCDefect, IOError].} =
+) {.raises: [IOError].} =
   info "Spawning zygote process"
   let pairOpt = createSocketPair()
   if !pairOpt:
@@ -39,7 +39,7 @@ proc spawnZygote*[T: object](
       zygoteRoutine(pair.ours(), params)
 
     stderr.write(
-      "zygote: Invariant: ZygoteRoutine returned back to spawnZygote. Your implementation is faulty. :("
+      "zygote: Invariant: ZygoteRoutine returned back to spawnZygote. Your implementation is faulty. :(\n"
     )
     nix.abort()
   else:

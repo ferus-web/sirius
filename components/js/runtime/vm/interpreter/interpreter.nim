@@ -3,14 +3,14 @@
 ## Copyright (C) 2024-2026 Trayambak Rai (xtrayambak at disroot dot org)
 
 import std/[math, tables, strutils, options]
-import components/js/runtime/vm/heap/[manager, boehm]
-import components/js/runtime/vm/[atom, debugging, exceptions]
-import components/js/runtime/vm/interpreter/[operation, types, resolver]
-import components/js/runtime/vm/ir/shared
-import components/js/runtime/normalize
-import components/js/runtime/compiler/base
-import components/js/runtime/atom_helpers
-import components/aux/pretty
+import
+  components/js/runtime/vm/heap/[manager, boehm],
+  components/js/runtime/vm/[atom, debugging, exceptions],
+  components/js/runtime/vm/interpreter/[operation, types, resolver],
+  components/js/runtime/vm/ir/shared,
+  components/js/runtime/normalize,
+  components/js/runtime/compiler/base,
+  components/js/runtime/atom_helpers
 import pkg/[shakar]
 
 when hasJITSupport:
@@ -996,12 +996,12 @@ func createFieldAccess(
 
   var top = newFieldAccess()
   var curr: ptr FieldAccess
-  top.field = cstring(values[0])
+  top.field = values[0]
   curr = top
 
   for nVal in 1 ..< nvalues:
     var next = newFieldAccess()
-    next.field = cstring(values[nVal])
+    next.field = values[nVal]
     next.prev = curr
     curr.next = next
     curr = next

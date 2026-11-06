@@ -6,8 +6,7 @@ import std/[tables, options, macros, strformat, strutils, hashes, importutils]
 import components/js/runtime/vm/prelude
 import components/js/runtime/vm/ir/generator
 import
-  components/js/runtime/
-    [atom_obj_variant, wrapping, atom_helpers, types, construction, microtasks]
+  components/js/runtime/[atom_obj_variant, wrapping, atom_helpers, types, construction]
 import pkg/shakar
 
 privateAccess(Runtime)
