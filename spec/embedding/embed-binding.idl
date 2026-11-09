@@ -1,0 +1,12 @@
+/*
+ * Definitions for the EmbedBinding type
+ * Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+ * 
+ * NOTE: This is not used as of yet! It's simply a concept I'm working on.
+ * The native implementation does _roughly_ follow this, though.
+*/
+
+[Exposed=Window]
+interface EmbedBinding {
+  void fire(DOMString nativeMethod, any... args); // Fire-and-forget a method to be handled by the handler, expecting no return value.
+}

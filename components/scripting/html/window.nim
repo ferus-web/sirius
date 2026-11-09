@@ -17,8 +17,8 @@ type
     status*: string
     document*: JSValue
 
-proc generateGlobal*(runtime: Runtime, document: JSValue) =
-  discard runtime.setGlobal("window", JSWindow(status: "", document: document))
+proc generateGlobal*(runtime: Runtime, document: JSValue): JSValue =
+  runtime.setGlobal("window", JSWindow(status: "", document: document))
 
 proc generateBindings*(runtime: Runtime, callbacks: WindowHostCallbacks) =
   assert(

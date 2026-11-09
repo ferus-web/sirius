@@ -17,7 +17,8 @@ import
     [htmldocument, navigator, performance, window, htmlelement, message_event],
   components/scripting/html/element/[head, input],
   components/scripting/websocket/[close_event, websocket],
-  components/scripting/clipboard/[clipboard]
+  components/scripting/clipboard/[clipboard],
+  components/scripting/embedding
 
 when defined(unix):
   import components/impure/nix
@@ -32,13 +33,16 @@ type HostScriptingCallbacks* = object
   window*: WindowHostCallbacks
   websocket*: WebSocketHostCallbacks
   clipboard*: ClipboardHostCallbacks
+  embedding*: EmbeddingHostCallbacks
 
   getTimeOrigin*: proc(): int64
 
 export WindowHostCallbacks
 
 proc registerWebBindings(
-    elem: tags.HTMLScriptElement, callbacks: HostScriptingCallbacks
+    elem: tags.HTMLScriptElement,
+    callbacks: HostScriptingCallbacks,
+    embeddingOpts: embedding.EmbeddingOpts,
 ) =
   ## Register all the types for web specifications that we support.
 
@@ -65,7 +69,7 @@ proc registerWebBindings(
   let navig = navigator.generateGlobal(elem.script.rt)
 
   window.generateBindings(elem.script.rt, callbacks.window)
-  window.generateGlobal(elem.script.rt, doc)
+  let window = window.generateGlobal(elem.script.rt, doc)
 
   url.generateBindings(elem.script.rt)
 
@@ -82,6 +86,12 @@ proc registerWebBindings(
 
   clipboard.generateBindings(elem.script.rt, callbacks.clipboard)
   clipboard.generateGlobal(elem.script.rt, navig)
+
+  if embeddingOpts.enabled:
+    embedding.generateBindings(elem.script.rt, callbacks.embedding)
+    embedding.generateGlobal(
+      elem.script.rt, namespace = embeddingOpts.namespace, window = window
+    )
 
 proc setupRandomState(rng: out uint64) =
   when defined(unix):
@@ -103,6 +113,7 @@ proc executeScript*(
     element: tags.HTMLScriptElement,
     codeBuffer: string,
     callbacks: HostScriptingCallbacks,
+    embeddingOpts: embedding.EmbeddingOpts,
 ) =
   echo codeBuffer.repr
   let parser = newParser(codeBuffer)
@@ -148,5 +159,5 @@ proc executeScript*(
     if *vm.registers.this:
       stdout.write &"    > this-binding: 0x{cast[uint64](&vm.registers.this):X} ({(&vm.registers.this).kind})\n"
 
-  registerWebBindings(element, callbacks)
+  registerWebBindings(element, callbacks, embeddingOpts)
   element.script.rt.run()

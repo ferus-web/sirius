@@ -26,8 +26,9 @@ import
   components/js/runtime/vm/atom,
   components/js/runtime/vm/heap/manager,
   components/js/runtime/compiler/base,
+  components/js/runtime/prelude,
   components/js/stdlib/prelude,
-  components/scripting/[executor, types],
+  components/scripting/[executor, embedding, types],
   components/scripting/dom/[mouse_event, keyboard_event],
   components/scripting/websocket/[close_event, websocket],
   components/scripting/clipboard/clipboard,
@@ -42,6 +43,23 @@ logScope:
   topics = "webview/renderer"
 
 proc loadUrl(view: WebRenderer, url: URL)
+
+proc fireEmbeddingCall(
+    renderer: WebRenderer, rt: Runtime, meth: string, arguments: seq[JSValue]
+) =
+  renderer.client.encoder.encode(MasterOp.CallEmbedBinding)
+
+  renderer.client.encoder.push(meth)
+  for arg in arguments:
+    case arg.kind
+    of Integer:
+      renderer.client.encoder.push(arg.integer)
+    of Boolean:
+      renderer.client.encoder.push(arg.state)
+    else:
+      renderer.client.encoder.push(rt.ToString(arg))
+
+  discard renderer.client.send()
 
 proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
   HostScriptingCallbacks(
@@ -135,6 +153,11 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
     getTimeOrigin: proc(): int64 =
       # NOTE: This doesn't account for any new realms being created, whenever that works.
       renderer.timeOrigin,
+    embedding: EmbeddingHostCallbacks(
+      fire: proc(rt: Runtime, meth: string, arguments: seq[JSValue]) =
+        assert(renderer.opts.embedding.enabled)
+        renderer.fireEmbeddingCall(rt, meth, arguments)
+    ),
   )
 
 proc initCoreScript(view: WebRenderer) =
@@ -161,7 +184,11 @@ proc initCoreScript(view: WebRenderer) =
     )
   )
   view.registerCoreBindings()
-  view.coreScript.executeScript(readAll(stream), getHostScriptingCallbacks(view))
+  view.coreScript.executeScript(
+    readAll(stream),
+    getHostScriptingCallbacks(view),
+    embeddingOpts = view.opts.embedding,
+  )
   stream.close()
 
 proc initRenderer*(ipcChannel: int32, opts: WebViewOpts): WebRenderer =
@@ -403,15 +430,21 @@ proc executeScript(
         if resp.code == 200:
           if not view.opts.disableScripting:
             element.script = Script(baseURL: &resolved, document: document)
-            executeScript(
-              element, resp.body.stream.readAll(), getHostScriptingCallbacks(view)
+            element.executeScript(
+              codeBuffer = resp.body.stream.readAll(),
+              callbacks = getHostScriptingCallbacks(view),
+              embeddingOpts = view.opts.embedding,
             )
             view.scripts &= element
       ,
     )
 
   if isInline:
-    executeScript(element, ensureMove(codeBuffer), getHostScriptingCallbacks(view))
+    element.executeScript(
+      codeBuffer = ensureMove(codeBuffer),
+      callbacks = getHostScriptingCallbacks(view),
+      embeddingOpts = view.opts.embedding,
+    )
     view.scripts &= element
 
 proc handleHTMLMetaElement(view: WebRenderer, element: HTMLMetaElement) =

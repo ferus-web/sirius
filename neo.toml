@@ -5,7 +5,7 @@ version = "0.1.0"
 license = "GPL3"
 kind = "Binary"
 backend = "C"
-binaries = ["sirius", "balde", "niskriya"]
+binaries = ["sirius", "balde", "niskriya", "examples/hello/main"]
 
 [toolchain]
 version = "2.2.0"

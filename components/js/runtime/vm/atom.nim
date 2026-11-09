@@ -21,9 +21,6 @@ type
     NativeCallable = 10
     Undefined = 11
 
-  AtomOverflowError* = object of CatchableError
-  SequenceError* = object of CatchableError
-
   FieldDescriptor* {.pure, size: sizeof(uint8).} = enum
     Writable = 0
     Enumerable

@@ -50,3 +50,9 @@ Sent when the renderer wants to copy some text to the clipboard. The master shou
 **Argument 1<sup>(optional)</sup>**: UTF-8 string
 
 Sent when the renderer wants to update the page's loading status. If no argument is provided, the document is presumed to have been fully loaded and/or no navigable anchors are currently being hovered over.
+
+### callEmbedBinding
+**Argument 1**: UTF-8 string
+**Argument 2-N**: any
+
+Sent by the renderer if the embedding API is enabled, and JavaScript code calls `window.<namespace>.invoke()`. **If the embedding API is disabled, this must be rejected.**

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello, embedding!</title>
+  </head>
+  <body>
+  </body>
+  <script>
+window.alert("hello there!");
+
+function nativePrint(msg) {
+  window.hello.fire("nativePrint", msg);
+}
+nativePrint("this should be printed to stdout via IPC from the master process :3");
+  </script>
+</html>

@@ -1,7 +1,7 @@
 ## Core routines for `WebView`
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
-import std/[options, posix, strformat]
+import std/[importutils, options, posix, strformat, tables]
 import
   components/synapse/[encoder, decoder, master, types, transport/socketpairs],
   components/synapse/descriptors/[master],
@@ -79,6 +79,8 @@ proc cleanupDeadProcess(view: WebView, tab: TabID, process: Process) =
     view.callbacks.onProcessFault(view, tab, process)
 
 proc handleIPCMessage(view: WebView, event: Event) =
+  privateAccess(WebView)
+
   let assoc = view.master.findAssociatedClientByFd(event.trigger.fd)
   if !assoc:
     warn "Received message from non-associated channel", chan = event.trigger.fd
@@ -152,6 +154,9 @@ proc handleIPCMessage(view: WebView, event: Event) =
 
     if view.callbacks.onStatusBarUpdate != nil:
       view.callbacks.onStatusBarUpdate(view, tabId, statusText)
+  of MasterOp.CallEmbedBinding:
+    let name = &msg.argument(0, string)
+    view.routedFns[name](view, msg)
 
 proc step*(view: WebView) =
   let events = view.loop.wait()

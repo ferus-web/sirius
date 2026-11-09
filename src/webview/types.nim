@@ -12,10 +12,14 @@ import
   components/net/ws/types,
   components/js/runtime/prelude as js,
   components/synapse/types,
+  components/synapse/descriptors/master,
   components/css/types,
   components/scripting/websocket/websocket,
-  components/net/loader/types
+  components/net/loader/types,
+  components/scripting/embedding
 import ./[cookie_jar]
+
+export embedding.EmbeddingOpts
 
 logScope:
   topics = "webview/types"
@@ -24,6 +28,8 @@ type
   WebViewOpts* = object
     disableImageLoading*, disableExternalStylesheets*, disableStyling*,
       disableScripting*: bool
+
+    embedding*: embedding.EmbeddingOpts
 
   WebRendererObj = object
     renderCtx*: RenderingContext
@@ -92,6 +98,7 @@ type
   ClipboardWriteCallback* =
     proc(view: WebView, tab: TabID, text: string, promiseId: uint32)
   StatusBarUpdateCallback* = proc(view: WebView, tab: TabID, status: Option[string])
+  EmbeddedFunctionCallback* = proc(view: WebView, message: Message[MasterOp])
 
   WebViewCallbacks* = object
     onFrameDrawn*: FrameDrawnCallback
@@ -114,6 +121,8 @@ type
     bufferStride*: uint32
 
     loop*: EventLoop
+
+    routedFns: Table[string, EmbeddedFunctionCallback]
 
   WebView* = ref WebViewObj
 
