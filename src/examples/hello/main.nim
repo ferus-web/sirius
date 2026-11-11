@@ -1,10 +1,6 @@
 import std/[options]
 import
-  ../../webview/[core, types],
-  ../../embedding/prelude,
-  ../../../components/synapse/[decoder, types],
-  ../../../components/synapse/descriptors/master,
-  ../../../components/aux/pretty
+  ../../webview/[core, types], ../../embedding/prelude, ../../../components/aux/pretty
 import pkg/[shakar, url, vmath]
 
 let view =
@@ -44,6 +40,11 @@ view.bindFn(
 let tab = view.createTab()
 
 view.loadURL(tab, parseURL("file://src/examples/hello/index.html"))
+view.insertScript(
+  cast[uint32](tab),
+  parseURL("file://thing.js"),
+  "window.hello.fire('nativePrint', 'this went from Nim to JS and back to Nim :D');",
+)
 
 while true:
   view.step()

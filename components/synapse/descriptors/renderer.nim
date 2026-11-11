@@ -15,3 +15,6 @@ type RenderOp* {.pure, size: sizeof(uint16).} = enum
     # HACK: This is a bad way to do things. It means that we rely solely on clients behaving well. Maybe we can guard the response UseGraphicsFD, but eh.
   ClipboardWriteAck
   Exit
+
+  # Embedding API
+  InsertScript

@@ -14,4 +14,6 @@ type MasterOp* {.pure, size: sizeof(uint16).} = enum
   UpdateNavigation
   ClipboardWriteText
   UpdateStatusBar
+
+  # Embedding API
   CallEmbedBinding

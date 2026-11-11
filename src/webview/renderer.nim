@@ -1017,6 +1017,17 @@ proc handleIPCMessage(view: WebRenderer) =
     handleClipboardWriteAck(view, promiseId, errorMessage)
   of RenderOp.Exit:
     view.running = false
+  of RenderOp.InsertScript:
+    assert(view.opts.embedding.enabled)
+
+    executor.executeScript(
+      element = HTMLScriptElement(
+        script: Script(baseURL: &msg.argument(0, url.URL), document: view.dom)
+      ),
+      codeBuffer = &msg.argument(1, string),
+      callbacks = getHostScriptingCallbacks(view),
+      embeddingOpts = view.opts.embedding,
+    )
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"
