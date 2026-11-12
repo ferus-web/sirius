@@ -337,6 +337,17 @@ proc gdk_dmabuf_texture_builder_build*(
 
 proc gdk_display_get_clipboard*(display: ptr GdkDisplay): ptr GdkClipboard
 proc gdk_clipboard_set_text*(clipboard: ptr GdkClipboard, text: cstring)
+proc gdk_clipboard_read_text_async*(
+  clipboard: ptr GdkClipboard, cancellable: pointer, callback: pointer, user: pointer
+)
+
+proc gdk_clipboard_read_text_finish*(
+  clipboard: ptr GdkClipboard, res: pointer, error: var pointer
+): cstring
+
+# TODO: I'm sure there's a better place to put these.
+proc g_free*(data: pointer)
+proc g_error_free*(err: pointer)
 
 {.pop.}
 {.pop.}
