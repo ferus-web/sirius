@@ -148,7 +148,14 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
         renderer.client.encoder.push(text)
         renderer.client.encoder.push(cast[uint32](renderer.clipboardPromises.len - 1))
 
-        discard renderer.client.send()
+        discard renderer.client.send(),
+      readText: proc(promise: JSValue, rt: Runtime) =
+        renderer.clipboardPromises &= ClipboardPromise(rt: rt, promise: promise)
+
+        renderer.client.encoder.encode(MasterOp.ClipboardReadText)
+        renderer.client.encoder.push(cast[uint32](renderer.clipboardPromises.len - 1))
+
+        discard renderer.client.send(),
     ),
     getTimeOrigin: proc(): int64 =
       # NOTE: This doesn't account for any new realms being created, whenever that works.
@@ -921,13 +928,18 @@ proc handleKeyboardEvent(view: WebRenderer, key, keycode: string, repeat: bool) 
     view.renderCtx.paintDebugBounds = not view.renderCtx.paintDebugBounds
     view.reflow()
 
-proc handleClipboardWriteAck(
-    view: WebRenderer, promiseId: uint32, errorMessage: Option[string]
-) =
-  assert !errorMessage, "TODO: reject promise upon failure message being included"
-
+proc handleClipboardWriteAck(view: WebRenderer, promiseId: uint32) =
   let promise = view.clipboardPromises[promiseId]
   FulfillPromise(promise.rt, promise.promise, undefined(promise.rt))
+
+  view.clipboardPromises.delete(promiseId)
+
+proc handleClipboardReadAck(view: WebRenderer, promiseId: uint32, data: string) =
+  let promise = view.clipboardPromises[promiseId]
+
+  # 1. Resolve p with v.
+  # 2. Return p.
+  FulfillPromise(promise.rt, promise.promise, promise.rt.wrap(data))
 
   view.clipboardPromises.delete(promiseId)
 
@@ -1010,11 +1022,9 @@ proc handleIPCMessage(view: WebRenderer) =
     )
     assert *view.client.send()
   of RenderOp.ClipboardWriteAck:
-    let
-      promiseId = &msg.argument(0, uint32)
-      errorMessage = msg.argument(1, string)
+    let promiseId = &msg.argument(0, uint32)
 
-    handleClipboardWriteAck(view, promiseId, errorMessage)
+    handleClipboardWriteAck(view, promiseId)
   of RenderOp.Exit:
     view.running = false
   of RenderOp.InsertScript:
@@ -1028,6 +1038,12 @@ proc handleIPCMessage(view: WebRenderer) =
       callbacks = getHostScriptingCallbacks(view),
       embeddingOpts = view.opts.embedding,
     )
+  of RenderOp.ClipboardReadAck:
+    let
+      promiseId = &msg.argument(0, uint32)
+      data = &msg.argument(1, string)
+
+    handleClipboardReadAck(view, promiseId, data)
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"

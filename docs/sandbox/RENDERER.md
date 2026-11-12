@@ -42,9 +42,14 @@ Generally sent when the user provides keyboard input in the browser.
 
 ### clipboardWriteAck
 **Argument 1**: Promise ID (uint32)
-**Argument 2<sup>(optional)</sup>**: string
 
-The master sends this in response to a `ClipboardWriteText` request, along with a string with a reason in the case of failure.
+The master sends this in response to a successful `ClipboardWriteText` request.
+
+### clipboardReadAck
+**Argument 1**: Promise ID (uint32)
+**Argument 2**: Clipboard data (UTF-8 string)
+
+The master sends this in response to a successful `ClipboardReadText` request, along with the data read off of the clipboard.
 
 ### exit
 The master sends this, generally when the user closes the tab that this renderer process was associated with.

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Clipboard 002</title></head>
+  <body>
+    <p id="out">Click here to read from the clipboard!!! :D</p>
+
+    <script>
+const out = document.getElementById('out');
+
+function afterClipboardRead(data) {
+  out.textContent = data;
+}
+
+out.addEventListener(
+  "click",
+  function() {
+    const result = navigator.clipboard.readText();
+    result.then(afterClipboardRead);
+    console.log("called readText()");
+  }
+)
+    </script>
+  </body>
+</html>

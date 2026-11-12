@@ -174,10 +174,7 @@ proc requestGraphicsFd*(master: Master, tab: uint32): Result[void, string] =
   master.send(process.trig.fd)
 
 proc clipboardWriteAck*(
-    master: Master,
-    tab: uint32,
-    promiseId: uint32,
-    errorMessage: Option[string] = none(string),
+    master: Master, tab: uint32, promiseId: uint32
 ): Result[void, string] =
   let process = &master.tabs[tab].renderer()
 
@@ -185,8 +182,17 @@ proc clipboardWriteAck*(
   master.encoder.encode(RenderOp.ClipboardWriteAck)
   master.encoder.push(promiseId)
 
-  if *errorMessage:
-    master.encoder.push(&errorMessage)
+  master.send(process.trig.fd)
+
+proc clipboardReadAck*(
+    master: Master, tab: uint32, promiseId: uint32, data: string
+): Result[void, string] =
+  let process = &master.tabs[tab].renderer()
+
+  # clipboardReadAck
+  master.encoder.encode(RenderOp.ClipboardReadAck)
+  master.encoder.push(promiseId)
+  master.encoder.push(data)
 
   master.send(process.trig.fd)
 

@@ -15,6 +15,7 @@ logScope:
 type
   ClipboardHostCallbacks* = object
     writeText*: proc(promise: JSValue, rt: Runtime, text: string) {.gcsafe.}
+    readText*: proc(promise: JSValue, rt: Runtime) {.gcsafe.}
 
   Clipboard* = object of event_target.EventTarget
 
@@ -22,9 +23,21 @@ proc read(rt: Runtime, this: JSValue, formats: JSValue): JSValue =
   warn "IMPLEMENTME: Clipboard::read()", formats = rt.ToString(formats)
   undefined(rt)
 
-proc readText(rt: Runtime, this: JSValue): JSValue =
-  warn "IMPLEMENTME: Clipboard::readText()"
-  undefined(rt)
+proc readText(rt: Runtime, this: JSValue, callbacks: ClipboardHostCallbacks): JSValue =
+  ## 7.3.2. readText()
+  ## https://www.w3.org/TR/clipboard-apis/#dom-clipboard-readtext
+
+  # 1. Let realm be this’s relevant realm.
+  # Let p be a new promise in realm.
+  let
+    p = newPromise(rt)
+    promiseObj = toJSPromise(rt, p.promise)
+
+  # TODO: Implement the rest
+  callbacks.readText(promiseObj, rt)
+
+  # Return p.
+  promiseObj
 
 proc write(rt: Runtime, this: JSValue, data: JSValue): JSValue =
   warn "IMPLEMENTME: Clipboard::write()", data = rt.ToString(data)
@@ -66,7 +79,7 @@ proc generateBindings*(runtime: Runtime, callbacks: ClipboardHostCallbacks) =
     Clipboard,
     "readText",
     proc(this: JSValue) =
-      ret readText(rt = runtime, this = this)
+      ret readText(rt = runtime, this = this, callbacks = callbacks)
     ,
   )
 

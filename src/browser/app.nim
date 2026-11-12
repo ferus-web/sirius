@@ -546,6 +546,40 @@ proc clipboardWriteText(
 
   state.view.clipboardWriteAck(tab, promiseId)
 
+proc clipboardReadText(state: BrowserState, tab: TabID, promiseId: uint32) =
+  type ClipboardReadCallbackParams = object
+    state: BrowserState
+    tab: TabID
+    promiseId: uint32
+
+  proc callback(source: pointer, res: pointer, userData: pointer) {.cdecl.} =
+    let
+      params = cast[ptr ClipboardReadCallbackParams](userData)
+      state = params.state
+      tab = params.tab
+      promiseId = params.promiseId
+
+    var err: pointer
+    let text = gdk_clipboard_read_text_finish(state.clipboard, res, err)
+
+    if text != nil:
+      state.view.clipboardReadAck(tab, promiseId, $text)
+
+      g_free(text)
+    else:
+      warn "TODO: Cannot read clipboard data. Implement readText() rejection!"
+      g_error_free(err)
+
+    dealloc(params)
+
+  let params =
+    cast[ptr ClipboardReadCallbackParams](alloc0(sizeof(ClipboardReadCallbackParams)))
+  params.state = state
+  params.tab = tab
+  params.promiseId = promiseId
+
+  gdk_clipboard_read_text_async(state.clipboard, nil, callback, cast[pointer](params))
+
 proc attachIPCEventHandlers(state: BrowserState) =
   state.view.onFrameDrawn = proc(view: WebView, tab: TabID) =
     state.frameAcked = true
@@ -577,6 +611,10 @@ proc attachIPCEventHandlers(state: BrowserState) =
   ) =
     # TODO: Guard this
     state.clipboardWriteText(tab, text, promiseId)
+
+  state.view.onClipboardReadText = proc(view: WebView, tab: TabID, promiseId: uint32) =
+    # TODO: Guard this
+    state.clipboardReadText(tab, promiseId)
 
   state.view.onStatusBarUpdate = proc(
       view: WebView, tab: TabID, status: Option[string]

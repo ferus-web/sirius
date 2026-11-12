@@ -58,13 +58,11 @@ proc pressKey*(view: WebView, id: TabID, key, keycode: string, repeat: bool) =
 proc requestGraphicsFd*(view: WebView, id: TabID) =
   view.master.requestGraphicsFd(cast[uint32](id))
 
-proc clipboardWriteAck*(
-    view: WebView,
-    id: TabID,
-    promiseId: uint32,
-    errorMessage: Option[string] = none(string),
-) =
-  view.master.clipboardWriteAck(cast[uint32](id), promiseId, errorMessage)
+proc clipboardWriteAck*(view: WebView, id: TabID, promiseId: uint32) =
+  view.master.clipboardWriteAck(cast[uint32](id), promiseId)
+
+proc clipboardReadAck*(view: WebView, id: TabID, promiseId: uint32, data: string) =
+  view.master.clipboardReadAck(cast[uint32](id), promiseId, data)
 
 proc exit*(view: WebView, id: TabID) =
   view.master.exit(cast[uint32](id))
@@ -157,6 +155,11 @@ proc handleIPCMessage(view: WebView, event: Event) =
   of MasterOp.CallEmbedBinding:
     let name = &msg.argument(0, string)
     view.routedFns[name](view, msg)
+  of MasterOp.ClipboardReadText:
+    let promiseId = &msg.argument(0, uint32)
+
+    if view.callbacks.onClipboardReadText != nil:
+      view.callbacks.onClipboardReadText(view, tabId, promiseId)
 
 proc step*(view: WebView) =
   let events = view.loop.wait()

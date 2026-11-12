@@ -95,10 +95,11 @@ type
   CursorShapeCallback* = proc(view: WebView, tab: TabID, predef: CursorPredefined)
   AlertCallback* = proc(view: WebView, tab: TabID, message: Option[string])
   NavigationUpdateCallback* = proc(view: WebView, tab: TabID, target: url.URL)
-  ClipboardWriteCallback* =
-    proc(view: WebView, tab: TabID, text: string, promiseId: uint32)
   StatusBarUpdateCallback* = proc(view: WebView, tab: TabID, status: Option[string])
   EmbeddedFunctionCallback* = proc(view: WebView, message: Message[MasterOp])
+  ClipboardWriteCallback* =
+    proc(view: WebView, tab: TabID, text: string, promiseId: uint32)
+  ClipboardReadCallback* = proc(view: WebView, tab: TabID, promiseId: uint32)
 
   WebViewCallbacks* = object
     onFrameDrawn*: FrameDrawnCallback
@@ -109,8 +110,10 @@ type
     onSetCursorShape*: CursorShapeCallback
     onAlert*: AlertCallback
     onNavigationUpdate*: NavigationUpdateCallback
-    onClipboardWriteText*: ClipboardWriteCallback
     onStatusBarUpdate*: StatusBarUpdateCallback
+
+    onClipboardWriteText*: ClipboardWriteCallback
+    onClipboardReadText*: ClipboardReadCallback
 
   WebViewObj = object
     master*: Master
@@ -153,6 +156,9 @@ func `onNavigationUpdate=`*(view: WebView, cb: NavigationUpdateCallback) =
 
 func `onClipboardWriteText=`*(view: WebView, cb: ClipboardWriteCallback) =
   view.callbacks.onClipboardWriteText = cb
+
+func `onClipboardReadText=`*(view: WebView, cb: ClipboardReadCallback) =
+  view.callbacks.onClipboardReadText = cb
 
 func `onStatusBarUpdate=`*(view: WebView, cb: StatusBarUpdateCallback) =
   view.callbacks.onStatusBarUpdate = cb
