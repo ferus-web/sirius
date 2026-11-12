@@ -401,7 +401,7 @@ proc NewPromiseCapability*(rt: Runtime, ctor: JSValue): PromiseCapability =
       resolvingFuncs.resolve = resolve
 
       # d. Set resolvingFuncs.[[Reject]] to reject.
-      resolvingFuncs.reject = resolve
+      resolvingFuncs.reject = reject
 
       # e. Return NormalCompletion(undefined).
       ret undefined(rt)
