@@ -20,7 +20,6 @@ mkShell {
     curlWs
     clang
     wayland
-    vulkan-loader
     libxkbcommon
     fontconfig
     simdutf
@@ -29,13 +28,6 @@ mkShell {
     libGL
     harfbuzz
     fribidi
-
-    # TODO: Fix figdraw's hard dependency on these
-    libX11
-    libxcb
-    libxcursor
-    libxkbcommon
-    libxrender
 
     # browser shell
     gtk4
