@@ -184,6 +184,28 @@ proc clipboardWriteAck*(
 
   master.send(process.trig.fd)
 
+proc clipboardWriteNack*(
+    master: Master, tab: uint32, promiseId: uint32
+): Result[void, string] =
+  let process = &master.tabs[tab].renderer()
+
+  # clipboardWriteNack
+  master.encoder.encode(RenderOp.ClipboardWriteNack)
+  master.encoder.push(promiseId)
+
+  master.send(process.trig.fd)
+
+proc clipboardReadNack*(
+    master: Master, tab: uint32, promiseId: uint32
+): Result[void, string] =
+  let process = &master.tabs[tab].renderer()
+
+  # clipboardReadNack
+  master.encoder.encode(RenderOp.ClipboardReadNack)
+  master.encoder.push(promiseId)
+
+  master.send(process.trig.fd)
+
 proc clipboardReadAck*(
     master: Master, tab: uint32, promiseId: uint32, data: string
 ): Result[void, string] =

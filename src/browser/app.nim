@@ -567,7 +567,8 @@ proc clipboardReadText(state: BrowserState, tab: TabID, promiseId: uint32) =
 
       g_free(text)
     else:
-      warn "TODO: Cannot read clipboard data. Implement readText() rejection!"
+      warn "Cannot read clipboard data"
+      state.view.clipboardReadNack(tab, promiseId)
       g_error_free(err)
 
     dealloc(params)

@@ -943,6 +943,20 @@ proc handleClipboardReadAck(view: WebRenderer, promiseId: uint32, data: string) 
 
   view.clipboardPromises.delete(promiseId)
 
+proc handleClipboardWriteNack(view: WebRenderer, promiseId: uint32) =
+  let promise = view.clipboardPromises[promiseId]
+  RejectPromise(promise.rt, promise.promise, promise.rt.wrap("Operating system error"))
+    # TODO: Maybe give proper errors?
+
+  view.clipboardPromises.delete(promiseId)
+
+proc handleClipboardReadNack(view: WebRenderer, promiseId: uint32) =
+  let promise = view.clipboardPromises[promiseId]
+  RejectPromise(promise.rt, promise.promise, promise.rt.wrap("Operating system error"))
+    # TODO: Same as above.
+
+  view.clipboardPromises.delete(promiseId)
+
 proc handleIPCMessage(view: WebRenderer) =
   let msgOpt = view.client.blockForMessage(RenderOp)
   if !msgOpt:
@@ -1044,6 +1058,12 @@ proc handleIPCMessage(view: WebRenderer) =
       data = &msg.argument(1, string)
 
     handleClipboardReadAck(view, promiseId, data)
+  of RenderOp.ClipboardReadNack:
+    let promiseId = &msg.argument(0, uint32)
+    handleClipboardReadNack(view, promiseId)
+  of RenderOp.ClipboardWriteNack:
+    let promiseId = &msg.argument(0, uint32)
+    handleClipboardWriteNack(view, promiseId)
 
 proc loop*(view: WebRenderer): int =
   info "Entering main loop"
