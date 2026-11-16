@@ -23,7 +23,8 @@ proc decode*[O: SomeOrdinal](decoder: Decoder, op: typedesc[O]): Option[Message[
   var msg: Message[O]
   msg.op = cast[O](decoder.buffer.readUint16(OpPosition))
   msg.argc = decoder.buffer.readUint8(ArgcPosition)
-  msg.buffer = move(decoder.buffer)
+  if msg.argc > 0'u8:
+    msg.buffer = move(decoder.buffer)
 
   some(ensureMove(msg))
 
