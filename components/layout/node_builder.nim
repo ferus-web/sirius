@@ -410,8 +410,10 @@ proc setStyleProperties(layoutNode: LayoutNode, fontProvider: FontProvider) =
           layoutNode.display = (
             if prop.str == "block":
               DisplayMode.Block
-            elif prop.str == "inline":
+            elif prop.str == "inline" or prop.str == "inline-block":
               DisplayMode.Inline
+            elif prop.str == "none":
+              DisplayMode.None
             else:
               warn "Unhandled display property for node", display = prop
               DisplayMode.Block
@@ -519,7 +521,7 @@ proc createLayoutNode*(
 
   if not (node of tags.HTMLInputElement) and node of dom.Text:
     let textData = Text(node).data
-    if textData.len < 1 or isEmptyOrWhitespace(textData):
+    if textData.len < 1:
       return
 
     layoutNode.content = textData

@@ -164,7 +164,7 @@ proc drawInputElement(
     discard
 
 proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) =
-  if node == nil:
+  if node == nil or node.display == DisplayMode.None:
     return
 
   let
@@ -192,6 +192,8 @@ proc buildFigNodes*(ctx: RenderingContext, node: LayoutNode, parentIdx: FigIdx) 
     discard ctx.displayList.addChild(ZLevel(0), parentIdx, &borderFig)
 
   case node.display
+  of DisplayMode.None:
+    unreachable
   of DisplayMode.Block, DisplayMode.Inline:
     if ctx.paintDebugBounds:
       discard ctx.displayList.addChild(

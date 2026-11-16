@@ -12,6 +12,7 @@ type
     Block
     Inline
     Anonymous
+    None
 
   LayoutMargins* = object
     top*, right*, bottom*, left*: Option[CSSValue]

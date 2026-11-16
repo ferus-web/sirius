@@ -109,6 +109,8 @@ proc applyClearance(
 
 proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
   node.absolutePos = parent
+  if node.display == DisplayMode.None:
+    return
 
   let isImage =
     node.domNode != nil and node.domNode of tags.HTMLImageElement and
@@ -291,6 +293,9 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
     var lastFloatY = currentY
 
     for child in node.children:
+      if child.display == DisplayMode.None:
+        continue
+
       applyClearance(child, node.absolutePos.y, currentY, ctx.bfc)
 
       let
@@ -392,6 +397,9 @@ proc computeLayout*(ctx: FlowContext, node: LayoutNode, parent: vmath.Vec2) =
     var lastFloatY = cursor.y
 
     for child in node.children:
+      if child.display == DisplayMode.None:
+        continue
+
       applyClearance(child, node.absolutePos.y, cursor.y, ctx.bfc)
 
       let
