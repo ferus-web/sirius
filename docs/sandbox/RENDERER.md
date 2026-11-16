@@ -55,3 +55,13 @@ The master sends this in response to a successful `ClipboardReadText` request, a
 The master sends this, generally when the user closes the tab that this renderer process was associated with.
 
 **Note**: The renderer might just fully ignore this, especially if it's stuck in a deadlock or infinite yield loop. It is recommended for the master to follow this up with a process-kill, as necessary.
+
+### clipboardWriteNack
+**Argument 1**: Promise ID (uint32)
+
+The master sends this in response to a failed `ClipboardWriteText` request.
+
+### clipboardReadNack
+**Argument 1**: Promise ID (uint32)
+
+The master sends this in response to a failed `ClipboardReadText` request.

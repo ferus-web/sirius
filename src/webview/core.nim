@@ -64,6 +64,12 @@ proc clipboardWriteAck*(view: WebView, id: TabID, promiseId: uint32) =
 proc clipboardReadAck*(view: WebView, id: TabID, promiseId: uint32, data: string) =
   view.master.clipboardReadAck(cast[uint32](id), promiseId, data)
 
+proc clipboardWriteNack*(view: WebView, id: TabID, promiseId: uint32) =
+  view.master.clipboardWriteNack(cast[uint32](id), promiseId)
+
+proc clipboardReadNack*(view: WebView, id: TabID, promiseId: uint32) =
+  view.master.clipboardReadNack(cast[uint32](id), promiseId)
+
 proc exit*(view: WebView, id: TabID) =
   view.master.exit(cast[uint32](id))
   discard view.loop.unregister((&view.master.tabs[cast[uint32](id)].renderer()).trig)

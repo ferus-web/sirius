@@ -17,7 +17,9 @@ type RenderOp* {.pure, size: sizeof(uint16).} = enum
 
   # Clipboard API
   ClipboardWriteAck
+  ClipboardWriteNack
   ClipboardReadAck
+  ClipboardReadNack
 
   # Embedding API
   InsertScript
