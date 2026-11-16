@@ -24,7 +24,13 @@ proc decode*[O: SomeOrdinal](decoder: Decoder, op: typedesc[O]): Option[Message[
   msg.op = cast[O](decoder.buffer.readUint16(OpPosition))
   msg.argc = decoder.buffer.readUint8(ArgcPosition)
   if msg.argc > 0'u8:
-    msg.buffer = move(decoder.buffer)
+    # OPTIMIZATION: Instead of giving away our precious little (generally) ~4KB buffer for every argument-carrying operation,
+    # we can instead create a new much smaller (at worst, a few bytes) new buffer, copy the required data into it, and hand over its ownership
+    # to the `Message` instead. Our buffer has too much (hidden) capacity to just waste for no reason.
+    var throwaway = newString(decoder.buffer.len)
+    copyMem(throwaway[0].addr, decoder.buffer[0].addr, decoder.buffer.len)
+
+    msg.buffer = move(throwaway)
 
   some(ensureMove(msg))
 
