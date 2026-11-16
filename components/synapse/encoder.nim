@@ -47,6 +47,8 @@ proc encode*[O: SomeOrdinal](encoder: Encoder, op: O) =
   encoder.buffer.setLen(3)
   encoder.argc = 0'u8
   encoder.buffer.writeUint16(OpPosition, cast[uint16](op))
+  encoder.buffer.writeUint8(ArgcPosition, 0'u8)
+
   encoder.fds.reset()
 
 proc push*[T](encoder: Encoder, value: T) =
