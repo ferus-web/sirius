@@ -350,7 +350,7 @@ proc call*(
 
   # runtime.drainMicrotasks()
 
-proc setGlobal*(runtime: Runtime, name: string, value: JSValue) =
+proc setGlobal*(runtime: Runtime, name: string, value: JSValue): JSValue =
   ## Set a global in the current context.
   ##
   ## **NOTE**: This only works if called _before_ bytecode generation.
@@ -362,6 +362,8 @@ proc setGlobal*(runtime: Runtime, name: string, value: JSValue) =
     runtime.vm.stack.setLen(index)
 
   runtime.vm.stack[index] = value
+
+  value
 
 proc setGlobal*[T](runtime: Runtime, name: string, value: sink T): JSValue =
   var wrapped: JSValue
@@ -379,8 +381,6 @@ proc setGlobal*[T](runtime: Runtime, name: string, value: sink T): JSValue =
 
   runtime.wrap(wrapped, value)
   setGlobal(runtime, name, wrapped)
-
-  wrapped
 
 proc getProperty*(runtime: Runtime, atom: JSValue, name: string): JSValue {.gcsafe.} =
   if atom.kind != Object:
