@@ -18,7 +18,8 @@ import
   components/scripting/html/element/[head, input],
   components/scripting/websocket/[close_event, websocket],
   components/scripting/clipboard/[clipboard],
-  components/scripting/embedding
+  components/scripting/embedding,
+  components/scripting/xhr/[request_upload, request]
 
 when defined(unix):
   import components/impure/nix
@@ -86,6 +87,9 @@ proc registerWebBindings(
 
   clipboard.generateBindings(elem.script.rt, callbacks.clipboard)
   clipboard.generateGlobal(elem.script.rt, navig)
+
+  request_upload.generateBindings(elem.script.rt)
+  request.generateBindings(elem.script.rt, doc)
 
   if embeddingOpts.enabled:
     embedding.generateBindings(elem.script.rt, callbacks.embedding)

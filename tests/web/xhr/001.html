@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>XHR 001</title>
+</head>
+<body>
+  <pre id="output"></pre>
+
+  <script>
+    var output = document.getElementById('output');
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'https://jsonplaceholder.typicode.com/todos/1', true);
+
+    /*xhr.onreadystatechange = function() {
+      console.log("onreadystatechange")
+    }*/
+
+    xhr.send();
+  </script>
+
+</body>
+</html>

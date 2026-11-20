@@ -256,7 +256,9 @@ func sanitizeIdent(buffer: string): string =
   if buffer in ["type", "for", "if", "as", "block", "while", "end"]:
     return buffer[0 ..< buffer.len - 1]
 
-  buffer.multiReplace({"interface": "iface"})
+  buffer.multiReplace(
+    {"interface": "iface", "method": "meth", "func": "fun", "if": "iff", "for": "forr"}
+  ) # HACK: wonderful reserved substitutions
 
 func convertValueKind(kind: ValueKind): string =
   case kind
