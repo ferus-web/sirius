@@ -26,7 +26,7 @@
 )
 
 (op UpdateStatusBar
-  (@string text)
+  (@string? text)
 )
 
 (op ClipboardWriteText

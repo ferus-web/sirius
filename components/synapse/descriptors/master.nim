@@ -59,9 +59,10 @@ proc updateNavigation*(ctx: Client, location: url.URL) =
   ctx.encoder.push(location)
   ctx.send()
 
-proc updateStatusBar*(ctx: Client, text: string) =
+proc updateStatusBar*(ctx: Client, text: Option[string]) =
   ctx.encoder.encode(MasterOp.UpdateStatusBar)
-  ctx.encoder.push(text)
+  if *text:
+    ctx.encoder.push(text)
   ctx.send()
 
 proc clipboardWriteText*(ctx: Client, textData: string, promiseId: uint32) =
@@ -110,7 +111,7 @@ type
     location*: url.URL
 
   UpdateStatusBarParams* = object
-    text*: string
+    text*: Option[string]
 
   ClipboardWriteTextParams* = object
     textData*: string
@@ -219,18 +220,12 @@ proc params*[T: object](msg: Message[MasterOp], _: typedesc[T]): Result[T, strin
       params.location = &locationOpt
 
   when T is UpdateStatusBarParams:
-    # argc [high]: 1; argc [low]: 1
+    # argc [high]: 1; argc [low]: 0
 
-    if msg.argc > 1'u8 or msg.argc < 1'u8:
+    if msg.argc > 1'u8 or msg.argc < 0'u8:
       return err(&"UpdateStatusBar: Argument count mismatch")
 
-    let textOpt = msg.argument(0, string)
-    if !textOpt:
-      return err(
-        "UpdateStatusBar: Missing non-optional argument 'text' (String) at position 0"
-      )
-    else:
-      params.text = &textOpt
+    params.text = msg.argument(0, string)
 
   when T is ClipboardWriteTextParams:
     # argc [high]: 2; argc [low]: 2
