@@ -4,7 +4,9 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import
-  components/synapse/[master, types], components/os/event_loop, components/impure/nix
+  components/synapse/[decoder, master, types],
+  components/os/event_loop,
+  components/impure/nix
 import pkg/[chronicles, results, shakar]
 
 when defined(linux):
@@ -22,8 +24,7 @@ template reportBadMessage*(
   warn "Reporting bad message", process = process.kind, why = reason
 
   # 1. Firstly, reset the decoder's state so that we do not have any leftovers from this message.
-  zeroMem(master.decoder.buffer[0].addr, master.decoder.buffer.len)
-  master.decoder.buffer.setLen(0)
+  master.decoder.reset()
 
   # 2. Immediately deregister the trigger for this process.
   if (let res = loop.unregister(process.trig); !res):

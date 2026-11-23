@@ -45,6 +45,15 @@ proc writeHandle*(decoder: Decoder, size: uint64): ptr char =
   decoder.buffer.setLen(size)
   decoder.buffer[0].addr
 
+func reset*(decoder: Decoder) =
+  privateAccess(types.Decoder)
+
+  if decoder.buffer.len < 1:
+    return
+
+  zeroMem(decoder.buffer[0].addr, decoder.buffer.len)
+  decoder.buffer.setLen(0)
+
 func fd*(msg: Message, index: uint8): Option[FileDescriptor] =
   if cast[uint8](msg.fds.len) < index:
     return none(FileDescriptor)

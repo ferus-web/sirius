@@ -25,7 +25,7 @@ type
   EncodedBuffer* = distinct string
 
   Decoder* = ref object
-    buffer*: string
+    buffer: string
 
   ProcessKind* {.pure, size: sizeof(uint8).} = enum
     Zygote
