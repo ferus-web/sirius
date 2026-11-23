@@ -155,7 +155,6 @@ proc handleIPCMessage(view: WebView, event: Event) =
     msg = &msgOpt
     tabId = cast[TabID](tab)
 
-  # TODO: Migrate all of these to use the validating parameter decoder
   case msg.op
   of MasterOp.FrameDrawn:
     if view.callbacks.onFrameDrawn != nil:
@@ -171,13 +170,32 @@ proc handleIPCMessage(view: WebView, event: Event) =
     if view.callbacks.onResize != nil:
       view.callbacks.onResize(view, tabId, params.renderSize)
   of MasterOp.SetPageTitle:
+    let paramsOpt = msg.params(SetPageTitleParams)
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let params = &paramsOpt
     if view.callbacks.onPageTitleChange != nil:
-      view.callbacks.onPageTitleChange(view, tabId, &msg.argument(0, string))
+      view.callbacks.onPageTitleChange(view, tabId, params.title)
   of MasterOp.SetPCursorShape:
+    let paramsOpt = msg.params(SetPCursorShapeParams)
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let params = &paramsOpt
     if view.callbacks.onSetCursorShape != nil:
-      view.callbacks.onSetCursorShape(view, tabId, &msg.argument(0, CursorPredefined))
+      view.callbacks.onSetCursorShape(
+        view, tabId, cast[CursorPredefined](params.predef)
+      )
   of MasterOp.UseGraphicsFD:
-    let dmaFd = &msg.fd(0)
+    let paramsOpt = msg.params(UseGraphicsFDParams)
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let
+      params = &paramsOpt
+      dmaFd = params.dma
+
     if cast[int32](dmaFd) < 0:
       warn "Renderer returned invalid graphics buffer fd", tab = tab, fd = dmaFd
       return
@@ -198,33 +216,62 @@ proc handleIPCMessage(view: WebView, event: Event) =
     if view.callbacks.onAlert != nil:
       view.callbacks.onAlert(view, tabId, params.text)
   of MasterOp.UpdateNavigation:
-    let navigationUrl = &msg.argument(0, URL)
-    view.master.tabs[tab].url = navigationUrl
+    let paramsOpt = msg.params(UpdateNavigationParams)
 
-    # debugecho "update nav: " & $view.master.tabs[tab].url
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let
+      params = &paramsOpt
+      navigationUrl = params.location
+
+    view.master.tabs[tab].url = navigationUrl
 
     if view.callbacks.onNavigationUpdate != nil:
       view.callbacks.onNavigationUpdate(view, tabId, navigationUrl)
   of MasterOp.ClipboardWriteText:
-    let
-      textData = &msg.argument(0, string)
-      promiseId = &msg.argument(1, uint32)
+    let paramsOpt = msg.params(ClipboardWriteTextParams)
 
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let params = &paramsOpt
     if view.callbacks.onClipboardWriteText != nil:
-      view.callbacks.onClipboardWriteText(view, tabId, textData, promiseId)
+      view.callbacks.onClipboardWriteText(
+        view, tabId, params.textData, params.promiseId
+      )
   of MasterOp.UpdateStatusBar:
-    let statusText = msg.argument(0, string)
+    let paramsOpt = msg.params(UpdateStatusBarParams)
 
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let params = &paramsOpt
     if view.callbacks.onStatusBarUpdate != nil:
-      view.callbacks.onStatusBarUpdate(view, tabId, statusText)
+      view.callbacks.onStatusBarUpdate(view, tabId, params.text)
   of MasterOp.CallEmbedBinding:
-    let name = &msg.argument(0, string)
-    view.routedFns[name](view, msg)
-  of MasterOp.ClipboardReadText:
-    let promiseId = &msg.argument(0, uint32)
+    let paramsOpt = msg.params(CallEmbedBindingParams)
 
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let params = &paramsOpt
+    if not view.routedFns.contains(params.routine):
+      # NOTE: Does this really warrant death?
+      view.master.reportBadMessage(
+        view.loop, process, &"No such registered routine: {params.routine}"
+      )
+
+    view.routedFns[params.routine](view, msg)
+  of MasterOp.ClipboardReadText:
+    let paramsOpt = msg.params(ClipboardReadTextParams)
+
+    if !paramsOpt:
+      view.master.reportBadMessage(view.loop, process, paramsOpt.error())
+
+    let params = &paramsOpt
     if view.callbacks.onClipboardReadText != nil:
-      view.callbacks.onClipboardReadText(view, tabId, promiseId)
+      view.callbacks.onClipboardReadText(view, tabId, params.promiseId)
   of MasterOp.ProcessSpawned:
     view.master.reportBadMessage(
       view.loop, process, "Non-Zygote processes cannot send ProcessSpawned signal!"
