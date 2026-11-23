@@ -1,0 +1,5 @@
+(op Spawn
+  (@u8 kind)
+  (@fd channel)
+  (@u64 identifier)
+)

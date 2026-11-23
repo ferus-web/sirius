@@ -4,7 +4,7 @@
 import std/[strformat, options, posix]
 import
   components/synapse/[decoder, encoder, types, transport/socketpairs],
-  components/synapse/descriptors/[renderer, zygote],
+  components/synapse/descriptors/[zygote],
   components/os/event_loop,
   components/impure/nix
 import pkg/[chronicles, results, shakar, vmath, url]
@@ -48,6 +48,7 @@ proc spawnZygote*[T: object](
     discard posix.close(pair.theirs()) # We don't need the zygote=>master fd.
     master.zygote = Process(trig: ipc(pair.ours()), kind: ProcessKind.Zygote)
 
+{.push discardable.}
 proc send*(master: Master, fd: int32): Result[void, string] =
   let res = send(fd, master.encoder.fds, master.encoder.finalize())
 
@@ -55,26 +56,36 @@ proc send*(master: Master, fd: int32): Result[void, string] =
   master.encoder.fds.setLen(0)
   res
 
+proc send*(master: Master, process: Process): Result[void, string] =
+  send(master, process.trig.fd)
+
+{.pop.}
+
 proc spawn*(master: Master, tab: uint32, kind: static ProcessKind, socks: SocketPair) =
   static:
     assert(kind != ProcessKind.Zygote, "Use `spawnZygote()`, not this!")
 
+  let
+    ourFd = socks.ours()
+    process = Process(trig: ipc(ourFd), kind: kind)
+
   # Spawn
   # Argument 1: ProcessKind
   # Argument 2: FD (the one that the process will use to talk to the master)
+  # Argument 3: Identifier (so the zygote can signal readiness back to us)
   master.encoder.encode(ZygoteOp.Spawn)
   master.encoder.push(kind)
   master.encoder.push(FileDescriptor(socks.theirs()))
+  master.encoder.push(hash(process))
 
   assert *master.send(master.zygote.trig.fd)
 
   discard posix.close(socks.theirs())
 
-  let ourFd = socks.ours()
   let flags = posix.fcntl(ourFd, posix.F_GETFL, 0'i32)
   assert(posix.fcntl(ourFd, posix.F_SETFL, flags or posix.O_NONBLOCK) >= 0'i32)
 
-  master.tabs[tab].processes &= Process(trig: ipc(ourFd), kind: kind)
+  master.tabs[tab].processes &= process
 
 func renderer*(tab: Tab): Option[Process] =
   ## Get the Renderer process for this tab.
@@ -88,144 +99,6 @@ func renderer*(tab: Tab): Option[Process] =
       return some(process)
 
   none(Process)
-
-{.push discardable.}
-proc drawFrame*(master: Master, process: Process): Result[void, string] =
-  assert(process.kind == ProcessKind.Renderer)
-
-  # drawFrame
-  # (no arguments)
-  master.encoder.encode(RenderOp.DrawFrame)
-
-  master.send(process.trig.fd)
-
-proc resizeRenderTarget*(
-    master: Master, process: Process, dims: vmath.IVec2
-): Result[void, string] =
-  assert(process.kind == ProcessKind.Renderer)
-
-  # resizeRenderTarget
-  # Argument 1: vmath.IVec2
-  master.encoder.encode(RenderOp.ResizeRenderTarget)
-  master.encoder.push(dims)
-
-  master.send(process.trig.fd)
-
-proc gotoURL*(master: Master, tab: uint32, target: url.URL): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # gotoURL
-  # Argument 1: string
-  master.encoder.encode(RenderOp.GotoURL)
-  master.encoder.push(target)
-
-  master.send(process.trig.fd)
-
-proc scrollViewport*(
-    master: Master, tab: uint32, velocity: vmath.Vec2
-): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # viewportScroll
-  # Argument 1: vmath.Vec2
-  master.encoder.encode(RenderOp.ViewportScroll)
-  master.encoder.push(velocity)
-
-  master.send(process.trig.fd)
-
-proc cursorMotion*(
-    master: Master, tab: uint32, position: vmath.Vec2
-): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # cursorMotion
-  # Argument 1: vmath.Vec2
-  master.encoder.encode(RenderOp.CursorMotion)
-  master.encoder.push(position)
-
-  master.send(process.trig.fd)
-
-proc cursorClick*(master: Master, tab: uint32): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # cursorClick
-  master.encoder.encode(RenderOp.CursorClick)
-
-  master.send(process.trig.fd)
-
-proc pressKey*(
-    master: Master, tab: uint32, key: string, keycode: string, repeat: bool
-): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # keyPressed
-  master.encoder.encode(RenderOp.KeyPressed)
-  master.encoder.push(key)
-  master.encoder.push(keycode)
-  master.encoder.push(repeat)
-
-  master.send(process.trig.fd)
-
-proc requestGraphicsFd*(master: Master, tab: uint32): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # sendGraphicsFD
-  master.encoder.encode(RenderOp.SendGraphicsFD)
-  master.send(process.trig.fd)
-
-proc clipboardWriteAck*(
-    master: Master, tab: uint32, promiseId: uint32
-): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # clipboardWriteAck
-  master.encoder.encode(RenderOp.ClipboardWriteAck)
-  master.encoder.push(promiseId)
-
-  master.send(process.trig.fd)
-
-proc clipboardWriteNack*(
-    master: Master, tab: uint32, promiseId: uint32
-): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # clipboardWriteNack
-  master.encoder.encode(RenderOp.ClipboardWriteNack)
-  master.encoder.push(promiseId)
-
-  master.send(process.trig.fd)
-
-proc clipboardReadNack*(
-    master: Master, tab: uint32, promiseId: uint32
-): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # clipboardReadNack
-  master.encoder.encode(RenderOp.ClipboardReadNack)
-  master.encoder.push(promiseId)
-
-  master.send(process.trig.fd)
-
-proc clipboardReadAck*(
-    master: Master, tab: uint32, promiseId: uint32, data: string
-): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # clipboardReadAck
-  master.encoder.encode(RenderOp.ClipboardReadAck)
-  master.encoder.push(promiseId)
-  master.encoder.push(data)
-
-  master.send(process.trig.fd)
-
-proc exit*(master: Master, tab: uint32): Result[void, string] =
-  let process = &master.tabs[tab].renderer()
-
-  # exit
-  master.encoder.encode(RenderOp.Exit)
-  master.send(process.trig.fd)
-
-{.pop.}
 
 func findAssociatedClientByFd*(
     master: Master, fd: int32

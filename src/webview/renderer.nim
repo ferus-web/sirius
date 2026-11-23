@@ -70,6 +70,7 @@ proc getHostScriptingCallbacks(renderer: WebRenderer): HostScriptingCallbacks =
         renderer.client.encoder.encode(MasterOp.AlertMessage)
         if *message:
           renderer.client.encoder.push(&message)
+          renderer.client.encoder.push(&message)
 
         discard renderer.client.send()
     ),

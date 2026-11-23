@@ -1,8 +1,12 @@
 ## Core wire types for IPC
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+import std/[hashes, options]
 import components/os/event_loop
 import pkg/url
+
+when defined(posix):
+  import components/impure/nix
 
 const
   OpPosition* = 0
@@ -21,7 +25,7 @@ type
   EncodedBuffer* = distinct string
 
   Decoder* = ref object
-    buffer: string
+    buffer*: string
 
   ProcessKind* {.pure, size: sizeof(uint8).} = enum
     Zygote
@@ -31,6 +35,9 @@ type
   ProcessObj = object
     trig*: Trigger
     kind*: ProcessKind
+
+    when nix.SupportsPidfd:
+      id*: Option[nix.Pidfd]
 
   Process* = ref ProcessObj
 
@@ -67,3 +74,9 @@ type
     buffer*: string
 
     fds*: seq[int32]
+
+func hash*(process: Process): Hash =
+  hash((process.trig.fd, process.kind))
+
+func `$`*(fd: FileDescriptor): string {.raises: [].} =
+  $cast[int32](fd)

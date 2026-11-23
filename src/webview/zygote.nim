@@ -5,7 +5,7 @@
 import std/[posix, strformat]
 import
   components/synapse/[decoder, types, transport/socketpairs],
-  components/synapse/descriptors/zygote,
+  components/synapse/descriptors/[master, zygote],
   components/os/threads,
   components/impure/nix
 import pkg/[chronicles, results, shakar, url]
@@ -22,16 +22,19 @@ proc launchRendererProcess(channel: int32, params: WebViewOpts) =
   webRenderer.loadPage(parseURL("sirius:new")) # TODO: Can we not do this?
   quit(webRenderer.loop())
 
-proc spawnChildProcess(master: int32, msg: Message[ZygoteOp], params: WebViewOpts) =
+proc spawnChildProcess(
+    client: Client, master: int32, msg: Message[ZygoteOp], params: WebViewOpts
+) =
   let
     processKind = &msg.argument(0, ProcessKind)
+    identifier = &msg.argument(1, uint64)
     fd = &msg.fd(0)
 
   info "Spawning child process", kind = processKind, channel = fd
 
   let pid = posix.fork()
   if pid < 0:
-    discard posix.close(fd)
+    discard posix.close(cast[int32](fd))
     raise newException(
       Defect,
       &"Failed to fork zygote to create process {processKind} with channel {fd}: {posix.strerror(posix.errno)}",
@@ -44,11 +47,17 @@ proc spawnChildProcess(master: int32, msg: Message[ZygoteOp], params: WebViewOpt
 
     case processKind
     of ProcessKind.Renderer:
-      launchRendererProcess(fd, params)
+      launchRendererProcess(cast[int32](fd), params)
     else:
       unreachable
   else:
-    discard posix.close(fd) # We don't need the channel in the zygote anymore.
+    discard
+      posix.close(cast[int32](fd)) # We don't need the channel in the zygote anymore.
+
+    # Let the master process associate the new PID with the spawned process.
+    client.processSpawned(
+      identifier = identifier, pidfd = FileDescriptor(nix.pidfd_open(pid, 0))
+    )
 
 proc main*(master: int32, params: WebViewOpts) {.noReturn.} =
   ## Entry point for the process. This has to be called once we've forked from the master
@@ -74,6 +83,6 @@ proc main*(master: int32, params: WebViewOpts) {.noReturn.} =
     let msg = &msgOpt
     case msg.op
     of ZygoteOp.Spawn:
-      spawnChildProcess(master, msg, params)
+      spawnChildProcess(client, master, msg, params)
 
   quit(QuitSuccess)

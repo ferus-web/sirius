@@ -1,0 +1,56 @@
+;; Opcodes for the Renderer process. These are sent by the Master.
+;;
+;; Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
+
+(op GotoURL
+  (@URL target)
+)
+
+(op DrawFrame)
+
+(op ResizeRenderTarget
+  (@IVec2 size)
+)
+
+(op Close)
+
+(op ViewportScroll
+  (@Vec2 velocity)
+)
+
+(op CursorMotion
+  (@Vec2 position)
+)
+
+(op CursorClick)
+
+(op KeyPressed
+  (@string key)
+  (@string keycode)
+  (@bool repeat)
+)
+
+(op SendGraphicsFD)
+(op Exit)
+
+(op ClipboardWriteAck
+  (@u32 promiseId)
+)
+
+(op ClipboardWriteNack
+  (@u32 promiseId)
+)
+
+(op ClipboardReadAck
+  (@u32 promiseId)
+  (@string data)
+)
+
+(op ClipboardReadNack
+  (@u32 promiseId)
+)
+
+(op InsertScript
+  (@URL baseURL)
+  (@string code)
+)

@@ -1,0 +1,48 @@
+(op FrameDrawn)
+
+(op UseGraphicsFD
+  (@fd dma)
+)
+
+(op TargetResized
+  (@IVec2 renderSize)
+  (@u32 stride)
+)
+
+(op SetPageTitle
+  (@string title)
+)
+
+(op SetPCursorShape
+  (@u8 predef)
+)
+
+(op AlertMessage
+  (@string? text)
+)
+
+(op UpdateNavigation
+  (@URL location)
+)
+
+(op UpdateStatusBar
+  (@string text)
+)
+
+(op ClipboardWriteText
+  (@string textData)
+  (@uint32 promiseId)
+)
+
+(op ClipboardReadText
+  (@uint32 promiseId)
+)
+
+(op CallEmbedBinding
+  (@string routine)
+)
+
+(op ProcessSpawned
+  (@u64 identifier) ;; so we know what process just spawned in
+  (@fd pidfd) ;; the pidfd (TODO: this won't work anywhere besides Linux)
+)
