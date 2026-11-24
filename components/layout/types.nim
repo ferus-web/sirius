@@ -2,9 +2,13 @@
 ## 
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[hashes, options, strutils, strformat]
-import pkg/[chroma, pixie, shakar, vmath], pkg/figdraw/common/fonttypes
+import pkg/[chroma, pixie, shakar, vmath]
 import
-  components/dom/dom, components/style/types, components/os/fonts, components/css/types
+  components/dom/dom,
+  components/style/types,
+  components/os/fonts,
+  components/css/types,
+  components/third_party/figdraw/figdraw/common/fonttypes
 
 type
   DisplayMode* {.pure, size: sizeof(uint8).} = enum

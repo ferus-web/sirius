@@ -1,5 +1,5 @@
 import std/[monotimes, deques, tables]
-import pkg/[pixie, vmath], pkg/figdraw/[figrender, fignodes]
+import pkg/[pixie, vmath], components/third_party/figdraw/figdraw/[figrender, fignodes]
 import components/layout/[output_manager, types], components/os/fonts
 
 type RenderingContext* = ref object

@@ -2,10 +2,10 @@
   "version": 0,
   "packages": {
     "serialization": {
-      "version": "0.5.2",
-      "commit": "1790d8a931fce125d6722f7ee8432ee8c054d297",
+      "version": "0.5.5",
+      "commit": "937a65c19fc49a5f79e2ecd89094d367b6ca0e1b",
       "url": "https://github.com/status-im/nim-serialization",
-      "checksum": "974c434b5e8d1369b7a78c38d864916a784b79ba32a28205b89cfbe59344df8b"
+      "checksum": "736f0d50c0cb7bbd1905db7112dbd964f46c78089168b538bb91780a11db0e51"
     },
     "pixie": {
       "version": "6.1.0",
@@ -38,16 +38,16 @@
       "checksum": "431035f59da85cf2e4c3e272b157e852a930507ca6b25cadae82cae95e9e4689"
     },
     "json_serialization": {
-      "version": "0.4.4",
-      "commit": "c343b0e243d9e17e2c40f3a8a24340f7c4a71d44",
+      "version": "0.5.0",
+      "commit": "d27e8422d0d359ad9ed0c1fe127661b91d4dced4",
       "url": "https://github.com/status-im/nim-json-serialization",
-      "checksum": "6866da93ce9374da8b5f682530201d2b5695c17990ae59ae90a04eee212ed785"
+      "checksum": "7db852246df3441143132612d77c75f3daaa0e4a29c9914d3f29034673e93885"
     },
     "gh:elcritch/harfbuzzy": {
-      "version": "0.2.2",
-      "commit": "897e6721925f0d5bcc1b67048495c308fc098f71",
+      "version": "0.0.0",
+      "commit": "2bcbbc6c1e175c38b09a66384bbeb5601245f910",
       "url": "gh:elcritch/harfbuzzy",
-      "checksum": "b16add2affcc6756fc523e842c29ddd65191df0831834e6930f7db13469d9926"
+      "checksum": "c47057969f4993b116d7a4c44dfdbdb33487485ac5dc0daf13cd274c892c9c23"
     },
     "url": {
       "version": "0.1.9",
@@ -74,10 +74,10 @@
       "checksum": "2f0ad2e93415617fae629a1b17aeeace46d58927eb12c2f91b9e31e61ec9a8b9"
     },
     "faststreams": {
-      "version": "0.5.1",
-      "commit": "50889cd16ec8771106cdd0eeea460039e8571e06",
+      "version": "0.6.0",
+      "commit": "5bdef9939b483435a61aa91a6422c1a9852127b4",
       "url": "https://github.com/status-im/nim-faststreams",
-      "checksum": "a8a3712812740db83058da81a8234fa354364ea429929008011a3d05f51585a9"
+      "checksum": "132b57f085f474ab3c7e3164082c22c4d7c4e91ce458c5f2e8f6f0934af0ba35"
     },
     "shakar": {
       "version": "0.1.3",
@@ -128,10 +128,10 @@
       "checksum": "2cde6050fa2e47ae8cb3a3b8c424d976299732e7b7571f86646457703d97879d"
     },
     "regex": {
-      "version": "0.26.3",
-      "commit": "16f96a41f9ff74372268eef656b671d7e5355930",
+      "version": "0.27.0",
+      "commit": "b078cd018ffa91bb46acff7751882a156601d47e",
       "url": "https://github.com/nitely/nim-regex",
-      "checksum": "db495a80a8eb6ee04129d6cccd46967a6d95df65aa2dd0a51a5b7f8c38555ebf"
+      "checksum": "7f905f690a89c47f69c0380d389c67c95fb13074699b8e43c97a1d430ddea924"
     },
     "supersnappy": {
       "version": "2.1.4",
@@ -141,9 +141,9 @@
     },
     "cligen": {
       "version": "1.11.0",
-      "commit": "6db1b20fe58e25ddd783412ca9af3334a211bbe5",
+      "commit": "9f1f53516fa7f42d4d32869e6afe72fd6e7c4ba6",
       "url": "https://github.com/c-blake/cligen.git",
-      "checksum": "519aa549992acd76ca6b96e9dca0ecc1f7ae5e05d6651f5fd8be5adb83c93807"
+      "checksum": "cdef99324b8189d50fa9f46d8f6358faa5058e1c4499c725637e46e2ee673d44"
     },
     "sdfy": {
       "version": "0.8.1",
@@ -152,10 +152,10 @@
       "checksum": "6a4c15480b1f14fa975a6e90a55c9bc629d47734894b03dc10f05d178fbfd55e"
     },
     "stew": {
-      "version": "0.2.0",
-      "commit": "79e4fa5a9d3374db17ed63622714d3e1094c7f34",
+      "version": "0.6.4",
+      "commit": "5e9c0503e15c42c118f84dc167cb6bedffe8abc7",
       "url": "https://github.com/status-im/nim-stew",
-      "checksum": "0957d2c2474abd002f3e8ea744fbd2ea6edc1a255894af28b5d80e2efacc3373"
+      "checksum": "e6bd257b09d52924270abbaa9e0974fddd8e4f0dddd268f2a856f5f3b9c3b0cd"
     },
     "npeg": {
       "version": "1.3.0",
@@ -223,12 +223,6 @@
       "url": "https://github.com/Araq/libcurl",
       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
-    "unittest2": {
-      "version": "0.2.5",
-      "commit": "26f2ef3ae0ec72a2a75bfe557e02e88f6a31c189",
-      "url": "https://github.com/status-im/nim-unittest2",
-      "checksum": "c58bf647c7dd23de7a0c0d9ed487bdbf86a9069cdc87ee1762d5b6079e8d8663"
-    },
     "webby": {
       "version": "0.1.7",
       "commit": "5820b276bfa31d01b5895d59a4b292b47f6c7277",
@@ -236,10 +230,10 @@
       "checksum": "250f098239ad022824ffe3bc34d12a47df7c51a79962229dcb75167161cf2b82"
     },
     "testutils": {
-      "version": "0.8.1",
-      "commit": "6ce5e5e2301ccbc04b09d27ff78741ff4d352b4d",
+      "version": "0.9.0",
+      "commit": "68c28af79e7c3b6e3467dfd99346b147942fa7b8",
       "url": "https://github.com/status-im/nim-testutils",
-      "checksum": "b1c51a93b01c28e67e01065e391c5c7873aff9994237fb2f204dc9e7f3d76a19"
+      "checksum": "e950429547c4d48db294acd9c82abc966f517697f2a06365a1012ddd31dd909c"
     },
     "opengl": {
       "version": "1.2.9",

@@ -1,7 +1,7 @@
 import
   pkg/[chronicles, vmath],
-  pkg/figdraw/[commons, fignodes, figrender],
-  pkg/figdraw/common/fonttypes
+  components/third_party/figdraw/figdraw/[commons, fignodes, figrender],
+  components/third_party/figdraw/figdraw/common/fonttypes
 import components/gfx/types
 
 logScope:

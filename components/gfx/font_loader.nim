@@ -4,7 +4,7 @@
 import std/options
 import components/os/fonts as osfonts, components/css/types
 import pkg/[chronicles, vmath]
-import pkg/figdraw/common/[fonttypes, fontutils, typefaces]
+import components/third_party/figdraw/figdraw/common/[fonttypes, fontutils, typefaces]
 
 logScope:
   topics = "gfx/font_loader"

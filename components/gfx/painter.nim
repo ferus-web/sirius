@@ -4,10 +4,10 @@
 import std/[hashes, deques, importutils, monotimes, tables, times, options]
 import
   pkg/[pixie, shakar, vmath],
-  pkg/figdraw/[commons, fignodes, figrender],
-  pkg/figdraw/common/fonttypes,
-  pkg/figdraw/utils/drawutils,
-  pkg/figdraw/vulkan/vulkan_context
+  components/third_party/figdraw/figdraw/[commons, fignodes, figrender],
+  components/third_party/figdraw/figdraw/common/fonttypes,
+  components/third_party/figdraw/figdraw/utils/drawutils,
+  components/third_party/figdraw/figdraw/vulkan/vulkan_context
 import
   components/css/types,
   components/gfx/types,

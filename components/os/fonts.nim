@@ -2,8 +2,11 @@
 ##
 ## Copyright (C) 2026 Trayambak Rai (xtrayambak@disroot.org)
 import std/[options, tables]
-import components/impure/fontconfig, components/css/types
-import pkg/[chronicles, shakar, vmath], pkg/figdraw/common/fonttypes
+import
+  components/impure/fontconfig,
+  components/css/types,
+  components/third_party/figdraw/figdraw/common/fonttypes
+import pkg/[chronicles, shakar, vmath]
 
 logScope:
   topics = "os/fonts"
