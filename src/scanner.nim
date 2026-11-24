@@ -239,7 +239,7 @@ func emitArgumentsInSignature(isClient: bool, args: seq[Arg]): string =
   ensureMove(buffer)
 
 func generateWrapper(
-    subsystem: Subsystem, name: string, src: string, isClient: bool
+    subsystem: Subsystem, name: string, src: string, isClient, dontGenerateFns: bool
 ): string =
   var
     buffer = newStringOfCap(2048)
@@ -248,7 +248,7 @@ func generateWrapper(
   imports.incl("pkg/[results, shakar]")
   if isClient:
     imports.incl("components/synapse/client")
-  else:
+  elif not dontGenerateFns:
     imports.incl("components/synapse/master")
 
   # professional import search
@@ -278,6 +278,9 @@ import components/synapse/[encoder, types]
   buffer &= "\ntype " & enumName & "* {.pure, size: sizeof(uint16).} = enum\n"
   for i, op in subsystem.ops:
     buffer &= &"  {op.name} = {i}\n"
+
+  if dontGenerateFns:
+    return ensureMove(buffer)
 
   buffer &= "\n# Sender API\n"
   let ctx = if isClient: "Client" else: "Master"
@@ -380,7 +383,16 @@ proc main() {.inline.} =
     let e = parsed.error()
     quit(&"Parse error: {e.msg} (at {e.pos})")
 
-  writeFile(dest, generateWrapper(&parsed, name, target, args.enabled("client", "C")))
+  writeFile(
+    dest,
+    generateWrapper(
+      &parsed,
+      name,
+      target,
+      isClient = args.enabled("client", "C"),
+      dontGenerateFns = args.enabled("dont-generate-fns", "D"),
+    ),
+  )
   let nph = findExe("nph")
 
   if nph.len > 0:
