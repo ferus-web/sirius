@@ -1531,6 +1531,12 @@ proc genDeclaration*(
       runtime.ir.readRegister(idx, Register.ReturnValue)
 
       idx
+    of IdentHolder:
+      let idx = runtime.realm.addrIdx
+      runtime.markLocal(fn, stmt.declIdent)
+      runtime.ir.copyAtom(runtime.index(stmt.declValue.ident, defaultParams(fn)), idx)
+
+      idx
     else:
       debugEcho stmt.declValue.kind
       unreachable
