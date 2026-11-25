@@ -77,8 +77,8 @@ proc main*(master: int32, params: WebViewOpts) {.noReturn.} =
   while client.running:
     let msgOpt = client.blockForMessage(ZygoteOp)
     if !msgOpt:
-      warn "Cannot decode data received, ignoring."
-      continue
+      # The master has likely exited. We should just exit our loop too.
+      break
 
     let msg = &msgOpt
     case msg.op
