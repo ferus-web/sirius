@@ -94,6 +94,7 @@ type
   FunctionCall* = object
     field*: Option[FieldAccess]
     ident*: Option[string]
+    callee*: Option[Statement]
     function*: string
 
   MixedLiteralChildren* = seq[Statement]
@@ -142,6 +143,7 @@ type
       atom*: MAtom
     of AccessField:
       identifier*: string
+      accessTarget*: Option[Statement]
       field*: string
     of IfStmt:
       conditionExpr*: Statement
@@ -166,6 +168,7 @@ type
     of Break: discard
     of AccessArrayIndex:
       arrAccIdent*: string
+      arrAccTarget*: Option[Statement]
       arrAccIndex*: Option[Statement]
       arrAccIdentIndex*: Option[string]
     of TernaryOp:
@@ -210,56 +213,77 @@ type
     of FunctionHolder:
       function*: Function
 
-func hash*(access: FieldAccess): Hash {.inline.} =
-  hash((access.identifier))
-
+func hash*(access: FieldAccess): Hash {.inline.}
 proc hash*(scope: Scope): Hash {.inline.}
+proc hash*(call: FunctionCall): Hash {.inline.}
+proc hash*(stmt: Statement): Hash {.inline.}
+
+func hash*(access: FieldAccess): Hash {.inline.} =
+  if access == nil:
+    return Hash(0)
+
+  hash(access.identifier)
 
 proc hash*(call: FunctionCall): Hash {.inline.} =
-  var hash = Hash(0)
+  var h = Hash(0)
   if *call.field:
-    hash = hash !& hash(&call.field)
+    h = h !& hash(&call.field)
 
   if *call.ident:
-    hash = hash !& hash(&call.ident)
+    h = h !& hash(&call.ident)
 
-  hash
+  if *call.callee:
+    h = h !& hash(&call.callee)
+
+  h
 
 proc hash*(stmt: Statement): Hash {.inline.} =
-  var hash: Hash
+  if stmt == nil:
+    return Hash(0)
 
-  hash = hash !& stmt.kind.int
+  var h: Hash
+  h = h !& stmt.kind.int
 
   {.cast(gcsafe).}:
     case stmt.kind
     of Declaration:
-      hash = hash !& hash((stmt.declIdent, stmt.declValue))
+      h = h !& hash((stmt.declIdent, stmt.declValue))
     of Call:
-      hash = hash !& hash((stmt.fn, stmt.arguments))
+      h = h !& hash((stmt.fn, stmt.arguments))
     of NewFunction:
-      hash = hash !& hash((stmt.fnName))
+      h = h !& hash(stmt.fnName)
     of BinaryOp:
-      hash = hash !& hash((stmt.op))
+      h = h !& hash(stmt.op)
 
       if stmt.binLeft != nil:
-        hash = hash !& hash(stmt.binLeft)
+        h = h !& hash(stmt.binLeft)
 
       if stmt.binRight != nil:
-        hash = hash !& hash(stmt.binRight)
+        h = h !& hash(stmt.binRight)
     of IfStmt:
-      hash = hash !& hash((stmt.conditionExpr))
+      h = h !& hash(stmt.conditionExpr)
     of AccessField:
-      hash = hash !& hash((stmt.identifier, stmt.field))
+      h = h !& hash((stmt.identifier, stmt.field))
+      if *stmt.accessTarget:
+        h = h !& hash(&stmt.accessTarget)
+    of AccessArrayIndex:
+      h = h !& hash((stmt.arrAccIdent, stmt.arrAccIdentIndex))
+      if *stmt.arrAccTarget:
+        h = h !& hash(&stmt.arrAccTarget)
+      if *stmt.arrAccIndex:
+        h = h !& hash(&stmt.arrAccIndex)
+    of FieldAccessHolder:
+      h = h !& hash(stmt.fieldAccessList)
     of AtomHolder:
-      hash = hash !& hash(stmt.atom)
+      h = h !& hash(stmt.atom)
     of IdentHolder:
-      hash = hash !& hash(stmt.ident)
+      h = h !& hash(stmt.ident)
     of WhileStmt:
-      hash = hash !& hash((stmt.whConditionExpr, stmt.whBranch))
+      h = h !& hash((stmt.whConditionExpr, stmt.whBranch))
     else:
       discard
 
-  hash
+  h
 
 proc `$`*(stmt: Statement): string =
   case stmt.kind
@@ -275,12 +299,14 @@ proc hash*(fn: Function): Hash {.inline.} =
     hash((fn.name, fn.arguments))
 
 proc hash*(scope: Scope): Hash {.inline.} =
-  var hash = Hash(0)
+  if scope == nil:
+    return Hash(0)
 
+  var h = Hash(0)
   if *scope.prev:
-    hash = hash(&scope.prev)
+    h = hash(&scope.prev)
 
-  hash
+  h
 
 func pushIdent*(args: var PositionedArguments, ident: string) {.inline.} =
   args &= CallArg(kind: cakIdent, ident: ident)
@@ -301,6 +327,9 @@ func createFieldAccess*(splitted: seq[string]): FieldAccess =
 
   top
 
+func callFunction*(callee: Statement): FunctionCall =
+  FunctionCall(callee: some(callee))
+
 func pushFieldAccess*(args: var PositionedArguments, access: FieldAccess) {.inline.} =
   args &= CallArg(kind: cakFieldAccess, access: access)
 
@@ -308,9 +337,10 @@ func pushAtom*(args: var PositionedArguments, atom: MAtom) {.inline.} =
   args &= CallArg(kind: cakAtom, atom: atom)
 
 func pushImmExpr*(args: var PositionedArguments, expr: Statement) {.inline.} =
-  assert expr.kind in
-    {BinaryOp, AccessArrayIndex, AtomHolder, DefineFunction, CreateArrayLiteral},
-    "Attempt to push invalid expression to arguments: " & $expr.kind
+  assert expr.kind in {
+    BinaryOp, AccessArrayIndex, AtomHolder, DefineFunction, CreateArrayLiteral,
+    AccessField, Call, FieldAccessHolder,
+  }, "Attempt to push invalid expression to arguments: " & $expr.kind
   args &= CallArg(kind: cakImmediateExpr, expr: expr)
 
 {.push checks: off, inline.}
@@ -385,6 +415,14 @@ func arrayAccess*(ident: string, index: Statement): Statement =
 
 func arrayAccess*(ident: string, index: string): Statement =
   Statement(kind: AccessArrayIndex, arrAccIdent: ident, arrAccIdentIndex: some(index))
+
+func accessField*(target: Statement, field: string): Statement =
+  Statement(kind: AccessField, accessTarget: some(target), field: field)
+
+func arrayAccess*(target: Statement, index: Statement): Statement =
+  Statement(
+    kind: AccessArrayIndex, arrAccTarget: some(target), arrAccIndex: some(index)
+  )
 
 func decrement*(ident: string): Statement =
   Statement(kind: Decrement, decIdent: ident)
@@ -534,8 +572,14 @@ func tail*(access: FieldAccess): FieldAccess =
 
   curr
 
+func appendField*(access: FieldAccess, ident: string) {.inline.} =
+  let
+    t = access.tail()
+    node = FieldAccess(identifier: ident, prev: t)
+  t.next = node
+
 func normalizeIRName*(call: FunctionCall): string =
-  return normalizeIRName(call.function)
+  normalizeIRName(call.function)
 
 func unwrap*(stmt: Statement): MAtom =
   if stmt.kind == AtomHolder:

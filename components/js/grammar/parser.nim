@@ -54,36 +54,34 @@ proc parseExpression(
   parser: Parser, storeIn: Option[string] = none(string), ignoreTerms: bool = false
 ): Option[Statement]
 
+proc parseAtom(parser: Parser, token: Token): Option[Statement]
+
+proc parseConstructor(parser: Parser): Option[Statement]
+
+proc parseArray(parser: Parser): Option[Statement]
+
+proc parseFunction(
+  parser: Parser, name: Option[string] = none(string)
+): Option[Function]
+
+proc parsePostfixChain(parser: Parser, initial: Statement): Option[Statement]
+
 func getLine(parser: Parser, line: uint): string {.inline.} =
   if parser.lines.len.uint > line:
     parser.lines[line]
   else:
     newString(0)
 
-proc parseFunctionCall(parser: Parser, name: string): Option[Statement] =
-  let args = parser.parseArguments()
-  if !args:
-    return none(Statement)
+func fieldAccessToString(access: FieldAccess): string =
+  var
+    curr = access
+    parts: seq[string]
 
-  if name == "$DONOTEVALUATE":
-    parser.ast.doNotEvaluate = true
+  while curr != nil:
+    parts &= curr.identifier
+    curr = curr.next
 
-  some(call(name.callFunction, &args))
-
-proc parsePostfixCall(parser: Parser, callTokens: seq[Token]): Option[Statement] =
-  let
-    accesses = callTokens
-      .filterIt(it.kind == TokenKind.Identifier)
-      .mapIt(it.ident)
-      .createFieldAccess()
-    args = parser.parseArguments()
-
-  if !args:
-    return none(Statement)
-
-  some(call(callFunction(accesses), args))
-
-proc parseAtom(parser: Parser, token: Token): Option[Statement]
+  parts.join(".")
 
 func getOperatorPrecedence(kind: TokenKind): uint8 {.inline.} =
   case kind
@@ -110,6 +108,7 @@ func tokenToBinOp(kind: TokenKind): BinaryOperation =
   of TokenKind.Mul: BinaryOperation.Mult
   of TokenKind.Div: BinaryOperation.Div
   of TokenKind.And: BinaryOperation.And
+  of TokenKind.Or: BinaryOperation.Or
   of TokenKind.Equal: BinaryOperation.Equal
   of TokenKind.TrueEqual: BinaryOperation.TrueEqual
   of TokenKind.GreaterThan: BinaryOperation.GreaterThan
@@ -119,19 +118,95 @@ func tokenToBinOp(kind: TokenKind): BinaryOperation =
   of TokenKind.NotEqual: BinaryOperation.NotEqual
   else: BinaryOperation.Invalid
 
-proc finalizePostfixTokens(postfixTokens: seq[Token]): Option[Statement] =
-  let idents = postfixTokens.filterIt(it.kind == TokenKind.Identifier).mapIt(it.ident)
+proc parsePostfixChain(parser: Parser, initial: Statement): Option[Statement] =
+  var current = initial
 
-  case idents.len
-  of 0:
-    none(Statement)
-  of 1:
-    some(identHolder(idents[0]))
-  else:
-    some(fieldHolder(createFieldAccess(idents)))
+  while not parser.tokenizer.eof:
+    let
+      savedPos = parser.tokenizer.pos
+      savedLoc = parser.tokenizer.location
+    var
+      sawNewline = false
+      nextOpt = none(Token)
+
+    while not parser.tokenizer.eof:
+      let tok = parser.tokenizer.next()
+      case tok.kind
+      of TokenKind.Whitespace:
+        if tok.isNewline():
+          sawNewline = true
+      of TokenKind.Comment:
+        discard
+      else:
+        nextOpt = some(tok)
+        break
+
+    if !nextOpt:
+      parser.tokenizer.pos = savedPos
+      parser.tokenizer.location = savedLoc
+      break
+
+    let next = &nextOpt
+    if sawNewline and next.kind != TokenKind.Dot:
+      parser.tokenizer.pos = savedPos
+      parser.tokenizer.location = savedLoc
+      break
+
+    case next.kind
+    of TokenKind.Dot:
+      let propTok = parser.tokenizer.nextExceptWhitespace()
+      if !propTok or (&propTok).kind != TokenKind.Identifier:
+        parser.error UnexpectedToken, "expected identifier after dot"
+
+      let prop = (&propTok).ident
+      case current.kind
+      of IdentHolder:
+        current = fieldHolder(createFieldAccess(@[current.ident, prop]))
+      of FieldAccessHolder:
+        current.fieldAccessList.appendField(prop)
+      else:
+        current = accessField(current, prop)
+    of TokenKind.LBracket:
+      let indexExpr = parser.parseExpression(ignoreTerms = true)
+      if !indexExpr:
+        parser.error Other, "expected expression in index access"
+
+      let closeTok = parser.tokenizer.nextExceptWhitespace()
+      if !closeTok or (&closeTok).kind != TokenKind.RBracket:
+        parser.error Other, "missing ] in index expression"
+
+      let idx = &indexExpr
+      if current.kind == IdentHolder:
+        if idx.kind == IdentHolder:
+          current = arrayAccess(current.ident, idx.ident)
+        else:
+          current = arrayAccess(current.ident, idx)
+      else:
+        current = arrayAccess(current, idx)
+    of TokenKind.LParen:
+      let args = parser.parseArguments()
+      if !args:
+        return none(Statement)
+
+      case current.kind
+      of IdentHolder:
+        if current.ident == "$DONOTEVALUATE":
+          parser.ast.doNotEvaluate = true
+        current = call(current.ident.callFunction, &args)
+      of FieldAccessHolder:
+        current = call(callFunction(current.fieldAccessList), args)
+      else:
+        current = call(callFunction(current), &args)
+    else:
+      parser.tokenizer.pos = savedPos
+      parser.tokenizer.location = savedLoc
+      break
+
+  some(current)
 
 proc parsePrimary(parser: Parser): Option[Statement] =
-  var postfixTokens = newSeqOfCap[Token](1) # NOTE: Again, prealloc?
+  var base = none(Statement)
+
   while not parser.tokenizer.eof:
     let
       savedPos = parser.tokenizer.pos
@@ -139,90 +214,59 @@ proc parsePrimary(parser: Parser): Option[Statement] =
       next = parser.tokenizer.next()
 
     case next.kind
-    of TokenKind.Whitespace, TokenKind.Comment:
-      if next.kind == TokenKind.Whitespace and next.isNewline():
+    of TokenKind.Whitespace:
+      if next.isNewline():
         parser.tokenizer.pos = savedPos
         parser.tokenizer.location = savedLoc
-        if postfixTokens.len > 0:
-          return finalizePostfixTokens(postfixTokens)
         return none(Statement)
-      if postfixTokens.len > 0:
-        let peekTok = parser.tokenizer.peekExceptWhitespace()
-        if !peekTok or (&peekTok).kind notin {TokenKind.Dot, TokenKind.LParen}:
-          return finalizePostfixTokens(postfixTokens)
+      continue
+    of TokenKind.Comment:
+      continue
     of TokenKind.Number:
-      if postfixTokens.len > 0:
-        parser.tokenizer.pos = savedPos
-        parser.tokenizer.location = savedLoc
-        return finalizePostfixTokens(postfixTokens)
-      return parser.parseAtom(next)
+      base = parser.parseAtom(next)
     of TokenKind.String:
-      if postfixTokens.len > 0:
-        parser.tokenizer.pos = savedPos
-        parser.tokenizer.location = savedLoc
-        return finalizePostfixTokens(postfixTokens)
       if (let err = next.getError(); *err):
         parser.error Other, &err
-      return parser.parseAtom(next)
+      base = parser.parseAtom(next)
     of TokenKind.True:
-      if postfixTokens.len > 0:
-        parser.tokenizer.pos = savedPos
-        parser.tokenizer.location = savedLoc
-        return finalizePostfixTokens(postfixTokens)
-      return some(atomHolder(stackBoolean(true)))
+      base = some(atomHolder(stackBoolean(true)))
     of TokenKind.False:
-      if postfixTokens.len > 0:
-        parser.tokenizer.pos = savedPos
-        parser.tokenizer.location = savedLoc
-        return finalizePostfixTokens(postfixTokens)
-      return some(atomHolder(stackBoolean(false)))
+      base = some(atomHolder(stackBoolean(false)))
     of TokenKind.Null:
-      if postfixTokens.len > 0:
-        parser.tokenizer.pos = savedPos
-        parser.tokenizer.location = savedLoc
-        return finalizePostfixTokens(postfixTokens)
-      return some(atomHolder(stackNull()))
+      base = some(atomHolder(stackNull()))
     of TokenKind.Identifier:
-      if postfixTokens.len > 0 and
-          postfixTokens[postfixTokens.len - 1].kind == TokenKind.Identifier:
-        parser.tokenizer.pos = savedPos
-        parser.tokenizer.location = savedLoc
-        return finalizePostfixTokens(postfixTokens)
-      postfixTokens &= next
-    of TokenKind.Dot:
-      if postfixTokens.len == 0 or
-          postfixTokens[postfixTokens.len - 1].kind != TokenKind.Identifier:
-        parser.tokenizer.pos = savedPos
-        parser.tokenizer.location = savedLoc
-        return none(Statement)
-      postfixTokens &= next
-    of TokenKind.LParen:
-      if postfixTokens.len > 0 and
-          postfixTokens[postfixTokens.len - 1].kind == TokenKind.Identifier:
-        if postfixTokens.len == 1:
-          return parser.parseFunctionCall(postfixTokens[0].ident)
-        else:
-          return parsePostfixCall(parser, move(postfixTokens))
-      else:
-        let inner = parser.parseExpression(ignoreTerms = true)
-        if !inner:
-          return none(Statement)
-        let closeTok = parser.tokenizer.nextExceptWhitespace()
-        if !closeTok or (&closeTok).kind != TokenKind.RParen:
-          parser.error Other, "expected closing parenthesis"
+      base = some(identHolder(next.ident))
+    of TokenKind.LBracket:
+      base = parser.parseArray()
+    of TokenKind.New:
+      base = parser.parseConstructor()
+    of TokenKind.Function:
+      if next.containsUnicodeEsc:
+        parser.error Other, "keyword `function` cannot contain unicode escape(s)"
 
-        return inner
+      let fn = parser.parseFunction(name = some(newString(0)))
+      if !fn:
+        return none(Statement)
+      base = some(defineFunction(&fn, limitedTo = none(Scope)))
+    of TokenKind.LParen:
+      let inner = parser.parseExpression(ignoreTerms = true)
+      if !inner:
+        return none(Statement)
+      let closeTok = parser.tokenizer.nextExceptWhitespace()
+      if !closeTok or (&closeTok).kind != TokenKind.RParen:
+        parser.error Other, "expected closing parenthesis"
+      base = inner
     else:
       parser.tokenizer.pos = savedPos
       parser.tokenizer.location = savedLoc
-      if postfixTokens.len > 0:
-        return finalizePostfixTokens(postfixTokens)
       return none(Statement)
 
-  if postfixTokens.len > 0:
-    finalizePostfixTokens(postfixTokens)
-  else:
-    none(Statement)
+    break
+
+  if !base:
+    return none(Statement)
+
+  parser.parsePostfixChain(&base)
 
 proc parseBinaryExpr(parser: Parser, minPrec: uint8): Option[Statement] =
   var lhsOpt = parser.parsePrimary()
@@ -348,25 +392,18 @@ proc parseTypeofCall(parser: Parser): Option[PositionedArguments] =
       break
 
     if token.kind == TokenKind.Identifier:
-      var idents = @[token.ident]
-      while not parser.tokenizer.eof:
-        let
-          saved = parser.tokenizer
-          peekTok = parser.tokenizer.nextExceptWhitespace()
-        if *peekTok and (&peekTok).kind == TokenKind.Dot:
-          let nextIdent = parser.tokenizer.nextExceptWhitespace()
-          if *nextIdent and (&nextIdent).kind == TokenKind.Identifier:
-            idents &= (&nextIdent).ident
-          else:
-            parser.error UnexpectedToken, "expected identifier after dot"
-        else:
-          parser.tokenizer = saved
-          break
+      let chainedOpt = parser.parsePostfixChain(identHolder(token.ident))
+      if !chainedOpt:
+        return none(PositionedArguments)
 
-      if idents.len > 1:
-        args.pushFieldAccess(createFieldAccess(idents))
+      let chained = &chainedOpt
+      case chained.kind
+      of IdentHolder:
+        args.pushIdent(chained.ident)
+      of FieldAccessHolder:
+        args.pushFieldAccess(chained.fieldAccessList)
       else:
-        args.pushIdent(token.ident)
+        args.pushImmExpr(chained)
     else:
       let atom = parser.parseAtom(token)
       if !atom:
@@ -378,10 +415,6 @@ proc parseTypeofCall(parser: Parser): Option[PositionedArguments] =
     parser.error Other, "missing ) in parenthetical"
 
   some(args)
-
-proc parseFunction(
-  parser: Parser, name: Option[string] = none(string)
-): Option[Function]
 
 proc parseTable(parser: Parser): Option[KeyValuePairs] =
   if parser.tokenizer.eof:
@@ -738,9 +771,6 @@ proc parseDeclaration(
     declareFn: Option[Function]
     keyValuePair: Option[Table[Statement, Statement]]
 
-    postfixMode = false
-    postfixTokens = newSeqOfCap[Token](1)
-
   while not parser.tokenizer.eof and !vIdent and !atom and !toCall and !vFieldAccess:
     let tok = parser.tokenizer.next()
 
@@ -752,73 +782,27 @@ proc parseDeclaration(
       atom = some(stackStr tok.str)
       break
     of TokenKind.Identifier:
-      postfixTokens &= tok
-      while not parser.tokenizer.eof():
-        let
-          saved = parser.tokenizer
-          next = parser.tokenizer.nextExceptWhitespace()
-        if !next:
-          break
+      let chainedOpt = parser.parsePostfixChain(identHolder(tok.ident))
+      if !chainedOpt:
+        return none(Statement)
 
-        case (&next).kind
-        of TokenKind.LParen:
-          if postfixMode:
-            toCall = parser.parsePostfixCall(move(postfixTokens))
-          else:
-            toCall = parser.parseFunctionCall(tok.ident)
-          break
-        of TokenKind.LBracket:
-          toCall = parser.parseArrayIndex(tok.ident)
-          break
-        of TokenKind.Question:
-          if postfixMode:
-            let fa = postfixTokens
-              .filterIt(it.kind == TokenKind.Identifier)
-              .mapIt(it.ident)
-              .createFieldAccess()
-            ternary = parser.parseTernaryOp(condStmt = some(fieldHolder(fa)))
-          else:
-            ternary = parser.parseTernaryOp(ident = some(tok.ident))
-          break
-        of TokenKind.Dot:
-          postfixTokens &= &next
-          postfixMode = true
-          let nextIdent = parser.tokenizer.nextExceptWhitespace()
-          if *nextIdent and (&nextIdent).kind == TokenKind.Identifier:
-            postfixTokens &= &nextIdent
-          else:
-            parser.error UnexpectedToken, "expected identifier after dot"
-        of TokenKind.Semicolon:
-          if postfixMode:
-            vFieldAccess = postfixTokens
-              .filterIt(it.kind == TokenKind.Identifier)
-              .mapIt(it.ident)
-              .createFieldAccess()
-              .some()
-          else:
-            vIdent = some(tok.ident)
-          break
-        else:
+      let
+        chained = &chainedOpt
+        saved = parser.tokenizer
+        next = parser.tokenizer.nextExceptWhitespace()
+
+      if *next and (&next).kind == TokenKind.Question:
+        ternary = parser.parseTernaryOp(condStmt = some(chained))
+      else:
+        if *next and (&next).kind != TokenKind.Semicolon:
           parser.tokenizer = saved
-          if postfixMode:
-            vFieldAccess = postfixTokens
-              .filterIt(it.kind == TokenKind.Identifier)
-              .mapIt(it.ident)
-              .createFieldAccess()
-              .some()
-          else:
-            vIdent = some(tok.ident)
-          break
-
-      if !toCall and !ternary and !vFieldAccess and !vIdent:
-        if postfixMode and postfixTokens.len > 0:
-          vFieldAccess = postfixTokens
-            .filterIt(it.kind == TokenKind.Identifier)
-            .mapIt(it.ident)
-            .createFieldAccess()
-            .some()
+        case chained.kind
+        of IdentHolder:
+          vIdent = some(chained.ident)
+        of FieldAccessHolder:
+          vFieldAccess = some(chained.fieldAccessList)
         else:
-          vIdent = some(tok.ident)
+          toCall = some(chained)
       break
     of TokenKind.Number:
       if *tok.intVal:
@@ -835,6 +819,17 @@ proc parseDeclaration(
       atom = some(stackNull())
     of TokenKind.New:
       toCall = parser.parseConstructor()
+      if *toCall:
+        toCall = parser.parsePostfixChain(&toCall)
+      break
+    of TokenKind.LParen:
+      let inner = parser.parseExpression(ignoreTerms = true)
+      if !inner:
+        return none(Statement)
+      let closeTok = parser.tokenizer.nextExceptWhitespace()
+      if !closeTok or (&closeTok).kind != TokenKind.RParen:
+        parser.error Other, "expected closing parenthesis"
+      toCall = parser.parsePostfixChain(&inner)
       break
     of TokenKind.Typeof:
       let typeofCall = parser.parseTypeofCall()
@@ -1064,77 +1059,44 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
     of TokenKind.Identifier:
       last = some(TokenKind.Identifier)
       lastData = some(token)
-      var
-        postfixTokens = @[token]
-        handled = false
 
-      while not parser.tokenizer.eof:
+      let chainedOpt = parser.parsePostfixChain(identHolder(token.ident))
+      if !chainedOpt:
+        return none(PositionedArguments)
+
+      let chained = &chainedOpt
+      if not parser.tokenizer.eof and (
+        let afterTok = parser.tokenizer.peekExceptWhitespace()
+        *afterTok and
+          (&afterTok).kind in
+          {TokenKind.Add, TokenKind.Sub, TokenKind.Mul, TokenKind.Div}
+      ):
         let
-          prevPos = parser.tokenizer.pos
-          prevLocation = parser.tokenizer.location
-          nextTok = parser.tokenizer.nextExceptWhitespace()
+          opTok = &parser.tokenizer.nextExceptWhitespace()
+          rhsOpt = parser.parseExpression(ignoreTerms = true)
+        if !rhsOpt:
+          parser.error Other, "expected expression after symbol, got none."
 
-        if !nextTok:
-          break
-
-        case (&nextTok).kind
-        of TokenKind.Dot:
-          postfixTokens &= &nextTok
-          let nextIdent = parser.tokenizer.nextExceptWhitespace()
-          if *nextIdent and (&nextIdent).kind == TokenKind.Identifier:
-            postfixTokens &= &nextIdent
-            lastData = nextIdent
-          else:
-            parser.error Other, "expected name after . operator"
-        of TokenKind.LParen:
-          let
-            call =
-              if postfixTokens.len > 1:
-                parser.parsePostfixCall(move(postfixTokens))
-              else:
-                parser.parseFunctionCall(token.ident)
-            resIdent = "@0_" & $idx
-
-          if !call:
-            return none(PositionedArguments)
-
-          if not parser.tokenizer.eof and (
-            let afterTok = parser.tokenizer.peekExceptWhitespace()
-            *afterTok and
-              (&afterTok).kind in
-              {TokenKind.Add, TokenKind.Sub, TokenKind.Mul, TokenKind.Div}
-          ):
-            let
-              opTok = &parser.tokenizer.nextExceptWhitespace()
-              rhsOpt = parser.parseExpression(ignoreTerms = true)
-            if !rhsOpt:
-              parser.error Other, "expected expression after symbol, got none."
-
-            args.pushImmExpr(
-              Statement(
-                kind: BinaryOp,
-                op: tokenToBinOp(opTok.kind),
-                binLeft: &call,
-                binRight: &rhsOpt,
-              )
-            )
-          else:
-            parser.ast.appendToCurrentScope(callAndStore(resIdent, &call))
-            args.pushIdent(resIdent)
-          handled = true
-          break
+        args.pushImmExpr(
+          Statement(
+            kind: BinaryOp,
+            op: tokenToBinOp(opTok.kind),
+            binLeft: chained,
+            binRight: &rhsOpt,
+          )
+        )
+      else:
+        case chained.kind
+        of IdentHolder:
+          args.pushIdent(chained.ident)
+        of FieldAccessHolder:
+          args.pushFieldAccess(chained.fieldAccessList)
+        of Call:
+          let resIdent = "@0_" & $idx
+          parser.ast.appendToCurrentScope(callAndStore(resIdent, chained))
+          args.pushIdent(resIdent)
         else:
-          parser.tokenizer.pos = prevPos
-          parser.tokenizer.location = prevLocation
-          break
-
-      if not handled:
-        let idents =
-          postfixTokens.filterIt(it.kind == TokenKind.Identifier).mapIt(it.ident)
-        if idents.len > 1:
-          args.pushFieldAccess(createFieldAccess(idents))
-        else:
-          args.pushIdent(token.ident)
+          args.pushImmExpr(chained)
     of TokenKind.Number, TokenKind.String:
       last = some(token.kind)
       let atom = parser.parseAtom(token)
@@ -1158,14 +1120,39 @@ proc parseArguments(parser: Parser): Option[PositionedArguments] =
     of TokenKind.New:
       last = some(TokenKind.New)
       let
-        call = parser.parseConstructor()
+        ctor = parser.parseConstructor()
         resIdent = "@0_" & $idx
 
-      if !call:
+      if !ctor:
         return none(PositionedArguments)
 
-      parser.ast.appendToCurrentScope(callAndStore(resIdent, &call))
-      args.pushIdent(resIdent)
+      let chainedOpt = parser.parsePostfixChain(&ctor)
+      if !chainedOpt:
+        return none(PositionedArguments)
+
+      let chained = &chainedOpt
+      if chained.kind in {Call, ConstructObject}:
+        parser.ast.appendToCurrentScope(callAndStore(resIdent, chained))
+        args.pushIdent(resIdent)
+      else:
+        args.pushImmExpr(chained)
+    of TokenKind.LParen:
+      let inner = parser.parseExpression(ignoreTerms = true)
+      if !inner:
+        return none(PositionedArguments)
+      let closeTok = parser.tokenizer.nextExceptWhitespace()
+      if !closeTok or (&closeTok).kind != TokenKind.RParen:
+        parser.error Other, "expected closing parenthesis"
+      let chainedOpt = parser.parsePostfixChain(&inner)
+      if !chainedOpt:
+        return none(PositionedArguments)
+      let chained = &chainedOpt
+      if chained.kind == Call:
+        let resIdent = "@0_" & $idx
+        parser.ast.appendToCurrentScope(callAndStore(resIdent, chained))
+        args.pushIdent(resIdent)
+      else:
+        args.pushImmExpr(chained)
     of TokenKind.LBracket:
       if !last or &last != TokenKind.Identifier or !lastData:
         let arr = parser.parseArray()
@@ -1259,46 +1246,34 @@ proc parseReassignment(parser: Parser, ident: string): Option[Statement] =
         TokenKind.False:
       atom = parser.parseAtom(tok)
     of TokenKind.Identifier:
-      var
-        postfixTokens = @[tok]
-        isCall = false
-      while not parser.tokenizer.eof():
-        let
-          copied = parser.tokenizer
-          next = parser.tokenizer.nextExceptWhitespace()
-        if !next:
-          break
-        case (&next).kind
-        of TokenKind.LParen:
-          if postfixTokens.len > 1:
-            toCall = parser.parsePostfixCall(move(postfixTokens))
-          else:
-            toCall = parser.parseFunctionCall(tok.ident)
-          isCall = true
-          break
-        of TokenKind.Dot:
-          postfixTokens &= &next
-          let nextIdent = parser.tokenizer.nextExceptWhitespace()
-          if *nextIdent and (&nextIdent).kind == TokenKind.Identifier:
-            postfixTokens &= &nextIdent
-          else:
-            parser.error UnexpectedToken, "expected identifier after dot"
-        else:
-          parser.tokenizer = copied
-          break
+      let chainedOpt = parser.parsePostfixChain(identHolder(tok.ident))
+      if !chainedOpt:
+        return none(Statement)
 
-      if not isCall:
-        let idents =
-          postfixTokens.filterIt(it.kind == TokenKind.Identifier).mapIt(it.ident)
-        if idents.len > 1:
-          vFieldAccess = some(createFieldAccess(idents))
-        else:
-          vIdent = some(tok.ident)
+      let chained = &chainedOpt
+      case chained.kind
+      of IdentHolder:
+        vIdent = some(chained.ident)
+      of FieldAccessHolder:
+        vFieldAccess = some(chained.fieldAccessList)
+      else:
+        toCall = some(chained)
       break
     of TokenKind.Whitespace:
       discard
     of TokenKind.New:
       toCall = parser.parseConstructor()
+      if *toCall:
+        toCall = parser.parsePostfixChain(&toCall)
+      break
+    of TokenKind.LParen:
+      let inner = parser.parseExpression(ignoreTerms = true)
+      if !inner:
+        return none(Statement)
+      let closeTok = parser.tokenizer.nextExceptWhitespace()
+      if !closeTok or (&closeTok).kind != TokenKind.RParen:
+        parser.error Other, "expected closing parenthesis"
+      toCall = parser.parsePostfixChain(&inner)
       break
     else:
       parser.error UnexpectedToken, $tok.kind
@@ -1332,10 +1307,15 @@ proc parseReassignment(parser: Parser, ident: string): Option[Statement] =
 
       some(ensureMove(copyExpr))
   elif *toCall:
-    var callStoreExpr = callAndStore(ident, &toCall)
-    callStoreExpr.source = parser.getLine(parser.tokenizer.location.line)
+    let stmt = &toCall
+    var storeExpr =
+      if stmt.kind == Call:
+        callAndStore(ident, stmt)
+      else:
+        reassignVal(ident, stmt)
+    storeExpr.source = parser.getLine(parser.tokenizer.location.line)
 
-    some(ensureMove(callStoreExpr))
+    some(ensureMove(storeExpr))
   else:
     none(Statement)
 
@@ -1419,44 +1399,9 @@ proc parseExprInParenWrap(
       parser.tokenizer = copiedTokPhase2
       parser.error Other, "expected expression, got nothing instead"
     else:
-      var
-        holder = &atom
-        isCall = false
-
-      if *firstTok:
-        var postfixTokens = @[&firstTok]
-        while not parser.tokenizer.eof:
-          let
-            savedTok = parser.tokenizer
-            next = parser.tokenizer.nextExceptWhitespace()
-          if !next:
-            break
-
-          case (&next).kind
-          of TokenKind.Dot, TokenKind.Identifier:
-            postfixTokens &= &next
-          of TokenKind.LParen:
-            isCall = true
-            if postfixTokens.len > 1:
-              if (
-                let callStmt = parser.parsePostfixCall(move(postfixTokens))
-                *callStmt
-              ):
-                holder = &callStmt
-            else:
-              if (let callStmt = parser.parseFunctionCall((&firstTok).ident); *callStmt):
-                holder = &callStmt
-            break
-          else:
-            parser.tokenizer = savedTok
-            break
-
-        if not isCall and postfixTokens.len > 1:
-          holder = postfixTokens
-            .filterIt(it.kind == TokenKind.Identifier)
-            .mapIt(it.ident)
-            .createFieldAccess()
-            .fieldHolder()
+      var holder = &atom
+      if (let chained = parser.parsePostfixChain(holder); *chained):
+        holder = &chained
 
       expr = some Statement(
         kind: BinaryOp, binLeft: holder, binRight: holder, op: BinaryOperation.Equal
@@ -1525,58 +1470,23 @@ proc parseForLoop(parser: Parser): Option[Statement] =
     if !peekedCollection:
       parser.error Other, "expected array or identifier after `of`, got EOF instead."
 
-    var sawRParen = false
-
     if (&peekedCollection).kind == TokenKind.Identifier:
       discard parser.tokenizer.nextExceptWhitespace()
 
-      let collectionIdent = (&peekedCollection).ident
-      var postfixTokens = newSeqOfCap[Token](1)
-      postfixTokens &= &peekedCollection
+      let chained = parser.parsePostfixChain(identHolder((&peekedCollection).ident))
+      if !chained:
+        return none(Statement)
 
-      while not parser.tokenizer.eof:
-        let succeedsCollection = parser.tokenizer.nextExceptWhitespace()
-
-        if !succeedsCollection:
-          parser.error Other,
-            "expected left-facing parenthesis after identifier, got EOF instead."
-
-        case (&succeedsCollection).kind
-        of TokenKind.LParen:
-          let call =
-            if postfixTokens.len > 1:
-              parser.parsePostfixCall(move(postfixTokens))
-            else:
-              parser.parseFunctionCall(collectionIdent)
-
-          if !call:
-            return none(Statement)
-
-          iter.iterList = &call
-          break
-        of TokenKind.RParen:
-          let idents =
-            postfixTokens.filterIt(it.kind == TokenKind.Identifier).mapIt(it.ident)
-          if idents.len > 1:
-            iter.iterList = fieldHolder(createFieldAccess(idents))
-          else:
-            iter.iterList = identHolder(collectionIdent)
-          sawRParen = true
-          break
-        of TokenKind.Dot, TokenKind.Identifier:
-          postfixTokens &= &succeedsCollection
-        else:
-          discard
+      iter.iterList = &chained
     else:
       let atom = parser.parseAtom(&parser.tokenizer.nextExceptWhitespace())
       if !atom:
         parser.error UnexpectedToken, "expected valid collection after `of`"
       iter.iterList = &atom
 
-    if not sawRParen:
-      let expectRParen = parser.tokenizer.nextExceptWhitespace()
-      if !expectRParen or (&expectRParen).kind != TokenKind.RParen:
-        parser.error Other, "Left-facing parenthesis must close collection iterator"
+    let expectRParen = parser.tokenizer.nextExceptWhitespace()
+    if !expectRParen or (&expectRParen).kind != TokenKind.RParen:
+      parser.error Other, "Left-facing parenthesis must close collection iterator"
 
     iter.iterBody = Scope(stmts: parser.parseScope())
 
@@ -1728,65 +1638,6 @@ proc parseCompoundAssignment(
     parser.error Other,
       "expected expression, literal or identifier after compound assignment"
 
-proc parseIndexes(parser: Parser, identifier: string): Option[Statement] =
-  if parser.tokenizer.eof:
-    parser.error Other, "expected identifier or numeric, got EOF."
-
-  let indexKeyOpt = parser.tokenizer.nextExceptWhitespace()
-  if !indexKeyOpt:
-    parser.error Other, "expected identifier or numeric, got EOF."
-
-  let indexKey = &indexKeyOpt
-  if indexKey.kind notin {TokenKind.Identifier, TokenKind.Number}:
-    parser.error UnexpectedToken,
-      &"expected identifier or numeric, got {indexKey.kind} instead."
-
-  if parser.tokenizer.eof:
-    parser.error Other, "expected left-facing bracket, got EOF instead."
-
-  if (
-    let rbrack = parser.tokenizer.nextExceptWhitespace()
-    !rbrack or (&rbrack).kind != TokenKind.RBracket
-  ):
-    parser.error UnexpectedToken, "expected left-facing bracket after indexing key"
-
-  let access =
-    case indexKey.kind
-    of TokenKind.Identifier:
-      arrayAccess(identifier, indexKey.ident)
-    of TokenKind.Number:
-      arrayAccess(identifier, &parser.parseAtom(indexKey))
-    else:
-      unreachable
-      nil
-
-  if parser.tokenizer.eof:
-    return some(access)
-
-  let
-    saved = parser.tokenizer
-    expectingEquals = parser.tokenizer.nextExceptWhitespace()
-  if !expectingEquals or (&expectingEquals).kind != TokenKind.EqualSign:
-    parser.tokenizer = saved
-    return some(access)
-
-  let sourceOpt = parser.tokenizer.nextExceptWhitespace()
-  if !sourceOpt:
-    parser.error Other, "expected identifier or value after equal sign, got EOF"
-
-  let source = &sourceOpt
-  some(
-    indexAssignment(
-      source = (
-        if (let atom = parser.parseAtom(source); *atom): &atom
-        elif source.kind == TokenKind.Identifier: identHolder(source.ident)
-        else: parser.error UnexpectedToken,
-          &"expected identifier or value, got {source.kind} instead"
-      ),
-      dest = access,
-    )
-  )
-
 proc parseStatement(parser: Parser): Option[Statement] =
   if parser.tokenizer.eof:
     return
@@ -1832,108 +1683,112 @@ proc parseStatement(parser: Parser): Option[Statement] =
     parser.ast.scopes[parser.ast.currentScope] = ensureMove(scope)
     none(Statement)
   of TokenKind.Identifier:
-    var postfixTokens = @[token]
+    let chainedOpt = parser.parsePostfixChain(identHolder(token.ident))
+    if !chainedOpt:
+      return none(Statement)
 
-    while not parser.tokenizer.eof:
-      let next = parser.tokenizer.nextExceptWhitespace()
+    let
+      chained = &chainedOpt
+      saved = parser.tokenizer
+      next = parser.tokenizer.nextExceptWhitespace()
+
+    case chained.kind
+    of IdentHolder, FieldAccessHolder:
+      let targetIdent =
+        if chained.kind == IdentHolder:
+          chained.ident
+        else:
+          fieldAccessToString(chained.fieldAccessList)
 
       if !next:
-        let targetIdent = postfixTokens
-          .filterIt(it.kind == TokenKind.Identifier)
-          .mapIt(it.ident)
-          .join(".")
         return waste(targetIdent).some()
 
-      let targetIdent = postfixTokens
-        .filterIt(it.kind == TokenKind.Identifier)
-        .mapIt(it.ident)
-        .join(".")
-
       case (&next).kind
-      of TokenKind.LParen:
-        if postfixTokens.len > 1:
-          return parser.parsePostfixCall(move(postfixTokens))
-        else:
-          return parser.parseFunctionCall(token.ident)
       of TokenKind.EqualSign:
-        return parser.parseReassignment(targetIdent)
+        parser.parseReassignment(targetIdent)
       of TokenKind.Increment:
-        return some increment(targetIdent)
+        some increment(targetIdent)
       of TokenKind.Decrement:
-        return some decrement(targetIdent)
+        some decrement(targetIdent)
       of TokenKind.Mul, TokenKind.Add, TokenKind.Sub, TokenKind.Div:
-        return parser.parseCompoundAssignment(targetIdent, &next)
-      of TokenKind.LBracket:
-        return parser.parseIndexes(targetIdent)
-      of TokenKind.Dot, TokenKind.Identifier:
-        postfixTokens &= &next
+        parser.parseCompoundAssignment(targetIdent, &next)
+      of TokenKind.Semicolon, TokenKind.RCurly:
+        parser.tokenizer = saved
+        waste(targetIdent).some()
       else:
         parser.error UnexpectedToken,
           "expected left parenthesis, increment, decrement or equal sign, got " &
             $(&next).kind
+    of AccessArrayIndex, AccessField:
+      if *next and (&next).kind == TokenKind.EqualSign:
+        let rhs = parser.parseExpression(ignoreTerms = true)
+        if !rhs:
+          parser.error Other, "expected expression after equal sign"
+        return some(indexAssignment(source = &rhs, dest = chained))
 
-    let targetIdent =
-      postfixTokens.filterIt(it.kind == TokenKind.Identifier).mapIt(it.ident).join(".")
-    waste(targetIdent).some()
+      parser.tokenizer = saved
+      some(chained)
+    else:
+      parser.tokenizer = saved
+      some(chained)
+  of TokenKind.LParen:
+    let inner = parser.parseExpression(ignoreTerms = true)
+    if !inner:
+      return none(Statement)
+
+    let closeTok = parser.tokenizer.nextExceptWhitespace()
+    if !closeTok or (&closeTok).kind != TokenKind.RParen:
+      parser.error Other, "expected closing parenthesis"
+
+    parser.parsePostfixChain(&inner)
   of TokenKind.Return:
     if token.containsUnicodeEsc:
       parser.error Other, "keyword `return` cannot contain unicode escape(s)"
-
-    let
-      prevPos = parser.tokenizer.pos
-      prevLoc = parser.tokenizer.location
 
     while not parser.tokenizer.eof():
       let
         beforeNext = parser.tokenizer
         next = parser.tokenizer.next()
 
-      if next.kind == TokenKind.Whitespace:
-        if next.whitespace.contains(strutils.Newlines):
+      case next.kind
+      of TokenKind.Whitespace:
+        if next.isNewline():
           return some returnFunc()
         continue
+      of TokenKind.Comment:
+        continue
+      of TokenKind.Semicolon:
+        return some returnFunc()
+      of TokenKind.RCurly:
+        parser.tokenizer = beforeNext
+        return some returnFunc()
+      else:
+        parser.tokenizer = beforeNext
+        let exprOpt = parser.parseExpression(ignoreTerms = true)
+        if !exprOpt:
+          parser.error UnexpectedToken, "expected expression, got " & $next.kind
 
-      if next.kind == TokenKind.Semicolon:
-        break
-
-      parser.tokenizer = beforeNext
-      if (let expr = parser.parseExpression(); *expr):
-        return some returnFunc(&expr)
-
-      parser.tokenizer = beforeNext
-      discard parser.tokenizer.next()
-
-      case next.kind
-      of TokenKind.Identifier:
-        var idents = @[next.ident]
-        while not parser.tokenizer.eof:
+        var expr = &exprOpt
+        if not parser.tokenizer.eof:
           let
             saved = parser.tokenizer
             peekTok = parser.tokenizer.nextExceptWhitespace()
-          if *peekTok and (&peekTok).kind == TokenKind.Dot:
-            let nextIdent = parser.tokenizer.nextExceptWhitespace()
-            if *nextIdent and (&nextIdent).kind == TokenKind.Identifier:
-              idents &= (&nextIdent).ident
-            else:
-              parser.error UnexpectedToken, "expected identifier after dot"
+          if *peekTok and (&peekTok).kind == TokenKind.Question:
+            let tern = parser.parseTernaryOp(condStmt = some(expr))
+            if !tern:
+              return none(Statement)
+            expr = &tern
           else:
             parser.tokenizer = saved
-            break
-        if idents.len > 1:
-          return some returnFunc(fieldHolder(createFieldAccess(idents)))
-        else:
-          return some returnFunc(next.ident)
-      of TokenKind.Number, TokenKind.String, TokenKind.True, TokenKind.False,
-          TokenKind.Null:
-        let atom = parser.parseAtom(next)
-        if !atom:
-          return none(Statement)
-        return some returnFunc(&atom)
-      else:
-        parser.error UnexpectedToken, "expected expression, got " & $next.kind
 
-    parser.tokenizer.pos = prevPos
-    parser.tokenizer.location = prevLoc
+        case expr.kind
+        of IdentHolder:
+          return some returnFunc(expr.ident)
+        of AtomHolder:
+          return some returnFunc(expr.atom)
+        else:
+          return some returnFunc(expr)
+
     some returnFunc()
   of TokenKind.Throw:
     if token.containsUnicodeEsc:
@@ -2003,7 +1858,7 @@ proc parseStatement(parser: Parser): Option[Statement] =
     if !expr:
       parser.error Other, "expected expression for `new`"
 
-    expr
+    parser.parsePostfixChain(&expr)
   of TokenKind.Shebang:
     if parser.foundShebang:
       parser.error Other, "one file cannot have two shebangs"

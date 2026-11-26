@@ -25,6 +25,29 @@ proc ArrayCreate*(rt: Runtime, size: uint32): JSValue =
   arrObj
   # JSArray(internal: hidden(sequence(rt, newSeq[MAtom](size))), length: size)
 
+proc CreateArrayFromList*(rt: Runtime, list: seq[JSValue]): JSValue =
+  ## https://262.ecma-international.org/17.0/index.html#sec-createarrayfromlist
+
+  # 1. Let array be ! ArrayCreate(0).
+  let
+    arr = ArrayCreate(rt, 0'u32)
+    internal = &arr.getHiddenField("internal")
+
+  # 2. Let n be 0.
+  var n = 0'u32
+
+  # 3. For each element e of elements, do
+  for e in list:
+    # a. Perform ! CreateDataPropertyOrThrow(array, ! ToString(𝔽(n)), e).
+    # TODO: CreateDataPropertyOrThrow
+    internal.sequence[n] = e
+
+    # b. Set n to n + 1.
+    inc n
+
+  # 4. Return array.
+  arr
+
 proc getInternalSeq(arr: JSValue): JSValue =
   &getHiddenField(arr, "internal")
 

@@ -5,7 +5,8 @@ import std/[tables, strutils, options, hashes, unicode]
 import
   components/js/runtime/[arguments, bridge, wrapping, atom_helpers, types, construction]
 import components/js/runtime/abstract/[coercible, to_number, to_string]
-import components/js/stdlib/errors, components/js/stdlib/types/std_string_type
+import
+  components/js/stdlib/errors, components/js/stdlib/types/[std_array, std_string_type]
 import components/js/internal/[trim_string]
 import components/js/runtime/vm/atom
 import components/unicode/utf16view
@@ -377,3 +378,79 @@ proc generateStdIr*(runtime: Runtime) =
       ret newJSString(runtime, str[k ..< k + 1])
     ,
   )
+  
+  # TODO: Complete this implementation
+  #{ runtime.definePrototypeFn(
+    JSString,
+    "split",
+    proc(value: JSValue) =
+      ## 22.1.3.23 String.prototype.split ( separator, limit )
+      let
+        separator = &runtime.argument(1)
+        limit = &runtime.argument(2)
+
+      # 1. Let O be the this value.
+      # 2. Perform ? RequireObjectCoercible(O).
+      let value = runtime.RequireObjectCoercible(value)
+
+      # 3. If separator is an Object, then
+      if separator.isObject:
+        # a. Let splitter be ? GetMethod(separator, %Symbol.split%).
+        let splitter = runtime.getMethod(separator, "split")
+
+        # b. If splitter is not undefined, then
+        if *splitter:
+          # i. Return ? Call(splitter, separator, « O, limit »).
+          discard
+            runtime.callNoRetval(nativeCallable(runtime, &splitter), @[value, limit])
+
+      # 4. Let S be ? ToString(O).
+      let
+        str = &value.getUTF16View()
+        strVal = str.toUTF8()
+
+      # 5. If limit is undefined, let lim be 2**32 - 1; else let lim be ℝ(? ToUint32(limit)).
+      let lim =
+        if limit.isUndefined:
+          4294967295'u32
+        else:
+          # TODO: Implement ToUint32
+          uint32(runtime.ToNumeric(limit))
+
+      # 6. Let R be ? ToString(separator).
+      let
+        sepVal = &separator.getUTF16View()
+        sep = sepVal.toUTF8()
+
+      # 7. If lim = 0, then
+      if lim == 0'u32:
+        # a. Return CreateArrayFromList(« »).
+        return CreateArrayFromList(runtime, @[])
+      
+      # 8. If separator is undefined, then
+      if separator.isUndefined:
+        # a. Return CreateArrayFromList(« S »).
+        return CreateArrayFromList(runtime, @[strVal])
+
+      # 9. Let separatorLength be the length of R.
+      let separatorLength = cast[uint32](sep.len)
+
+      # 10. If separatorLength = 0, then
+      if separatorLength == 0:
+        # a. Let strLen be the length of S.
+        let strLen = cast[uint32](strVal.len)
+
+        # b. Let outLen be the result of clamping lim between 0 and strLen.
+        let outLen = clamp(lim, 0, strLen)
+
+        # c. Let head be the substring of S from 0 to outLen.
+        # d. Let codeUnits be a List consisting of the sequence of code units that are the elements of head.
+        
+        var codeUnits = newSeqOfCap[JSValue](outLen)
+        for i in 0'u32 .. outLen:
+          codeUnits &= str.codeUnitAt(i)
+
+        # e. Return CreateArrayFromList(codeUnits).
+        
+    ,
+  ) ]#
